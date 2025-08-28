@@ -5,4 +5,4 @@
  */
 
 export { EvmError, EvmErrorCode } from "./errors";
-export { generateFunction, generateModule } from "./generator";
+export { generateModule } from "./generator";

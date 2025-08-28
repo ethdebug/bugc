@@ -196,6 +196,46 @@ export function generateConst<S extends Stack>(
 }
 
 /**
+ * Generate local load
+ */
+export function generateLoadLocal<S extends Stack>(
+  state: GenState<S>,
+  inst: Ir.LoadLocalInstruction,
+): GenState<readonly ["value", ...S]> {
+  const allocation = state.memory.allocations[inst.local];
+  if (allocation === undefined) {
+    throw new EvmError(
+      EvmErrorCode.MEMORY_ALLOCATION_FAILED,
+      `Local ${inst.local} not allocated in memory`,
+    );
+  }
+
+  const s1 = emitPush(state, BigInt(allocation.offset), { brand: "offset" });
+  const s2 = operations.MLOAD(s1);
+
+  return storeValueIfNeeded(s2, inst.dest);
+}
+
+/**
+ * Generate local store
+ */
+export function generateStoreLocal<S extends Stack>(
+  state: GenState<readonly [...S]>,
+  inst: Ir.StoreLocalInstruction,
+): GenState<readonly [...S]> {
+  const allocation = state.memory.allocations[inst.local];
+  if (allocation === undefined) {
+    throw new EvmError(
+      EvmErrorCode.MEMORY_ALLOCATION_FAILED,
+      `Local ${inst.local} not allocated in memory`,
+    );
+  }
+
+  const s1 = loadValue(state, inst.value);
+  const s2 = emitPush(s1, BigInt(allocation.offset), { brand: "offset" });
+  return operations.MSTORE(s2);
+}
+/**
  * Generate storage load
  */
 export function generateLoadStorage<S extends Stack>(
@@ -365,8 +405,18 @@ export function generateInstruction<S extends Stack>(
       return generateLoadStorage(state, inst);
     case "store_storage":
       return generateStoreStorage(state, inst);
+    case "load_local":
+      return generateLoadLocal(state, inst);
+    case "store_local":
+      return generateStoreLocal(state, inst);
     case "env":
       return generateEnvOp(state, inst as Ir.EnvInstruction);
+    case "hash":
+     return generateHashOp(state, inst);
+    case "length":
+      return generateLength(state, inst);
+    case "compute_slot":
+      return generateComputeSlot(state, inst);
     case "compute_array_slot":
       return generateComputeArraySlot(state, inst);
     default: {
@@ -383,6 +433,81 @@ export function generateInstruction<S extends Stack>(
       };
     }
   }
+}
+
+function generateLength<S extends Stack>(
+  state: GenState<readonly [...S]>,
+  inst: Ir.LengthInstruction
+) {
+  // Length instruction - behavior depends on the type
+  const objectType = inst.object.type;
+
+  if (objectType.kind === "array") {
+    if (objectType.size !== undefined) {
+      // Fixed-size array - emit the constant
+      const s1 = emitPush(state, BigInt(objectType.size));
+      return storeValueIfNeeded(s1, inst.dest);
+    } else {
+      // Dynamic array - length is stored at the array's base slot
+      const s1 = rebrandTop(loadValue(state, inst.object), "key");
+      const s2 = operations.SLOAD(s1);
+      return storeValueIfNeeded(s2, inst.dest);
+    }
+  }
+
+  if (objectType.kind === "bytes") {
+    if (objectType.size !== undefined) {
+      // Fixed-size bytes - emit the constant
+      const s1 = emitPush(state, BigInt(objectType.size));
+      return storeValueIfNeeded(s1, inst.dest);
+    }
+  }
+
+  throw new EvmError(
+    EvmErrorCode.UNSUPPORTED_INSTRUCTION,
+    `length operation not supported for type: ${objectType.kind}`,
+  );
+}
+
+function generateHashOp<S extends Stack>(
+  state: GenState<readonly [...S]>,
+  inst: Ir.HashInstruction
+) {
+  const s1 = loadValue(state, inst.value);
+
+  // Store value at memory offset 0
+  const s2 = emitPush(s1, 0n, { brand: "offset" });
+  const s3 = operations.MSTORE(s2);
+
+  // Hash 32 bytes starting at offset 0
+  const s4 = emitPush(s3, 32n, { brand: "size" });
+  const s5 = emitPush(s4, 0n, { brand: "offset" });
+  const s6 = operations.KECCAK256(s5);
+
+  const s7 = rebrandTop(s6, "value");
+
+  return storeValueIfNeeded(s7, inst.dest);
+}
+
+function generateComputeSlot<S extends Stack>(
+  state: GenState<readonly [...S]>,
+  inst: Ir.ComputeSlotInstruction,
+) {
+  // store key then baseSlot in memory as 32 bytes each
+  const s1 = loadValue(state, inst.key);
+
+  const s2 = emitPush(s1, 0n, { brand: "offset" });
+  const s3 = operations.MSTORE(s2);
+
+  const s4 = loadValue(s3, inst.baseSlot);
+  const s5 = emitPush(s4, 32n, { brand: "offset" });
+  const s6 = operations.MSTORE(s5);
+
+  const s7 = emitPush(s6, 64n, { brand: "size" });
+  const s8 = emitPush(s7, 0n, { brand: "offset" });
+  const s9 = operations.KECCAK256(s8, { produces: ["value"] as const });
+
+  return storeValueIfNeeded(s9, inst.dest);
 }
 
 function generateComputeArraySlot<S extends Stack>(

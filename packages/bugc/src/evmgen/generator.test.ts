@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { generateFunction, generateModule } from "./generator";
+import { generateModule } from "./generator";
+import { generateFunction } from "./ir-handlers";
 import { OPCODES } from "../evm";
 import type { IrFunction, IrModule, BasicBlock } from "../ir";
 import type { MemoryAllocation } from "../memory/memory-planner";
@@ -52,7 +53,7 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // Should have PUSH1 42 (no JUMPDEST for entry with no predecessors, no STOP since it's the last block)
       expect(bytecode[0]).toBe(OPCODES.PUSH1);
@@ -122,7 +123,7 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // Should contain ADD opcode
       expect(bytecode).toContain(OPCODES.ADD);
@@ -173,7 +174,7 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // Should have JUMP opcode
       expect(bytecode).toContain(OPCODES.JUMP);
@@ -259,7 +260,7 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // Should have JUMPI for conditional jump
       expect(bytecode).toContain(OPCODES.JUMPI);
@@ -328,7 +329,7 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // Should have SSTORE opcode
       expect(bytecode).toContain(OPCODES.SSTORE);
@@ -377,7 +378,7 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // Should have CALLER and CALLVALUE opcodes
       expect(bytecode).toContain(OPCODES.CALLER);
@@ -468,7 +469,7 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // Should contain KECCAK256 for array slot computation
       expect(bytecode).toContain(OPCODES.KECCAK256);
@@ -566,7 +567,7 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // Should compute array base with KECCAK256
       expect(bytecode).toContain(OPCODES.KECCAK256);
@@ -655,7 +656,7 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // Should have CALLER for msg.sender
       expect(bytecode).toContain(OPCODES.CALLER);
@@ -738,7 +739,7 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // Should get msg.sender
       expect(bytecode).toContain(OPCODES.CALLER);
@@ -863,7 +864,7 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // Should have KECCAK256 operations for both mapping and array
       // Count actual KECCAK256 opcodes (not 0x20 as push data)
@@ -1098,7 +1099,7 @@ describe("EVM Code Generator", () => {
       // Note: local_i might not be allocated to memory if it doesn't cross blocks
       // The memory planner only allocates values that need to persist across stack operations
 
-      const bytecode = generateFunction(func, memory, layout);
+      const { bytecode } = generateFunction(func, memory, layout);
 
       // The bytecode should handle the local operations correctly
       // Whether through stack manipulation or memory depends on the implementation

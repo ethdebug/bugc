@@ -9,7 +9,8 @@ import {
   planFunctionMemory,
 } from "../memory/memory-planner";
 import { analyzeModuleBlockLayout, layoutBlocks } from "../memory/block-layout";
-import { generateFunction, generateModule } from "./generator";
+import { generateModule } from "./generator";
+import { generateFunction } from "./ir-handlers";
 import { OPCODES } from "../evm";
 
 describe("Constructor array storage", () => {
@@ -79,7 +80,7 @@ code {}
     const memory = memoryResult.value;
     const layout = layoutBlocks(createFunc);
 
-    const bytecode = generateFunction(createFunc, memory, layout);
+    const { bytecode } = generateFunction(createFunc, memory, layout);
 
     // Check bytecode contains SSTORE operations
     const sstoreCount = bytecode.filter((b) => b === OPCODES.SSTORE).length;
