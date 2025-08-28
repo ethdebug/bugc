@@ -1,0 +1,42 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-unused-vars": ["error", { "varsIgnorePattern": "^_", "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-namespace": "off",
+    "no-console": "warn",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": [
+              "../test/evm/disassembler",
+              "../test/evm/evm-executor",
+              "../src/utils/ir/formatter",
+              "../src/utils/ir/cfg-visualizer",
+              "../src/utils/ir/validator",
+              "../src/utils/ir/stats",
+              "./context-builders/variables-context",
+              "./context-builders/code-context",
+              "./context-builders/frame-context",
+              "./context-builders/gather-context",
+              "./context-builders/pick-context",
+              "./context-builders/remark-context"
+            ],
+            "message": "Cross-directory imports must use index.ts files. Import from '../module' not '../module/file'."
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "node": true,
+    "es2022": true
+  }
+}

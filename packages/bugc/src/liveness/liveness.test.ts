@@ -1,0 +1,299 @@
+import { describe, it, expect } from "vitest";
+import { analyzeLiveness } from "./liveness";
+import type { IrFunction, BasicBlock } from "../ir";
+
+describe("Liveness Analysis", () => {
+  it("should identify live-in and live-out sets for a simple function", () => {
+    const func: IrFunction = {
+      name: "test",
+      locals: [],
+      entry: "entry",
+      blocks: new Map([
+        [
+          "entry",
+          {
+            id: "entry",
+            phis: [],
+            instructions: [
+              {
+                kind: "const",
+                value: 42n,
+                type: { kind: "uint", bits: 256 },
+                dest: "%1",
+              },
+              {
+                kind: "const",
+                value: 10n,
+                type: { kind: "uint", bits: 256 },
+                dest: "%2",
+              },
+              {
+                kind: "binary",
+                op: "add",
+                left: {
+                  kind: "temp",
+                  id: "%1",
+                  type: { kind: "uint", bits: 256 },
+                },
+                right: {
+                  kind: "temp",
+                  id: "%2",
+                  type: { kind: "uint", bits: 256 },
+                },
+                dest: "%3",
+              },
+            ],
+            terminator: { kind: "return" },
+            predecessors: new Set(),
+          } as BasicBlock,
+        ],
+      ]),
+    };
+
+    const liveness = analyzeLiveness(func);
+
+    // Entry block should have no live-in (it's the entry)
+    expect(liveness.liveIn.get("entry")?.size).toBe(0);
+
+    // No live-out since it returns
+    expect(liveness.liveOut.get("entry")?.size).toBe(0);
+
+    // No cross-block values in a single-block function
+    expect(liveness.crossBlockValues.size).toBe(0);
+  });
+
+  it("should track values across blocks", () => {
+    const func: IrFunction = {
+      name: "test",
+      locals: [],
+      entry: "entry",
+      blocks: new Map([
+        [
+          "entry",
+          {
+            id: "entry",
+            phis: [],
+            instructions: [
+              {
+                kind: "const",
+                value: 1n,
+                type: { kind: "uint", bits: 256 },
+                dest: "%1",
+              },
+            ],
+            terminator: {
+              kind: "branch",
+              condition: { kind: "temp", id: "%1", type: { kind: "bool" } },
+              trueTarget: "then",
+              falseTarget: "else",
+            },
+            predecessors: new Set(),
+          } as BasicBlock,
+        ],
+        [
+          "then",
+          {
+            id: "then",
+            phis: [],
+            instructions: [
+              {
+                kind: "const",
+                value: 10n,
+                type: { kind: "uint", bits: 256 },
+                dest: "%2",
+              },
+            ],
+            terminator: {
+              kind: "jump",
+              target: "merge",
+            },
+            predecessors: new Set(["entry"]),
+          } as BasicBlock,
+        ],
+        [
+          "else",
+          {
+            id: "else",
+            phis: [],
+            instructions: [
+              {
+                kind: "const",
+                value: 20n,
+                type: { kind: "uint", bits: 256 },
+                dest: "%3",
+              },
+            ],
+            terminator: {
+              kind: "jump",
+              target: "merge",
+            },
+            predecessors: new Set(["entry"]),
+          } as BasicBlock,
+        ],
+        [
+          "merge",
+          {
+            id: "merge",
+            phis: [],
+            instructions: [],
+            terminator: { kind: "return" },
+            predecessors: new Set(["then", "else"]),
+          } as BasicBlock,
+        ],
+      ]),
+    };
+
+    const liveness = analyzeLiveness(func);
+
+    // %1 is used in the branch, but it's also defined in entry, so it's not live-out
+    // (it's consumed within the block)
+    expect(liveness.liveOut.get("entry")?.has("%1")).toBe(false);
+
+    // No values cross from then/else to merge
+    expect(liveness.liveIn.get("merge")?.size).toBe(0);
+  });
+
+  it("should handle phi nodes correctly", () => {
+    const func: IrFunction = {
+      name: "test",
+      locals: [],
+      entry: "entry",
+      blocks: new Map([
+        [
+          "entry",
+          {
+            id: "entry",
+            phis: [],
+            instructions: [
+              {
+                kind: "const",
+                value: 0n,
+                type: { kind: "uint", bits: 256 },
+                dest: "%1",
+              },
+            ],
+            terminator: {
+              kind: "jump",
+              target: "loop",
+            },
+            predecessors: new Set(),
+          } as BasicBlock,
+        ],
+        [
+          "loop",
+          {
+            id: "loop",
+            phis: [
+              {
+                kind: "phi",
+                sources: new Map([
+                  [
+                    "entry",
+                    {
+                      kind: "temp",
+                      id: "%1",
+                      type: { kind: "uint", bits: 256 },
+                    },
+                  ],
+                  [
+                    "loop",
+                    {
+                      kind: "temp",
+                      id: "%3",
+                      type: { kind: "uint", bits: 256 },
+                    },
+                  ],
+                ]),
+                dest: "%2",
+                type: { kind: "uint", bits: 256 },
+              },
+            ],
+            instructions: [
+              {
+                kind: "const",
+                value: 1n,
+                type: { kind: "uint", bits: 256 },
+                dest: "%inc",
+              },
+              {
+                kind: "binary",
+                op: "add",
+                left: {
+                  kind: "temp",
+                  id: "%2",
+                  type: { kind: "uint", bits: 256 },
+                },
+                right: {
+                  kind: "temp",
+                  id: "%inc",
+                  type: { kind: "uint", bits: 256 },
+                },
+                dest: "%3",
+              },
+              {
+                kind: "const",
+                value: 10n,
+                type: { kind: "uint", bits: 256 },
+                dest: "%limit",
+              },
+              {
+                kind: "binary",
+                op: "lt",
+                left: {
+                  kind: "temp",
+                  id: "%3",
+                  type: { kind: "uint", bits: 256 },
+                },
+                right: {
+                  kind: "temp",
+                  id: "%limit",
+                  type: { kind: "uint", bits: 256 },
+                },
+                dest: "%cond",
+              },
+            ],
+            terminator: {
+              kind: "branch",
+              condition: { kind: "temp", id: "%cond", type: { kind: "bool" } },
+              trueTarget: "loop",
+              falseTarget: "exit",
+            },
+            predecessors: new Set(["entry", "loop"]),
+          } as BasicBlock,
+        ],
+        [
+          "exit",
+          {
+            id: "exit",
+            phis: [],
+            instructions: [],
+            terminator: {
+              kind: "return",
+              value: {
+                kind: "temp",
+                id: "%3",
+                type: { kind: "uint", bits: 256 },
+              },
+            },
+            predecessors: new Set(["loop"]),
+          } as BasicBlock,
+        ],
+      ]),
+    };
+
+    const liveness = analyzeLiveness(func);
+
+    // %1 should be live-out of entry (used by phi in loop)
+    expect(liveness.liveOut.get("entry")).toContain("%1");
+
+    // %3 should be live-out of loop (used by phi and return)
+    expect(liveness.liveOut.get("loop")).toContain("%3");
+
+    // %3 should be live-in to exit (used in return)
+    expect(liveness.liveIn.get("exit")).toContain("%3");
+
+    // Cross-block values
+    expect(liveness.crossBlockValues).toContain("%1");
+    expect(liveness.crossBlockValues).toContain("%3");
+  });
+});

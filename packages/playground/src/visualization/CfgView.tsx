@@ -1,0 +1,487 @@
+import { useMemo, useCallback, useState, useEffect } from "react";
+import ReactFlow, {
+  Node,
+  Edge,
+  Controls,
+  Background,
+  useNodesState,
+  useEdgesState,
+  Handle,
+  Position,
+  NodeProps,
+  MarkerType,
+  useReactFlow,
+  ReactFlowProvider,
+} from "react-flow-renderer";
+import dagre from "dagre";
+import "react-flow-renderer/dist/style.css";
+import type {
+  IrModule,
+  IrFunction,
+  BasicBlock,
+  IrInstruction,
+  Terminator,
+} from "@ethdebug/bugc";
+import "./CfgView.css";
+
+interface CfgViewProps {
+  ir: IrModule;
+  optimized?: boolean;
+  showComparison?: boolean;
+  comparisonIr?: IrModule;
+}
+
+interface BlockNodeData {
+  label: string;
+  block: BasicBlock;
+  isEntry: boolean;
+  instructionCount: number;
+  functionName?: string;
+}
+
+function BlockNode({ data, selected }: NodeProps<BlockNodeData>) {
+  return (
+    <div
+      className={`cfg-node ${data.isEntry ? "entry" : ""} ${selected ? "selected" : ""}`}
+    >
+      <Handle type="target" position={Position.Top} id="top" />
+      <Handle type="target" position={Position.Left} id="left" />
+      <div className="cfg-node-header">
+        <strong>
+          {data.functionName}::{data.label}
+        </strong>
+        {data.isEntry && <span className="entry-badge">entry</span>}
+      </div>
+      <div className="cfg-node-stats">
+        {data.instructionCount} instruction
+        {data.instructionCount !== 1 ? "s" : ""}
+      </div>
+      <Handle type="source" position={Position.Bottom} id="bottom" />
+      <Handle type="source" position={Position.Right} id="right" />
+    </div>
+  );
+}
+
+const nodeTypes = {
+  block: BlockNode,
+};
+
+function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const { fitView } = useReactFlow();
+
+  const { initialNodes, initialEdges } = useMemo(() => {
+    const nodes: Node<BlockNodeData>[] = [];
+    const edges: Edge[] = [];
+
+    const processFunction = (func: IrFunction, funcName: string) => {
+      const blockEntries = Array.from(func.blocks.entries());
+
+      // Create nodes with function name prefix to ensure unique IDs
+      blockEntries.forEach(([blockId, block]) => {
+        const nodeId = `${funcName}:${blockId}`;
+
+        nodes.push({
+          id: nodeId,
+          type: "block",
+          position: { x: 0, y: 0 }, // Will be set by dagre
+          data: {
+            label: blockId,
+            block,
+            isEntry: blockId === func.entry,
+            instructionCount: block.instructions.length + 1, // +1 for terminator
+            functionName: funcName,
+          },
+        });
+      });
+
+      // Create edges with function name prefix
+      blockEntries.forEach(([blockId, block]) => {
+        const sourceId = `${funcName}:${blockId}`;
+        const term = block.terminator;
+
+        if (term.kind === "jump") {
+          const targetId = `${funcName}:${term.target}`;
+          edges.push({
+            id: `${sourceId}-${targetId}`,
+            source: sourceId,
+            target: targetId,
+            sourceHandle: "bottom",
+            targetHandle: "top",
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+            },
+          });
+        } else if (term.kind === "branch") {
+          const trueTargetId = `${funcName}:${term.trueTarget}`;
+          const falseTargetId = `${funcName}:${term.falseTarget}`;
+
+          edges.push({
+            id: `${sourceId}-${trueTargetId}-true`,
+            source: sourceId,
+            target: trueTargetId,
+            sourceHandle: "bottom",
+            targetHandle: "top",
+            label: "true",
+            labelBgStyle: { fill: "#e8f5e9" },
+            style: { stroke: "#4caf50" },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: "#4caf50",
+            },
+          });
+          edges.push({
+            id: `${sourceId}-${falseTargetId}-false`,
+            source: sourceId,
+            target: falseTargetId,
+            sourceHandle: "bottom",
+            targetHandle: "top",
+            label: "false",
+            labelBgStyle: { fill: "#ffebee" },
+            style: { stroke: "#f44336" },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: "#f44336",
+            },
+          });
+        }
+      });
+    };
+
+    // Process all functions
+    if (ir.functions) {
+      for (const [funcName, func] of ir.functions.entries()) {
+        processFunction(func, funcName);
+      }
+    }
+
+    if (ir.create) {
+      processFunction(ir.create, "create");
+    }
+
+    processFunction(ir.main, "main");
+
+    // Add call edges between blocks and functions
+    const allFunctions = new Map<string, IrFunction>();
+    if (ir.functions) {
+      ir.functions.forEach((func, name) => allFunctions.set(name, func));
+    }
+    if (ir.create) {
+      allFunctions.set("create", ir.create);
+    }
+    allFunctions.set("main", ir.main);
+
+    // Find all call instructions and create edges to the called functions
+    allFunctions.forEach((func, callerFuncName) => {
+      func.blocks.forEach((block, blockId) => {
+        block.instructions.forEach((inst) => {
+          if (inst.kind === "call") {
+            const calleeFunc = inst.function;
+            const sourceId = `${callerFuncName}:${blockId}`;
+            const targetId = `${calleeFunc}:${allFunctions.get(calleeFunc)?.entry}`;
+
+            if (targetId && allFunctions.has(calleeFunc)) {
+              edges.push({
+                id: `call-${sourceId}-${targetId}`,
+                source: sourceId,
+                target: targetId,
+                sourceHandle: "right",
+                targetHandle: "left",
+                label: `call ${calleeFunc}`,
+                animated: true,
+                style: {
+                  stroke: "#9333ea",
+                  strokeDasharray: "5 5",
+                },
+                labelStyle: {
+                  fill: "#9333ea",
+                  fontWeight: "bold",
+                },
+                labelBgStyle: { fill: "#f3e8ff" },
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  color: "#9333ea",
+                },
+              });
+            }
+          }
+        });
+      });
+    });
+
+    // Apply dagre layout
+    const dagreGraph = new dagre.graphlib.Graph();
+    dagreGraph.setDefaultEdgeLabel(() => ({}));
+    dagreGraph.setGraph({
+      rankdir: "TB",
+      nodesep: 80,
+      ranksep: 120,
+      edgesep: 50,
+    });
+
+    nodes.forEach((node) => {
+      dagreGraph.setNode(node.id, { width: 200, height: 80 });
+    });
+
+    edges.forEach((edge) => {
+      dagreGraph.setEdge(edge.source, edge.target);
+    });
+
+    dagre.layout(dagreGraph);
+
+    // Apply the computed positions
+    const layoutedNodes = nodes.map((node) => {
+      const nodeWithPosition = dagreGraph.node(node.id);
+      return {
+        ...node,
+        position: {
+          x: nodeWithPosition.x - 100, // Center the node
+          y: nodeWithPosition.y - 40,
+        },
+      };
+    });
+
+    return { initialNodes: layoutedNodes, initialEdges: edges };
+  }, [ir]);
+
+  const [nodesState, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edgesState, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Update nodes and edges when IR changes
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+    // Auto-fit view after a short delay to ensure layout is complete
+    setTimeout(() => {
+      fitView({ padding: 0.2, minZoom: 0.1, maxZoom: 2 });
+    }, 50);
+  }, [initialNodes, initialEdges, setNodes, setEdges, fitView]);
+
+  const onNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node<BlockNodeData>) => {
+      setSelectedNode(node.id);
+    },
+    [],
+  );
+
+  const selectedBlock = useMemo(() => {
+    if (!selectedNode) return null;
+    const node = nodesState.find(
+      (n: Node<BlockNodeData>) => n.id === selectedNode,
+    );
+    return node?.data.block ?? null;
+  }, [selectedNode, nodesState]);
+
+  const selectedBlockName = useMemo(() => {
+    if (!selectedNode || selectedNode.includes("-label")) return null;
+    // Extract the display name from the node ID (e.g., "main:entry" -> "main::entry")
+    return selectedNode.replace(":", "::");
+  }, [selectedNode]);
+
+  const formatInstruction = useCallback((inst: IrInstruction): string => {
+    // Recreate the formatting logic from IrFormatter since methods are private
+    const formatValue = (value: unknown): string => {
+      if (typeof value === "bigint") return value.toString();
+      if (typeof value === "string") return JSON.stringify(value);
+      if (typeof value === "boolean") return value.toString();
+
+      const val = value as {
+        kind?: string;
+        value?: unknown;
+        id?: string | number;
+        name?: string;
+      };
+      if (!val.kind) return "?";
+
+      switch (val.kind) {
+        case "const":
+          return String(val.value || "?");
+        case "temp":
+          return `%${val.id || "?"}`;
+        case "local":
+          return `$${val.name || "?"}`;
+        default:
+          return "?";
+      }
+    };
+
+    switch (inst.kind) {
+      case "const":
+        return `${inst.dest} = ${inst.value}`;
+      case "binary":
+        return `${inst.dest} = ${formatValue(inst.left)} ${inst.op} ${formatValue(inst.right)}`;
+      case "unary":
+        return `${inst.dest} = ${inst.op}${formatValue(inst.operand)}`;
+      case "load_local":
+        return `${inst.dest} = ${inst.local}`;
+      case "store_local":
+        return `${inst.local} = ${formatValue(inst.value)}`;
+      case "load_storage":
+        return `${inst.dest} = storage[${formatValue(inst.slot)}]`;
+      case "store_storage":
+        return `storage[${formatValue(inst.slot)}] = ${formatValue(inst.value)}`;
+      case "env": {
+        const envInst = inst;
+        switch (envInst.op) {
+          case "msg_sender":
+            return `${envInst.dest} = msg.sender`;
+          case "msg_value":
+            return `${envInst.dest} = msg.value`;
+          case "msg_data":
+            return `${envInst.dest} = msg.data`;
+          case "block_timestamp":
+            return `${envInst.dest} = block.timestamp`;
+          case "block_number":
+            return `${envInst.dest} = block.number`;
+          default:
+            return `${envInst.dest} = ${envInst.op}`;
+        }
+      }
+      case "hash":
+        return `${inst.dest} = keccak256(${formatValue(inst.value)})`;
+      case "slice":
+        return `${inst.dest} = ${formatValue(inst.object)}[${formatValue(inst.start)}:${formatValue(inst.end)}]`;
+      case "cast":
+        return `${inst.dest} = cast ${formatValue(inst.value)} to ${inst.targetType.kind}`;
+      case "load_field":
+        return `${inst.dest} = ${formatValue(inst.object)}.${inst.field}`;
+      case "store_field":
+        return `${formatValue(inst.object)}.${inst.field} = ${formatValue(inst.value)}`;
+      case "load_index":
+        return `${inst.dest} = ${formatValue(inst.array)}[${formatValue(inst.index)}]`;
+      case "store_index":
+        return `${formatValue(inst.array)}[${formatValue(inst.index)}] = ${formatValue(inst.value)}`;
+      case "load_mapping":
+        return `${inst.dest} = mapping[${inst.slot}][${formatValue(inst.key)}]`;
+      case "store_mapping":
+        return `mapping[${inst.slot}][${formatValue(inst.key)}] = ${formatValue(inst.value)}`;
+      case "compute_slot":
+        return `${inst.dest} = compute_slot(${formatValue(inst.baseSlot)}, ${formatValue(inst.key)})`;
+      case "compute_array_slot":
+        return `${inst.dest} = array_slot(${formatValue(inst.baseSlot)})`;
+      case "compute_field_offset":
+        return `${inst.dest} = field_offset(${formatValue(inst.baseSlot)}, ${inst.fieldIndex})`;
+      case "call": {
+        const args = inst.arguments.map(formatValue).join(", ");
+        if (inst.dest) {
+          return `${inst.dest} = call ${inst.function}(${args})`;
+        } else {
+          return `call ${inst.function}(${args})`;
+        }
+      }
+      default: {
+        const unknownInst = inst as { dest?: string; kind?: string };
+        return `${unknownInst.dest || "?"} = ${unknownInst.kind || "unknown"}(...)`;
+      }
+    }
+  }, []);
+
+  const formatTerminator = useCallback((term: Terminator): string => {
+    const formatValue = (value: unknown): string => {
+      if (typeof value === "bigint") return value.toString();
+      if (typeof value === "string") return JSON.stringify(value);
+      if (typeof value === "boolean") return value.toString();
+
+      const val = value as {
+        kind?: string;
+        value?: unknown;
+        id?: string | number;
+        name?: string;
+      };
+      if (!val.kind) return "?";
+
+      switch (val.kind) {
+        case "const":
+          return String(val.value || "?");
+        case "temp":
+          return `%${val.id || "?"}`;
+        case "local":
+          return `$${val.name || "?"}`;
+        default:
+          return "?";
+      }
+    };
+
+    switch (term.kind) {
+      case "jump":
+        return `jump ${term.target}`;
+      case "branch":
+        return `branch ${formatValue(term.condition)} ? ${term.trueTarget} : ${term.falseTarget}`;
+      case "return":
+        return term.value ? `return ${formatValue(term.value)}` : "return void";
+      default:
+        return `unknown terminator`;
+    }
+  }, []);
+
+  return (
+    <div className="cfg-view">
+      <div className="cfg-header">
+        <h3>
+          {optimized ? "Optimized Control Flow Graph" : "Control Flow Graph"}
+        </h3>
+      </div>
+      <div className="cfg-content">
+        <div className="cfg-graph">
+          <ReactFlow
+            nodes={nodesState}
+            edges={edgesState}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={onNodeClick}
+            nodeTypes={nodeTypes}
+            fitView
+            fitViewOptions={{
+              padding: 0.2,
+              includeHiddenNodes: false,
+              minZoom: 0.1,
+              maxZoom: 2,
+            }}
+            minZoom={0.05}
+            maxZoom={4}
+          >
+            <Background />
+            <Controls />
+          </ReactFlow>
+        </div>
+        {selectedBlock && selectedBlockName && (
+          <div className="cfg-sidebar">
+            <h4>
+              Block {selectedBlockName}
+              <button
+                className="cfg-sidebar-close"
+                onClick={() => setSelectedNode(null)}
+                aria-label="Close sidebar"
+              >
+                ×
+              </button>
+            </h4>
+            <div className="block-instructions">
+              <h5>Instructions:</h5>
+              <pre className="instruction-list">
+                {selectedBlock.instructions.map(
+                  (inst: IrInstruction, i: number) => (
+                    <div key={i} className="instruction">
+                      {formatInstruction(inst)}
+                    </div>
+                  ),
+                )}
+                <div className="instruction terminator">
+                  {formatTerminator(selectedBlock.terminator)}
+                </div>
+              </pre>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function CfgView(props: CfgViewProps) {
+  return (
+    <ReactFlowProvider>
+      <CfgViewContent {...props} />
+    </ReactFlowProvider>
+  );
+}

@@ -1,0 +1,40 @@
+{
+  "name": "@ethdebug/bug-compiler-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "BUG language compiler monorepo with ethdebug/format support",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "lerna run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint . --ext .ts",
+    "typecheck": "lerna run typecheck",
+    "format": "lerna run format",
+    "format:check": "lerna run format:check",
+    "start": "./bin/start",
+    "lerna": "lerna",
+    "postinstall": "lerna run prepare",
+    "madge": "madge packages/*/src packages/*/bin",
+    "madge:circular": "madge packages/*/src packages/*/bin --circular",
+    "madge:graph": "./bin/generate-package-graph.ts",
+    "madge:graph:raw": "madge packages/*/src packages/*/bin --image dependency-graph-raw.svg",
+    "madge:orphans": "madge packages/*/src packages/*/bin --orphans",
+    "madge:leaves": "madge packages/*/src packages/*/bin --leaves"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.8",
+    "@vitest/ui": "^2.1.8",
+    "concurrently": "^9.1.2",
+    "lerna": "^8.1.0",
+    "madge": "^8.0.0",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

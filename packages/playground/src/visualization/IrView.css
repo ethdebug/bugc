@@ -1,0 +1,40 @@
+.ir-view {
+  height: 100%;
+  overflow: auto;
+}
+
+.ir-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.ir-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #cccccc;
+}
+
+.ir-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.813rem;
+  color: #969696;
+}
+
+.ir-code {
+  margin: 0;
+  padding: 1rem;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #cccccc;
+  white-space: pre;
+  overflow: auto;
+}

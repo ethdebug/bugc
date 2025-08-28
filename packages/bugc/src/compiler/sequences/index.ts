@@ -1,0 +1,46 @@
+/**
+ * Concrete compilation sequences for different targets
+ */
+
+import { pass as parsingPass } from "../../parser/pass";
+import { pass as typeCheckingPass } from "../../typechecker/pass";
+import { pass as irGenerationPass } from "../../irgen/pass";
+import { pass as phiInsertionPass } from "../../phi-insertion/pass";
+import { pass as optimizationPass } from "../../optimizer/pass";
+import { pass as livenessPass } from "../../liveness/pass";
+import { pass as memoryPass } from "../../memory/pass";
+import { pass as evmGenerationPass } from "../../evmgen/pass";
+
+// AST-only sequence (just parsing)
+export const astSequence = [parsingPass] as const;
+
+// IR sequence (parsing through IR generation)
+export const irSequence = [
+  parsingPass,
+  typeCheckingPass,
+  irGenerationPass,
+  phiInsertionPass,
+  optimizationPass,
+] as const;
+
+// Bytecode sequence (parsing through bytecode generation)
+export const bytecodeSequence = [
+  ...irSequence,
+  livenessPass,
+  memoryPass,
+  evmGenerationPass,
+] as const;
+
+// Future sequences will go here:
+// export const debugSequence = [...bytecodeSequence, debugGenerationPass] as const;
+
+// Consolidated target sequences
+export const targetSequences = {
+  ast: astSequence,
+  ir: irSequence,
+  bytecode: bytecodeSequence,
+  // debug: debugSequence,
+} as const;
+
+export type Target = keyof typeof targetSequences;
+export type TargetSequence<T extends Target> = (typeof targetSequences)[T];

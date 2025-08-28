@@ -1,0 +1,34 @@
+{
+  "fileExtensions": ["ts", "tsx"],
+  "excludeRegExp": ["test", "spec", "vite-env\\.d\\.ts"],
+  "includeNpm": true,
+  "detectiveOptions": {
+    "ts": {
+      "mixedImports": true,
+      "skipTypeImports": false,
+      "tsConfig": false
+    }
+  },
+  "graphVizOptions": {
+    "G": {
+      "rankdir": "TB",
+      "compound": true,
+      "concentrate": true,
+      "ranksep": 1.5,
+      "nodesep": 0.5,
+      "bgcolor": "white"
+    },
+    "N": {
+      "shape": "box",
+      "style": "rounded,filled",
+      "fillcolor": "#f8f8f8",
+      "fontname": "Arial",
+      "fontsize": 10
+    },
+    "E": {
+      "color": "#666666",
+      "fontname": "Arial",
+      "fontsize": 8
+    }
+  }
+}

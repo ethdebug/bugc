@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "."
+  },
+  "include": ["src/**/*", "bin/**/*", "test/**/*"],
+  "exclude": ["../../node_modules", "../../node_modules/hkts/**/*", "node_modules", "dist"]
+}

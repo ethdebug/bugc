@@ -1,0 +1,29 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+*.log
+.env
+.vscode/
+.idea/
+*.tsbuildinfo
+
+# Generated dependency graphs
+dependency-graph.svg
+dependency-graph.dot
+dependency-graph-*.svg
+dependency-graph-*.dot
+
+# Temporary debug files
+debug-*.ts
+debug-*.txt
+test-*.bug
+manual-test.*
+trace-*.ts
+check-*.ts
+dump-*.ts
+ir-output.txt
+ir-debug.txt
+test-*-alloc.ts
+test-*-tracking.ts
+bytecode

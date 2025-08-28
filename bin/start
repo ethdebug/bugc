@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+# Run the commands with concurrently
+concurrently --names=bugc,playground --colors=blue,magenta \
+  "cd ./packages/bugc && yarn build:watch" \
+  "cd ./packages/playground && yarn start"

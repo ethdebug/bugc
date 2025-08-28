@@ -1,0 +1,14 @@
+name Array;
+
+storage {
+  [0] entries: array<uint256, 10>;
+}
+
+code {
+  // Use array length in loop
+  for (let i = 0; i < entries.length; i = i + 1) {
+    entries[i] = i * 2;
+  }
+
+  return;
+}

@@ -1,0 +1,14 @@
+name ConstructorArray;
+
+storage {
+  [0] items: array<bytes32, 3>;
+}
+
+create {
+  items[0] = 0x101;
+  items[1] = 0x102;
+  items[2] = 0x103;
+}
+
+code {
+}

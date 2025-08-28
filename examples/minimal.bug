@@ -1,0 +1,9 @@
+name Minimal;
+
+storage {
+  [0] value: uint256;
+}
+
+code {
+  value = 1;
+}

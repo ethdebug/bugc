@@ -1,0 +1,15 @@
+name OwnerCheck;
+
+storage {
+  [0] owner: address;
+}
+
+create {
+  owner = msg.sender;
+}
+
+code {
+  if (msg.sender == owner) {
+    owner = 0x0000000000000000000000000000000000000000;
+  }
+}

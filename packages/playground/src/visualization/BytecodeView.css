@@ -1,0 +1,70 @@
+.bytecode-view {
+  height: 100%;
+  overflow: auto;
+}
+
+.bytecode-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.bytecode-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #cccccc;
+}
+
+.bytecode-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.813rem;
+  color: #969696;
+}
+
+.bytecode-content {
+  padding: 1rem;
+}
+
+.bytecode-section {
+  margin-bottom: 2rem;
+}
+
+.bytecode-section h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  color: #cccccc;
+}
+
+.bytecode-hex,
+.bytecode-disassembly {
+  margin: 0;
+  padding: 1rem;
+  background-color: #2d2d30;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.813rem;
+  line-height: 1.5;
+  color: #cccccc;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.bytecode-disassembly {
+  white-space: pre;
+  word-break: normal;
+}
+
+.bytecode-separator {
+  margin: 2rem 1rem;
+  border: none;
+  border-top: 1px solid #3e3e42;
+}

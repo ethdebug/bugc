@@ -1,0 +1,11 @@
+name Basic;
+
+storage {
+  [1] value: uint256;
+}
+
+create {
+  value = 100;
+}
+
+code {}

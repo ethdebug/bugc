@@ -1,0 +1,30 @@
+name ArrayLength;
+
+storage {
+  [0] fixedArray: array<uint256, 10>;
+  [1] arraySize: uint256;
+  [2] dataSize: uint256;
+  [3] isLarge: bool;
+}
+
+create {
+  // Get length of fixed-size array
+  arraySize = fixedArray.length;  // Should be constant 10
+
+  // Get length of msg.data (dynamic bytes)
+  dataSize = msg.data.length;
+
+  // Use length in conditional
+  if (msg.data.length > 4) {
+    isLarge = true;
+  } else {
+    isLarge = false;
+  }
+
+  // Use array length in loop
+  for (let i = 0; i < fixedArray.length; i = i + 1) {
+    fixedArray[i] = i * 2;
+  }
+
+  return;
+}
