@@ -23,7 +23,6 @@ export interface GenState<S extends Stack> {
   patches: {
     index: number;
     target: string;
-    isPush2: boolean;
   }[];
   warnings: EvmError[];
 }

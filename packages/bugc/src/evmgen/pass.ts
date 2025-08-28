@@ -39,12 +39,15 @@ export const pass: Pass<{
       const runtime = new Uint8Array(result.runtime);
       const create = result.create ? new Uint8Array(result.create) : undefined;
 
-      return Result.okWith({
-        bytecode: {
-          runtime,
-          create,
+      return Result.okWith(
+        {
+          bytecode: {
+            runtime,
+            create,
+          },
         },
-      }, { warning: result.warnings });
+        { warning: result.warnings },
+      );
     } catch (error) {
       if (error instanceof EvmError) {
         return Result.err(error);

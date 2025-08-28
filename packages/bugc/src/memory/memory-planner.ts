@@ -5,14 +5,27 @@
  * stack operations or block boundaries.
  */
 
-import type { IrFunction, IrInstruction, Value, IrModule } from "../ir";
+import type {
+  IrFunction,
+  IrInstruction,
+  Value,
+  IrModule,
+  TypeRef,
+} from "../ir";
 import type { FunctionLivenessInfo } from "../liveness";
 import { Result } from "../result";
 import { MemoryError, MemoryErrorCode } from "./errors";
 
+export interface MemoryAllocation {
+  /** Memory offset in bytes */
+  offset: number;
+  /** Size in bytes */
+  size: number;
+}
+
 export interface FunctionMemoryLayout {
-  /** Memory offset for each value that needs allocation */
-  allocations: Record<string, number>;
+  /** Memory allocation info for each value that needs allocation */
+  allocations: Record<string, MemoryAllocation>;
   /** Next available memory slot */
   freePointer: number;
 }
@@ -206,23 +219,100 @@ function findStackPosition(stack: string[], value: string): number {
 }
 
 /**
- * Identify values that need memory allocation
+ * Get the size in bytes for a given type
+ */
+function getTypeSize(type: TypeRef): number {
+  switch (type.kind) {
+    case "bool":
+      return 1;
+    case "uint":
+    case "int":
+      return Math.ceil((type.bits || 256) / 8);
+    case "bytes":
+      if (type.size) {
+        return type.size; // Fixed-size bytes
+      }
+      return 32; // Dynamic bytes need full slot for length/data pointer
+    case "address":
+      return 20;
+    case "string":
+    case "array":
+    case "mapping":
+      return 32; // Reference types need full slot
+    case "struct":
+      // For now, structs get full slot - could be optimized later
+      return 32;
+    default:
+      return 32; // Conservative default
+  }
+}
+
+/**
+ * Get type information for a value ID
+ */
+function getValueType(valueId: string, func: IrFunction): TypeRef | undefined {
+  // Check if it's a local variable
+  for (const local of func.locals || []) {
+    if (local.id === valueId) {
+      return local.type;
+    }
+  }
+
+  // Search through instructions for the definition
+  for (const [_, block] of func.blocks) {
+    // Check phi nodes
+    for (const phi of block.phis) {
+      if (phi.dest === valueId) {
+        return phi.type;
+      }
+    }
+
+    // Check instructions
+    for (const inst of block.instructions) {
+      if ("dest" in inst && inst.dest === valueId) {
+        // Get type based on instruction kind
+        if ("type" in inst && inst.type) {
+          return inst.type as TypeRef;
+        }
+        // For instructions without explicit type, infer from operation
+        if (inst.kind === "binary" || inst.kind === "unary") {
+          // Binary/unary ops typically produce uint256
+          return { kind: "uint", bits: 256 };
+        }
+        if (inst.kind === "env") {
+          // Environment ops produce address or uint256
+          return inst.op === "msg_sender"
+            ? { kind: "address" }
+            : { kind: "uint", bits: 256 };
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Identify values that need memory allocation with their types
  */
 function identifyMemoryValues(
   func: IrFunction,
   liveness: FunctionLivenessInfo,
-): Set<string> {
-  const needsMemory = new Set<string>();
+): Map<string, TypeRef> {
+  const needsMemory = new Map<string, TypeRef>();
 
   // All cross-block values need memory
   for (const value of liveness.crossBlockValues) {
-    needsMemory.add(value);
+    const type = getValueType(value, func);
+    if (type) {
+      needsMemory.set(value, type);
+    }
   }
 
   // All phi destinations need memory
   for (const [_, block] of func.blocks) {
     for (const phi of block.phis) {
-      needsMemory.add(phi.dest);
+      needsMemory.set(phi.dest, phi.type);
     }
   }
 
@@ -239,7 +329,10 @@ function identifyMemoryValues(
       for (const usedId of getUsedValues(inst)) {
         const position = findStackPosition(stack, usedId);
         if (position > 16 || position === -1) {
-          needsMemory.add(usedId);
+          const type = getValueType(usedId, func);
+          if (type) {
+            needsMemory.set(usedId, type);
+          }
         }
       }
 
@@ -249,7 +342,10 @@ function identifyMemoryValues(
         // The baseSlot might need to be preserved
         const baseSlotId = valueId(inst.baseSlot);
         if (liveAtEntry.has(baseSlotId)) {
-          needsMemory.add(baseSlotId);
+          const type = getValueType(baseSlotId, func);
+          if (type) {
+            needsMemory.set(baseSlotId, type);
+          }
         }
       }
 
@@ -261,7 +357,10 @@ function identifyMemoryValues(
         // Conservative threshold
         // Mark bottom values as needing memory
         for (let i = 0; i < stack.length - 14; i++) {
-          needsMemory.add(stack[i]);
+          const type = getValueType(stack[i], func);
+          if (type) {
+            needsMemory.set(stack[i], type);
+          }
         }
       }
     }
@@ -272,7 +371,10 @@ function identifyMemoryValues(
       const condId = valueId(term.condition);
       const position = findStackPosition(stack, condId);
       if (position > 16 || position === -1) {
-        needsMemory.add(condId);
+        const type = getValueType(condId, func);
+        if (type) {
+          needsMemory.set(condId, type);
+        }
       }
     }
   }
@@ -281,21 +383,21 @@ function identifyMemoryValues(
 }
 
 /**
- * Plan memory layout for a function
+ * Plan memory layout for a function with type-aware packing
  */
 export function planFunctionMemory(
   func: IrFunction,
   liveness: FunctionLivenessInfo,
 ): Result<FunctionMemoryLayout, MemoryError> {
   try {
-    const allocations: Record<string, number> = {};
+    const allocations: Record<string, MemoryAllocation> = {};
     let freePointer = 0x80; // Start after Solidity's free memory pointer
 
     const needsMemory = identifyMemoryValues(func, liveness);
 
     // Also allocate memory for all locals (they always need memory)
     for (const local of func.locals || []) {
-      needsMemory.add(local.id);
+      needsMemory.set(local.id, local.type);
     }
 
     // Check if we have too many values for memory
@@ -308,10 +410,48 @@ export function planFunctionMemory(
       );
     }
 
-    // Allocate 32-byte slots for each value
-    for (const value of needsMemory) {
-      allocations[value] = freePointer;
-      freePointer += 32;
+    // Sort values by size (largest first) for better packing
+    const sortedValues = Array.from(needsMemory.entries()).sort(
+      ([_a, typeA], [_b, typeB]) => getTypeSize(typeB) - getTypeSize(typeA),
+    );
+
+    // Track current slot usage for packing
+    let currentSlotOffset = freePointer;
+    let currentSlotUsed = 0;
+    const SLOT_SIZE = 32;
+
+    for (const [valueId, type] of sortedValues) {
+      const size = getTypeSize(type);
+
+      // If this value needs a full slot or won't fit in current slot, start new slot
+      if (size >= SLOT_SIZE || currentSlotUsed + size > SLOT_SIZE) {
+        if (currentSlotUsed > 0) {
+          // Move to next slot if current slot has something
+          currentSlotOffset += SLOT_SIZE;
+          currentSlotUsed = 0;
+        }
+      }
+
+      // Allocate in current slot
+      allocations[valueId] = {
+        offset: currentSlotOffset + currentSlotUsed,
+        size: size,
+      };
+
+      currentSlotUsed += size;
+
+      // If we filled the slot exactly, prepare for next slot
+      if (currentSlotUsed >= SLOT_SIZE) {
+        currentSlotOffset += SLOT_SIZE;
+        currentSlotUsed = 0;
+      }
+    }
+
+    // Update free pointer to next available slot
+    if (currentSlotUsed > 0) {
+      freePointer = currentSlotOffset + SLOT_SIZE;
+    } else {
+      freePointer = currentSlotOffset;
     }
 
     return Result.ok({

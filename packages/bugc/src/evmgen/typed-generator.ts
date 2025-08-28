@@ -6,12 +6,8 @@ import type * as Ir from "../ir";
 import { type GenState, operations } from "./emit";
 import { emitPush } from "./push";
 import { serialize, calculateSize } from "./serialize";
-import type {
-  MemoryInfo,
-} from "../memory/memory-planner";
-import type {
-  BlockInfo,
-} from "../memory/block-layout";
+import type { MemoryInfo } from "../memory/memory-planner";
+import type { BlockInfo } from "../memory/block-layout";
 import { generateFunction } from "./ir-handlers";
 import type { EvmError } from "./errors";
 
@@ -24,11 +20,7 @@ export function generateModule(
   blocks: BlockInfo,
 ): { create?: number[]; runtime: number[]; warnings: EvmError[] } {
   // Generate runtime function
-  const runtimeResult = generateFunction(
-    module.main,
-    memory.main,
-    blocks.main,
-  );
+  const runtimeResult = generateFunction(module.main, memory.main, blocks.main);
 
   // Collect all warnings
   let allWarnings: EvmError[] = [...runtimeResult.warnings];
@@ -46,7 +38,10 @@ export function generateModule(
   }
 
   // Build complete deployment bytecode
-  const deployBytes = buildDeploymentInstructions(createBytes, runtimeResult.bytecode);
+  const deployBytes = buildDeploymentInstructions(
+    createBytes,
+    runtimeResult.bytecode,
+  );
 
   return {
     create: deployBytes,
@@ -54,7 +49,6 @@ export function generateModule(
     warnings: allWarnings,
   };
 }
-
 
 /**
  * Calculate the size of deployment bytecode with proper PUSH sizing
@@ -72,7 +66,7 @@ function calculateDeploymentSize(
     nextId: 0,
     patches: [],
     blockOffsets: {},
-    warnings: []
+    warnings: [],
   };
 
   let deploymentPrefixSize = 0;
@@ -117,7 +111,7 @@ function buildDeploymentInstructions(
     nextId: 0,
     patches: [],
     blockOffsets: {},
-    warnings: []
+    warnings: [],
   };
 
   const deploymentSize = calculateDeploymentSize(
@@ -141,4 +135,3 @@ function buildDeploymentInstructions(
   // Combine everything
   return [...createBytes, ...deploymentWrapperBytes, ...runtimeBytes];
 }
-

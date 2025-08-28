@@ -173,7 +173,7 @@ function loadValue(state: GenState, val: Value): GenState {
       return pushStack(s1, id);
     } else if (id in state.memory.allocations) {
       // Load from memory
-      const offset = state.memory.allocations[id];
+      const offset = state.memory.allocations[id].offset;
       const s1 = emitPush(state, BigInt(offset));
       // We don't track the offset on stack, just emit it
       const s2 = emit(s1, OPCODES.MLOAD);
@@ -192,8 +192,9 @@ function loadValue(state: GenState, val: Value): GenState {
  * Store a value to memory if allocated
  */
 function storeToMemory(state: GenState, id: string): GenState {
-  const offset = state.memory.allocations[id];
-  if (offset === undefined) return state;
+  const allocation = state.memory.allocations[id];
+  if (allocation === undefined) return state;
+  const offset = allocation.offset;
 
   // Stack: [value]
   const s1 = emitPush(state, BigInt(offset));
@@ -271,8 +272,9 @@ function generateInstruction(state: GenState, inst: IrInstruction): GenState {
 
       // If this value is memory-allocated and not needed on stack immediately,
       // store directly to memory without tracking on stack
-      const memOffset = state.memory.allocations[inst.dest];
-      if (memOffset !== undefined) {
+      const allocation = state.memory.allocations[inst.dest];
+      if (allocation !== undefined) {
+        const memOffset = allocation.offset;
         // Store directly to memory
         // MSTORE expects [value, offset] with offset on top of stack
         const s2 = emitPush(s1, BigInt(memOffset));
@@ -426,13 +428,14 @@ function generateInstruction(state: GenState, inst: IrInstruction): GenState {
     case "load_local": {
       // Local variables are stored in memory
       // The local variable should have been allocated memory
-      const offset = state.memory.allocations[inst.local];
-      if (offset === undefined) {
+      const allocation = state.memory.allocations[inst.local];
+      if (allocation === undefined) {
         throw new EvmError(
           EvmErrorCode.MEMORY_ALLOCATION_FAILED,
           `Local ${inst.local} not allocated in memory`,
         );
       }
+      const offset = allocation.offset;
 
       // Load from memory
       const s1 = emitPush(state, BigInt(offset));
@@ -445,13 +448,14 @@ function generateInstruction(state: GenState, inst: IrInstruction): GenState {
     case "store_local": {
       // Store value to local variable in memory
       // The local variable should have been allocated memory
-      const offset = state.memory.allocations[inst.local];
-      if (offset === undefined) {
+      const allocation = state.memory.allocations[inst.local];
+      if (allocation === undefined) {
         throw new EvmError(
           EvmErrorCode.MEMORY_ALLOCATION_FAILED,
           `Local ${inst.local} not allocated in memory`,
         );
       }
+      const offset = allocation.offset;
 
       // Load the value to store
       const s1 = loadValue(state, inst.value);
@@ -547,8 +551,15 @@ function generatePhis(
 
     // Load source value and store to phi destination
     const s1 = loadValue(s, source);
-    const offset = s.memory.allocations[phi.dest];
-    if (offset === undefined) {
+    const allocation = s.memory.allocations[phi.dest];
+    if (allocation === undefined) {
+      throw new EvmError(
+        EvmErrorCode.MEMORY_ALLOCATION_FAILED,
+        `Phi destination ${phi.dest} has no memory allocation`,
+      );
+    }
+    const offset = allocation.offset;
+    if (false) {
       throw new EvmError(
         EvmErrorCode.MEMORY_ALLOCATION_FAILED,
         `Phi destination ${phi.dest} not allocated`,

@@ -87,7 +87,7 @@ function loadValue<S extends Stack>(
 
   // Check if in memory
   if (id in state.memory.allocations) {
-    const offset = state.memory.allocations[id];
+    const offset = state.memory.allocations[id].offset;
     const s1 = emitPush(state, BigInt(offset), { brand: "offset" });
     const s2 = operations.MLOAD(s1);
     // Annotate the loaded value
@@ -108,12 +108,12 @@ function storeValueIfNeeded<S extends Stack>(
   // First annotate the top value with the destination ID
   const s0 = annotateTop(state, destId);
 
-  const offset = state.memory.allocations[destId];
-  if (offset === undefined) {
+  const allocation = state.memory.allocations[destId];
+  if (allocation === undefined) {
     return s0;
   }
 
-  const s1 = emitPush(s0, BigInt(offset), { brand: "offset" });
+  const s1 = emitPush(s0, BigInt(allocation.offset), { brand: "offset" });
   const s2 = operations.DUP2(s1);
   const s3 = operations.SWAP1(s2);
   return operations.MSTORE(s3);
@@ -258,9 +258,10 @@ export function generateTerminator<S extends Stack>(
         const id = valueId(term.value);
 
         // Check if value is in memory
-        let offset = state.memory.allocations[id];
+        const allocation = state.memory.allocations[id];
+        let offset: number;
 
-        if (offset === undefined) {
+        if (allocation === undefined) {
           // Value is on stack, need to store it first
           // Allocate memory for it (simplified - assuming we track free pointer elsewhere)
           offset = state.memory.freePointer;
@@ -273,14 +274,13 @@ export function generateTerminator<S extends Stack>(
           return operations.RETURN(s6);
         } else {
           // Value already in memory, return from there
+          offset = allocation.offset;
           const s1 = emitPush(state, 32n, { brand: "size" });
           const s2 = emitPush(s1, BigInt(offset), { brand: "offset" });
           return operations.RETURN(s2);
         }
       } else {
-        return isLastBlock
-          ? state
-          : operations.STOP(state);
+        return isLastBlock ? state : operations.STOP(state);
       }
     }
 
@@ -288,7 +288,9 @@ export function generateTerminator<S extends Stack>(
       const patchIndex = state.instructions.length;
 
       // Emit placeholder PUSH2 (0x0000 will be patched later)
-      const s1 = operations.PUSH2(state, [0,0], { produces: ["counter"] as const });
+      const s1 = operations.PUSH2(state, [0, 0], {
+        produces: ["counter"] as const,
+      });
       const s2 = operations.JUMP(s1);
 
       // Record patch location
@@ -299,7 +301,6 @@ export function generateTerminator<S extends Stack>(
           {
             index: patchIndex,
             target: term.target,
-            isPush2: true,
           },
         ],
       };
@@ -313,14 +314,18 @@ export function generateTerminator<S extends Stack>(
       const trueIndex = s1.instructions.length;
 
       // Emit placeholder PUSH2 for true target
-      const s2 = operations.PUSH2(s1, [0,0], { produces: ["counter"] as const });
+      const s2 = operations.PUSH2(s1, [0, 0], {
+        produces: ["counter"] as const,
+      });
       const s3 = operations.JUMPI(s2);
 
       // Record offset for false target patch
       const falseIndex = s3.instructions.length;
 
       // Emit placeholder PUSH2 for false target
-      const s4 = operations.PUSH2(s3, [0,0], { produces: ["counter"] as const });
+      const s4 = operations.PUSH2(s3, [0, 0], {
+        produces: ["counter"] as const,
+      });
       const s5 = operations.JUMP(s4);
 
       // Record both patch locations
@@ -331,12 +336,10 @@ export function generateTerminator<S extends Stack>(
           {
             index: trueIndex,
             target: term.trueTarget,
-            isPush2: true,
           },
           {
             index: falseIndex,
             target: term.falseTarget,
-            isPush2: true,
           },
         ],
       };
@@ -372,11 +375,11 @@ export function generateInstruction<S extends Stack>(
         EvmErrorCode.UNSUPPORTED_INSTRUCTION,
         inst.kind,
         inst.loc,
-        Severity.Warning
+        Severity.Warning,
       );
       return {
         ...state,
-        warnings: [...state.warnings, warning]
+        warnings: [...state.warnings, warning],
       };
     }
   }
@@ -384,7 +387,7 @@ export function generateInstruction<S extends Stack>(
 
 function generateComputeArraySlot<S extends Stack>(
   state: GenState<readonly [...S]>,
-  inst: Ir.ComputeArraySlotInstruction
+  inst: Ir.ComputeArraySlotInstruction,
 ) {
   // For arrays: keccak256(baseSlot)
   const s1 = loadValue(state, inst.baseSlot);
@@ -404,8 +407,6 @@ function generateComputeArraySlot<S extends Stack>(
   return storeValueIfNeeded(s7, inst.dest);
 }
 
-
-
 function generatePhi<S extends Stack>(
   state: GenState<readonly [...S]>,
   phi: Ir.PhiInstruction,
@@ -421,15 +422,15 @@ function generatePhi<S extends Stack>(
 
   // Load source value and store to phi destination
   const s1 = loadValue(state, source);
-  const offset = state.memory.allocations[phi.dest];
-  if (offset === undefined) {
+  const allocation = state.memory.allocations[phi.dest];
+  if (allocation === undefined) {
     throw new EvmError(
       EvmErrorCode.MEMORY_ALLOCATION_FAILED,
       `Phi destination ${phi.dest} not allocated`,
     );
   }
 
-  const s2 = emitPush(s1, BigInt(offset), { brand: "offset" });
+  const s2 = emitPush(s1, BigInt(allocation.offset), { brand: "offset" });
   const s3 = operations.MSTORE(s2);
   return s3;
 }
@@ -444,7 +445,7 @@ function generatePhis<S extends Stack>(
 ) {
   return phis.reduce(
     (state, phi) => generatePhi(state, phi, predecessor),
-    state
+    state,
   );
 }
 
@@ -461,7 +462,7 @@ export function generateFunction(
     nextId: 0,
     patches: [],
     blockOffsets: {},
-    warnings: []
+    warnings: [],
   };
 
   const finalState = layout.order.reduce(
@@ -485,7 +486,7 @@ export function generateFunction(
         isFirstBlock,
       );
     },
-    initialState
+    initialState,
   );
 
   // Patch jump targets
@@ -513,18 +514,19 @@ function generateBlock(
     ...state,
     blockOffsets: {
       ...state.blockOffsets,
-      [block.id]: currentOffset
-    }
-  }
+      [block.id]: currentOffset,
+    },
+  };
 
   // JUMPDEST at block start (except for the entry block with no predecessors)
   const skipJumpdest = isFirstBlock && block.predecessors.size === 0;
   const s2 = skipJumpdest ? s1 : operations.JUMPDEST(s1);
 
   // Generate phi nodes if coming from a predecessor
-  const s3 = (predecessor && block.phis.length > 0)
-    ? generatePhis(s2, block.phis, predecessor)
-    : s2;
+  const s3 =
+    predecessor && block.phis.length > 0
+      ? generatePhis(s2, block.phis, predecessor)
+      : s2;
 
   // Generate instructions
   const s4 = block.instructions.reduce(
@@ -540,7 +542,7 @@ function generateBlock(
  * Patch jump targets in serialized instructions
  */
 function patchJumps<S extends Stack>(
-  state: GenState<readonly [...S]>
+  state: GenState<readonly [...S]>,
 ): GenState<readonly [...S]> {
   // Apply patches
   const patchedInstructions = [...state.instructions];
@@ -553,7 +555,9 @@ function patchJumps<S extends Stack>(
     // Replace the placeholder PUSH2 with the actual address
     const push2Inst = patchedInstructions[patch.index];
     if (push2Inst.mnemonic !== "PUSH2") {
-      throw new Error(`Expected PUSH2 at patch location, got ${push2Inst.mnemonic}`);
+      throw new Error(
+        `Expected PUSH2 at patch location, got ${push2Inst.mnemonic}`,
+      );
     }
 
     // Update the immediates with the actual target offset
@@ -567,6 +571,6 @@ function patchJumps<S extends Stack>(
     ...state,
     // clear these now
     patches: [],
-    instructions: patchedInstructions
+    instructions: patchedInstructions,
   };
 }

@@ -8,13 +8,12 @@ export function emitPush<S extends Stack, B extends StackBrand = "value">(
     brand: B;
   },
 ): GenState<readonly [B, ...S]> {
-  const pushOptions = options ? { produces: [options.brand] as const } : undefined;
+  const pushOptions = options
+    ? { produces: [options.brand] as const }
+    : undefined;
 
   if (value === 0n) {
-    const newState = operations.PUSH0<S, readonly [B]>(
-      state,
-      pushOptions,
-    );
+    const newState = operations.PUSH0<S, readonly [B]>(state, pushOptions);
     return newState;
   }
 
@@ -27,7 +26,7 @@ export function emitPush<S extends Stack, B extends StackBrand = "value">(
     state: GenState<S>,
     immediates: number[],
     options?: {
-      produces: P
+      produces: P;
     },
   ) => GenState<readonly [...P, ...S]>;
 

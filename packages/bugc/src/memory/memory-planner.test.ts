@@ -78,11 +78,11 @@ describe("Memory Planning", () => {
     // Phi destination %3 should be allocated memory
     expect("%3" in memory.allocations).toBe(true);
     // %1 is allocated first at 0x80, then %3 at 0xa0 (160)
-    expect(memory.allocations["%3"]).toBe(0xa0);
+    expect(memory.allocations["%3"].offset).toBe(0xa0);
 
     // Cross-block value %1 should also be allocated
     expect("%1" in memory.allocations).toBe(true);
-    expect(memory.allocations["%1"]).toBe(0x80);
+    expect(memory.allocations["%1"].offset).toBe(0x80);
   });
 
   it("should allocate memory for cross-block values", () => {
@@ -268,8 +268,8 @@ describe("Memory Planning", () => {
     expect("%phi2" in memory.allocations).toBe(true);
 
     // Should use sequential 32-byte slots
-    const phi1Offset = memory.allocations["%phi1"];
-    const phi2Offset = memory.allocations["%phi2"];
+    const phi1Offset = memory.allocations["%phi1"].offset;
+    const phi2Offset = memory.allocations["%phi2"].offset;
     expect(Math.abs(phi2Offset - phi1Offset)).toBe(32);
 
     // Free pointer should be after all allocations

@@ -37,7 +37,10 @@ describe("Bytecode Optimization", () => {
     const result = generateModule(
       module,
       {
-        main: { allocations: { "%1": 0x80 }, freePointer: 0xa0 },
+        main: {
+          allocations: { "%1": { offset: 0x80, size: 32 } },
+          freePointer: 0xa0,
+        },
         functions: {},
       },
       {
@@ -116,7 +119,12 @@ describe("Bytecode Optimization", () => {
       module,
       {
         main: {
-          allocations: Object.fromEntries(allocations),
+          allocations: Object.fromEntries(
+            Array.from(allocations.entries()).map(([k, v]) => [
+              k,
+              { offset: v, size: 32 },
+            ]),
+          ),
           freePointer: 32000,
         },
         functions: {},
@@ -288,7 +296,10 @@ describe("Bytecode Optimization", () => {
       const result = generateModule(
         module,
         {
-          main: { allocations: { "%1": 0x80 }, freePointer: 0xa0 },
+          main: {
+            allocations: { "%1": { offset: 0x80, size: 32 } },
+            freePointer: 0xa0,
+          },
           functions: {},
         },
         {

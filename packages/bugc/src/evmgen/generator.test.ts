@@ -2,6 +2,12 @@ import { describe, it, expect } from "vitest";
 import { generateFunction, generateModule } from "./generator";
 import { OPCODES } from "../evm";
 import type { IrFunction, IrModule, BasicBlock } from "../ir";
+import type { MemoryAllocation } from "../memory/memory-planner";
+
+// Helper to create memory allocations for tests
+function makeAllocation(offset: number, size: number = 32): MemoryAllocation {
+  return { offset, size };
+}
 import type { FunctionMemoryLayout as MemoryLayout } from "../memory/memory-planner";
 import type { FunctionBlockLayout as BlockLayout } from "../memory/block-layout";
 import { analyzeLiveness } from "../liveness";
@@ -104,9 +110,9 @@ describe("EVM Code Generator", () => {
 
       const memory: MemoryLayout = {
         allocations: {
-          "%1": 0x80,
-          "%2": 0xa0,
-          "%3": 0xc0,
+          "%1": makeAllocation(0x80),
+          "%2": makeAllocation(0xa0),
+          "%3": makeAllocation(0xc0),
         },
         freePointer: 0xe0,
       };
@@ -244,7 +250,7 @@ describe("EVM Code Generator", () => {
       };
 
       const memory: MemoryLayout = {
-        allocations: { "%cond": 0x80 },
+        allocations: { "%cond": { offset: 0x80, size: 32 } },
         freePointer: 0xa0,
       };
 
@@ -311,8 +317,8 @@ describe("EVM Code Generator", () => {
 
       const memory: MemoryLayout = {
         allocations: {
-          "%slot": 0x80,
-          "%value": 0xa0,
+          "%slot": { offset: 0x80, size: 32 },
+          "%value": { offset: 0xa0, size: 32 },
         },
         freePointer: 0xc0,
       };
@@ -360,8 +366,8 @@ describe("EVM Code Generator", () => {
 
       const memory: MemoryLayout = {
         allocations: {
-          "%sender": 0x80,
-          "%value": 0xa0,
+          "%sender": { offset: 0x80, size: 20 },
+          "%value": { offset: 0xa0, size: 32 },
         },
         freePointer: 0xc0,
       };
@@ -449,10 +455,10 @@ describe("EVM Code Generator", () => {
 
       const memory: MemoryLayout = {
         allocations: {
-          "%value": 0x80,
-          "%index": 0xa0,
-          "%arrayBase": 0xc0,
-          "%slot": 0xe0,
+          "%value": { offset: 0x80, size: 32 },
+          "%index": { offset: 0xa0, size: 32 },
+          "%arrayBase": { offset: 0xc0, size: 32 },
+          "%slot": { offset: 0xe0, size: 32 },
         },
         freePointer: 0x100,
       };
@@ -547,10 +553,10 @@ describe("EVM Code Generator", () => {
 
       const memory: MemoryLayout = {
         allocations: {
-          "%index": 0x80,
-          "%arrayBase": 0xa0,
-          "%slot": 0xc0,
-          "%value": 0xe0,
+          "%index": { offset: 0x80, size: 32 },
+          "%arrayBase": { offset: 0xa0, size: 32 },
+          "%slot": { offset: 0xc0, size: 32 },
+          "%value": { offset: 0xe0, size: 32 },
         },
         freePointer: 0x100,
       };
@@ -637,9 +643,9 @@ describe("EVM Code Generator", () => {
 
       const memory: MemoryLayout = {
         allocations: {
-          "%sender": 0x80,
-          "%value": 0xa0,
-          "%slot": 0xc0,
+          "%sender": { offset: 0x80, size: 20 },
+          "%value": { offset: 0xa0, size: 32 },
+          "%slot": { offset: 0xc0, size: 32 },
         },
         freePointer: 0xe0,
       };
@@ -720,9 +726,9 @@ describe("EVM Code Generator", () => {
 
       const memory: MemoryLayout = {
         allocations: {
-          "%sender": 0x80,
-          "%slot": 0xa0,
-          "%balance": 0xc0,
+          "%sender": { offset: 0x80, size: 20 },
+          "%slot": { offset: 0xa0, size: 32 },
+          "%balance": { offset: 0xc0, size: 32 },
         },
         freePointer: 0xe0,
       };
@@ -842,12 +848,12 @@ describe("EVM Code Generator", () => {
 
       const memory: MemoryLayout = {
         allocations: {
-          "%sender": 0x80,
-          "%index": 0xa0,
-          "%userSlot": 0xc0,
-          "%arrayBase": 0xe0,
-          "%finalSlot": 0x100,
-          "%value": 0x120,
+          "%sender": { offset: 0x80, size: 20 },
+          "%index": { offset: 0xa0, size: 32 },
+          "%userSlot": { offset: 0xc0, size: 32 },
+          "%arrayBase": { offset: 0xe0, size: 32 },
+          "%finalSlot": { offset: 0x100, size: 32 },
+          "%value": { offset: 0x120, size: 32 },
         },
         freePointer: 0x140,
       };
