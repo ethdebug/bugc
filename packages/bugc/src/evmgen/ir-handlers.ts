@@ -28,19 +28,6 @@ function valueId(val: Ir.Value): string {
 }
 
 /**
- * Find position of IR value on stack (1-indexed from top)
- * Returns -1 if not found
- */
-function findIrValuePosition(stack: StackItem[], irValue: string): number {
-  for (let i = stack.length - 1; i >= 0; i--) {
-    if (stack[i].irValue === irValue) {
-      return stack.length - i;
-    }
-  }
-  return -1;
-}
-
-/**
  * Annotate the top stack item with an IR value
  */
 function annotateTop<S extends Stack>(
@@ -79,7 +66,7 @@ function loadValue<S extends Stack>(
   }
 
   // Check if value is on stack
-  const stackPos = findIrValuePosition(state.stack, id);
+  const stackPos = state.stack.findIndex(({ irValue }) => irValue === id);
   if (stackPos > 0 && stackPos <= 16) {
     // Cast is safe - we know DUP produces an item and we're rebranding it to "value"
     return rebrandTop(emitDup(state, stackPos), "value");
