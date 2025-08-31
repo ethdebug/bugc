@@ -3,7 +3,7 @@
  */
 
 import * as Ir from "../ir";
-import type { Stack, StackBrand } from "../evm/operations";
+import type { Stack, StackBrand } from "../evm";
 import { EvmError, EvmErrorCode } from "./errors";
 import { Severity } from "../result";
 import { type GenState, rebrandTop, operations } from "./emit";

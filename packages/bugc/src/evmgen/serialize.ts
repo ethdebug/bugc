@@ -2,7 +2,7 @@
  * Serialization module for converting Instructions to raw EVM bytecode
  */
 
-import type { Instruction } from "../evm/operations";
+import type { Instruction } from "../evm";
 
 /**
  * Convert an array of Instructions to raw bytecode bytes

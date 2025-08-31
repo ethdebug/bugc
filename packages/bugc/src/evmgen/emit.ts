@@ -4,10 +4,10 @@ import {
   type Instruction,
   type UnsafeStateControls,
   type Operations as GenericOperations,
+  type _,
   makeOperations,
   makeRebrands,
-  type _,
-} from "../evm/operations";
+} from "../evm";
 
 import type { FunctionMemoryLayout } from "../memory/memory-planner";
 import type { EvmError } from "./errors";

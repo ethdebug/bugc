@@ -10,7 +10,7 @@ import type { MemoryInfo } from "../memory/memory-planner";
 import type { BlockInfo } from "../memory/block-layout";
 import { generateFunction } from "./ir-handlers";
 import type { EvmError } from "./errors";
-import type { Instruction } from "../evm/operations";
+import type { Instruction } from "../evm";
 
 /**
  * Generate bytecode for entire module

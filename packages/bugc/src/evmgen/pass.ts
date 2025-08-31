@@ -5,7 +5,7 @@ import type { MemoryInfo } from "../memory/memory-planner";
 import type { BlockInfo } from "../memory/block-layout";
 import { generateModule } from "./generator";
 import { EvmError, EvmErrorCode } from "./errors";
-import type { Instruction } from "../evm/operations";
+import type { Instruction } from "../evm";
 
 /**
  * Output produced by the EVM generation pass
