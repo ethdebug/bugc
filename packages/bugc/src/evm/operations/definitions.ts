@@ -5,9 +5,8 @@ import { type Stack, type StackBrand } from "./stack";
 import {
   type UnsafeStateControls,
   makeStateControls,
+  makeSpecifiers,
   mapInstruction,
-  makeMakeOperationForInstruction,
-  makeMakeOperationWithImmediatesForInstruction,
 } from "./state";
 
 export type Operations<U, I> = ReturnType<typeof makeOperations<U, I>>;
@@ -15,9 +14,10 @@ export type Operations<U, I> = ReturnType<typeof makeOperations<U, I>>;
 export const makeOperations = <U, I>(unsafe: UnsafeStateControls<U, I>) => {
   const controls = makeStateControls(unsafe);
 
-  const makeOperationForInstruction = makeMakeOperationForInstruction(controls);
-  const makeOperationWithImmediatesForInstruction =
-    makeMakeOperationWithImmediatesForInstruction(controls);
+  const {
+    makeOperationForInstruction,
+    makeOperationWithImmediatesForInstruction,
+  } = makeSpecifiers(controls);
 
   return {
     /*

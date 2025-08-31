@@ -399,7 +399,7 @@ export function generateInstruction<S extends Stack>(
     case "env":
       return generateEnvOp(state, inst as Ir.EnvInstruction);
     case "hash":
-     return generateHashOp(state, inst);
+      return generateHashOp(state, inst);
     case "length":
       return generateLength(state, inst);
     case "compute_slot":
@@ -424,7 +424,7 @@ export function generateInstruction<S extends Stack>(
 
 function generateLength<S extends Stack>(
   state: GenState<readonly [...S]>,
-  inst: Ir.LengthInstruction
+  inst: Ir.LengthInstruction,
 ) {
   // Length instruction - behavior depends on the type
   const objectType = inst.object.type;
@@ -458,7 +458,7 @@ function generateLength<S extends Stack>(
 
 function generateHashOp<S extends Stack>(
   state: GenState<readonly [...S]>,
-  inst: Ir.HashInstruction
+  inst: Ir.HashInstruction,
 ) {
   const s1 = loadValue(state, inst.value);
 

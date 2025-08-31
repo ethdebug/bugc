@@ -85,64 +85,87 @@ export const makeStateControls = <U, I>({
     },
   }) as const;
 
-export const makeMakeOperationForInstruction =
-  <U, I>({ popN, generateId, create, push, emit }: StateControls<U, I>) =>
-  <C extends Stack, P extends Stack>({
-    consumes,
-    produces,
-    idPrefix,
-  }: {
-    consumes: C;
-    produces: P;
-    idPrefix?: string;
-  }) =>
-  <T extends Instruction>(instruction: T) =>
-  <S extends Stack, P2 extends Stack = P>(
+export interface MakeOperationOptions<C extends Stack, P extends Stack> {
+  consumes: C;
+  produces: P;
+  idPrefix?: string;
+}
+
+export const makeSpecifiers = <U, I>(controls: StateControls<U, I>) => {
+  const executeOperation = <
+    S extends Stack,
+    C extends Stack,
+    P extends Stack,
+    T extends Instruction,
+    P2 extends Stack = P,
+  >(
     initialState: $<U, [readonly [...C, ...S]]>,
-    options?: {
-      produces: P2;
-    },
+    consumes: C,
+    produces: P,
+    instruction: T,
+    idPrefix?: string,
+    options?: { produces: P2 },
   ): $<U, [readonly [...P2, ...S]]> => {
-    let state = popN<S, C["length"]>(initialState, consumes.length);
+    let state = controls.popN<S, C["length"]>(initialState, consumes.length);
 
     let id;
     for (let i = produces.length - 1; i >= 0; i--) {
-      ({ id, state } = generateId(state, idPrefix));
-      state = push(state, create(id, (options?.produces || produces)[i]));
+      ({ id, state } = controls.generateId(state, idPrefix));
+      state = controls.push(
+        state,
+        controls.create(id, (options?.produces || produces)[i]),
+      );
     }
 
-    return emit(state, instruction);
+    return controls.emit(state, instruction);
   };
 
-export const makeMakeOperationWithImmediatesForInstruction =
-  <U, I>({ popN, generateId, create, push, emit }: StateControls<U, I>) =>
-  <C extends Stack, P extends Stack>({
-    consumes,
-    produces,
-    idPrefix,
-  }: {
-    consumes: C;
-    produces: P;
-    idPrefix?: string;
-  }) =>
-  <T extends Instruction>(instruction: T) =>
-  <S extends Stack, P2 extends Stack = P>(
-    initialState: $<U, [readonly [...C, ...S]]>,
-    immediates: number[],
-    options?: {
-      produces: P2;
-    },
-  ): $<U, [readonly [...P2, ...S]]> => {
-    let state = popN<S, C["length"]>(initialState, consumes.length);
+  const makeOperationForInstruction =
+    <C extends Stack, P extends Stack>({
+      consumes,
+      produces,
+      idPrefix,
+    }: MakeOperationOptions<C, P>) =>
+    <T extends Instruction>(instruction: T) =>
+    <S extends Stack, P2 extends Stack = P>(
+      initialState: $<U, [readonly [...C, ...S]]>,
+      options?: { produces: P2 },
+    ): $<U, [readonly [...P2, ...S]]> =>
+      executeOperation(
+        initialState,
+        consumes,
+        produces,
+        instruction,
+        idPrefix,
+        options,
+      );
 
-    let id;
-    for (let i = produces.length - 1; i >= 0; i--) {
-      ({ id, state } = generateId(state, idPrefix));
-      state = push(state, create(id, (options?.produces || produces)[i]));
-    }
+  const makeOperationWithImmediatesForInstruction =
+    <C extends Stack, P extends Stack>({
+      consumes,
+      produces,
+      idPrefix,
+    }: MakeOperationOptions<C, P>) =>
+    <T extends Instruction>(instruction: T) =>
+    <S extends Stack, P2 extends Stack = P>(
+      initialState: $<U, [readonly [...C, ...S]]>,
+      immediates: number[],
+      options?: { produces: P2 },
+    ): $<U, [readonly [...P2, ...S]]> =>
+      executeOperation(
+        initialState,
+        consumes,
+        produces,
+        { ...instruction, immediates },
+        idPrefix,
+        options,
+      );
 
-    return emit(state, { ...instruction, immediates });
+  return {
+    makeOperationForInstruction,
+    makeOperationWithImmediatesForInstruction,
   };
+};
 
 export type MappedInstructions<L extends readonly Instruction[], F> = {
   [M in L[number]["mnemonic"]]: F;
