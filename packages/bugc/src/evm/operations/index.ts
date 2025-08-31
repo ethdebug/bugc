@@ -1,6 +1,6 @@
 /**
  * Type-safe EVM operations framework.
- * 
+ *
  * This module provides a complete abstraction for EVM stack operations with
  * compile-time type safety. It includes:
  * - Stack type definitions and manipulation utilities

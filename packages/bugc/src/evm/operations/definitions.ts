@@ -1,19 +1,19 @@
 /**
  * Complete EVM instruction set definitions with type-safe stack operations.
- * 
+ *
  * This file provides factory functions for all EVM instructions, mapping each
  * opcode to a type-safe operation that correctly handles stack manipulation.
  * Instructions are organized by functionality and include:
- * 
+ *
  * - Arithmetic operations (ADD, MUL, SUB, etc.)
- * - Comparison operations (LT, GT, EQ, etc.)  
+ * - Comparison operations (LT, GT, EQ, etc.)
  * - Bitwise operations (AND, OR, XOR, etc.)
  * - Stack operations (POP, PUSH*, DUP*, SWAP*)
  * - Memory/Storage operations (MLOAD, SLOAD, etc.)
  * - Environment/blockchain data access
  * - Control flow operations (JUMP, JUMPI, etc.)
  * - System operations (CALL, CREATE, etc.)
- * 
+ *
  * Each instruction is defined with precise stack consumption/production patterns
  * using semantic stack brands for type safety.
  */
