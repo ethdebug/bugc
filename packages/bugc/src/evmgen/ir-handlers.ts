@@ -66,7 +66,8 @@ function loadValue<S extends Stack>(
   }
 
   // Check if value is on stack
-  const stackPos = state.stack.findIndex(({ irValue }) => irValue === id);
+  // Note addition because DUP uses 1-based indexing
+  const stackPos = state.stack.findIndex(({ irValue }) => irValue === id) + 1;
   if (stackPos > 0 && stackPos <= 16) {
     // Cast is safe - we know DUP produces an item and we're rebranding it to "value"
     return rebrandTop(emitDup(state, stackPos), "value");
