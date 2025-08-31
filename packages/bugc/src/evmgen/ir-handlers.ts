@@ -6,7 +6,7 @@ import * as Ir from "../ir";
 import type { Stack, StackBrand } from "../evm/operations";
 import { EvmError, EvmErrorCode } from "./errors";
 import { Severity } from "../result";
-import { type GenState, type StackItem, rebrandTop, operations } from "./emit";
+import { type GenState, rebrandTop, operations } from "./emit";
 import { emitPush } from "./push";
 import { emitDup } from "./dup";
 import { serialize, calculateSize } from "./serialize";

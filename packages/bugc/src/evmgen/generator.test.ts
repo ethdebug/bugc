@@ -53,13 +53,15 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
       // Should have PUSH1 42 (no JUMPDEST for entry with no predecessors, no STOP since it's the last block)
-      expect(bytecode[0]).toBe(OPCODES.PUSH1);
-      expect(bytecode[1]).toBe(42);
-      // No STOP at the end since it's the last block
-      expect(bytecode.length).toBe(2);
+      expect(instructions).toHaveLength(1);
+      expect(instructions[0]).toEqual({
+        mnemonic: "PUSH1",
+        opcode: OPCODES.PUSH1,
+        immediates: [42],
+      });
     });
 
     it("should generate binary operations", () => {
@@ -123,13 +125,13 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
-      // Should contain ADD opcode
-      expect(bytecode).toContain(OPCODES.ADD);
+      // Should contain ADD instruction
+      expect(instructions.some(inst => inst.mnemonic === "ADD")).toBe(true);
 
-      // Should have memory stores (MSTORE opcode)
-      expect(bytecode).toContain(OPCODES.MSTORE);
+      // Should have memory stores (MSTORE instructions)
+      expect(instructions.some(inst => inst.mnemonic === "MSTORE")).toBe(true);
     });
 
     it("should handle jumps between blocks", () => {
@@ -174,24 +176,24 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
-      // Should have JUMP opcode
-      expect(bytecode).toContain(OPCODES.JUMP);
+      // Should have JUMP instruction
+      expect(instructions.some(inst => inst.mnemonic === "JUMP")).toBe(true);
 
       // Should have one JUMPDEST (only for the 'next' block which is jumped to)
-      const jumpdests = bytecode.filter((b) => b === OPCODES.JUMPDEST);
-      expect(jumpdests.length).toBe(1);
+      const jumpdests = instructions.filter(inst => inst.mnemonic === "JUMPDEST");
+      expect(jumpdests).toHaveLength(1);
 
-      // Should patch jump target correctly
-      // Find PUSH2 before JUMP
-      const jumpIndex = bytecode.indexOf(OPCODES.JUMP);
-      expect(bytecode[jumpIndex - 3]).toBe(OPCODES.PUSH2);
+      // Should have PUSH2 for jump target
+      const push2Instructions = instructions.filter(inst => inst.mnemonic === "PUSH2");
+      expect(push2Instructions).toHaveLength(1);
 
-      // Target should be patched (not 0x00 0x00)
-      const targetHigh = bytecode[jumpIndex - 2];
-      const targetLow = bytecode[jumpIndex - 1];
-      const target = (targetHigh << 8) | targetLow;
+      // Target should be patched (not [0, 0])
+      const push2 = push2Instructions[0];
+      expect(push2.immediates).toBeDefined();
+      expect(push2.immediates!.length).toBe(2);
+      const target = (push2.immediates![0] << 8) | push2.immediates![1];
       expect(target).toBeGreaterThan(0);
     });
 
@@ -260,15 +262,17 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
       // Should have JUMPI for conditional jump
-      expect(bytecode).toContain(OPCODES.JUMPI);
+      expect(instructions.some(inst => inst.mnemonic === "JUMPI")).toBe(true);
 
-      // After JUMPI, there should be PUSH2 for false target, then JUMP
-      const jumpiIndex = bytecode.indexOf(OPCODES.JUMPI);
-      expect(bytecode[jumpiIndex + 1]).toBe(OPCODES.PUSH2); // 0x61
-      expect(bytecode[jumpiIndex + 4]).toBe(OPCODES.JUMP); // After PUSH2 and its 2 bytes
+      // Should have PUSH2 instructions for both targets
+      const push2Instructions = instructions.filter(inst => inst.mnemonic === "PUSH2");
+      expect(push2Instructions.length).toBe(2);
+
+      // Should have JUMP for unconditional fallthrough
+      expect(instructions.some(inst => inst.mnemonic === "JUMP")).toBe(true);
     });
 
     it("should handle storage operations", () => {
@@ -329,10 +333,10 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
-      // Should have SSTORE opcode
-      expect(bytecode).toContain(OPCODES.SSTORE);
+      // Should have SSTORE instruction
+      expect(instructions.some(inst => inst.mnemonic === "SSTORE")).toBe(true);
     });
 
     it("should handle environment operations", () => {
@@ -378,11 +382,11 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
-      // Should have CALLER and CALLVALUE opcodes
-      expect(bytecode).toContain(OPCODES.CALLER);
-      expect(bytecode).toContain(OPCODES.CALLVALUE);
+      // Should have CALLER and CALLVALUE instructions
+      expect(instructions.some(inst => inst.mnemonic === "CALLER")).toBe(true);
+      expect(instructions.some(inst => inst.mnemonic === "CALLVALUE")).toBe(true);
     });
 
     it("should handle array slot computation", () => {
@@ -469,20 +473,20 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
       // Should contain KECCAK256 for array slot computation
-      expect(bytecode).toContain(OPCODES.KECCAK256);
+      expect(instructions.some(inst => inst.mnemonic === "KECCAK256")).toBe(true);
 
-      // Should contain MSTORE operations for hash setup
-      const mstores = bytecode.filter((b) => b === OPCODES.MSTORE);
+      // Should contain MSTORE instructions for hash setup
+      const mstores = instructions.filter(inst => inst.mnemonic === "MSTORE");
       expect(mstores.length).toBeGreaterThanOrEqual(1);
 
       // Should contain ADD for index offset
-      expect(bytecode).toContain(OPCODES.ADD);
+      expect(instructions.some(inst => inst.mnemonic === "ADD")).toBe(true);
 
       // Should contain SSTORE for storage write
-      expect(bytecode).toContain(OPCODES.SSTORE);
+      expect(instructions.some(inst => inst.mnemonic === "SSTORE")).toBe(true);
     });
 
     it("should handle array element load", () => {
@@ -567,20 +571,19 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
       // Should compute array base with KECCAK256
-      expect(bytecode).toContain(OPCODES.KECCAK256);
+      expect(instructions.some(inst => inst.mnemonic === "KECCAK256")).toBe(true);
 
       // Should add index to base
-      expect(bytecode).toContain(OPCODES.ADD);
+      expect(instructions.some(inst => inst.mnemonic === "ADD")).toBe(true);
 
       // Should load from storage
-      expect(bytecode).toContain(OPCODES.SLOAD);
+      expect(instructions.some(inst => inst.mnemonic === "SLOAD")).toBe(true);
 
       // No STOP at the end since it's the last block
-      const stopIndex = bytecode.indexOf(OPCODES.STOP);
-      expect(stopIndex).toBe(-1);
+      expect(instructions.some(inst => inst.mnemonic === "STOP")).toBe(false);
     });
 
     it("should handle mapping slot computation", () => {
@@ -656,16 +659,16 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
       // Should have CALLER for msg.sender
-      expect(bytecode).toContain(OPCODES.CALLER);
+      expect(instructions.some(inst => inst.mnemonic === "CALLER")).toBe(true);
 
       // Should have KECCAK256 for mapping slot computation
-      expect(bytecode).toContain(OPCODES.KECCAK256);
+      expect(instructions.some(inst => inst.mnemonic === "KECCAK256")).toBe(true);
 
       // Should have SSTORE for final storage
-      expect(bytecode).toContain(OPCODES.SSTORE);
+      expect(instructions.some(inst => inst.mnemonic === "SSTORE")).toBe(true);
     });
 
     it("should handle mapping value load", () => {
@@ -739,19 +742,19 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
       // Should get msg.sender
-      expect(bytecode).toContain(OPCODES.CALLER);
+      expect(instructions.some(inst => inst.mnemonic === "CALLER")).toBe(true);
 
       // Should compute slot with KECCAK256
-      expect(bytecode).toContain(OPCODES.KECCAK256);
+      expect(instructions.some(inst => inst.mnemonic === "KECCAK256")).toBe(true);
 
       // Should load from storage
-      expect(bytecode).toContain(OPCODES.SLOAD);
+      expect(instructions.some(inst => inst.mnemonic === "SLOAD")).toBe(true);
 
       // Should have proper memory operations for hash
-      const mstores = bytecode.filter((b) => b === OPCODES.MSTORE);
+      const mstores = instructions.filter(inst => inst.mnemonic === "MSTORE");
       expect(mstores.length).toBeGreaterThanOrEqual(2); // For key and baseSlot
     });
 
@@ -864,29 +867,18 @@ describe("EVM Code Generator", () => {
         offsets: new Map(),
       };
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
       // Should have KECCAK256 operations for both mapping and array
-      // Count actual KECCAK256 opcodes (not 0x20 as push data)
-      let keccakCount = 0;
-      for (let i = 0; i < bytecode.length; i++) {
-        if (bytecode[i] === OPCODES.KECCAK256) {
-          // Make sure this isn't data for a PUSH instruction
-          // PUSH1 through PUSH32 are 0x60-0x7f
-          if (i === 0 || bytecode[i - 1] < 0x60 || bytecode[i - 1] > 0x7f) {
-            keccakCount++;
-          }
-        }
-      }
+      const keccakInstructions = instructions.filter(inst => inst.mnemonic === "KECCAK256");
       // We expect at least 2 (one for mapping, one for array)
-      // There might be more due to memory operations
-      expect(keccakCount).toBeGreaterThanOrEqual(2);
+      expect(keccakInstructions.length).toBeGreaterThanOrEqual(2);
 
       // Should have ADD for index offset
-      expect(bytecode).toContain(OPCODES.ADD);
+      expect(instructions.some(inst => inst.mnemonic === "ADD")).toBe(true);
 
       // Should load from storage
-      expect(bytecode).toContain(OPCODES.SLOAD);
+      expect(instructions.some(inst => inst.mnemonic === "SLOAD")).toBe(true);
     });
   });
 
@@ -1099,13 +1091,13 @@ describe("EVM Code Generator", () => {
       // Note: local_i might not be allocated to memory if it doesn't cross blocks
       // The memory planner only allocates values that need to persist across stack operations
 
-      const { bytecode } = generateFunction(func, memory, layout);
+      const { instructions } = generateFunction(func, memory, layout);
 
-      // The bytecode should handle the local operations correctly
+      // The instructions should handle the local operations correctly
       // Whether through stack manipulation or memory depends on the implementation
 
       // Should contain ADD for the increment
-      expect(bytecode).toContain(OPCODES.ADD);
+      expect(instructions.some(inst => inst.mnemonic === "ADD")).toBe(true);
     });
   });
 });

@@ -80,24 +80,14 @@ code {}
     const memory = memoryResult.value;
     const layout = layoutBlocks(createFunc);
 
-    const { bytecode } = generateFunction(createFunc, memory, layout);
+    const { instructions } = generateFunction(createFunc, memory, layout);
 
-    // Check bytecode contains SSTORE operations
-    const sstoreCount = bytecode.filter((b) => b === OPCODES.SSTORE).length;
-    expect(sstoreCount).toBe(3);
+    // Check instructions contain SSTORE operations
+    const sstoreInstructions = instructions.filter(inst => inst.mnemonic === "SSTORE");
+    expect(sstoreInstructions.length).toBe(3);
 
-    // The bytecode should directly use slots 0, 1, 2
-    // Look for the pattern: PUSH value, PUSH slot, SSTORE
-    // Find all SSTORE positions
-    const sstorePositions = [];
-    for (let i = 0; i < bytecode.length; i++) {
-      if (bytecode[i] === OPCODES.SSTORE) {
-        sstorePositions.push(i);
-      }
-    }
-
-    // Verify we have exactly 3 SSTORE operations at the expected positions
-    expect(sstorePositions.length).toBe(3);
+    // Should have exactly 3 SSTORE operations
+    expect(sstoreInstructions).toHaveLength(3);
   });
 
   it("should generate correct deployment bytecode for array constructor", () => {
