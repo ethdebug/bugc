@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generateModule } from "./generator";
 import { generateFunction } from "./ir-handlers";
-import { OPCODES } from "../evm";
 import type { IrFunction, IrModule, BasicBlock } from "../ir";
 import type { MemoryAllocation } from "../memory/memory-planner";
 
@@ -57,9 +56,8 @@ describe("EVM Code Generator", () => {
 
       // Should have PUSH1 42 (no JUMPDEST for entry with no predecessors, no STOP since it's the last block)
       expect(instructions).toHaveLength(1);
-      expect(instructions[0]).toEqual({
+      expect(instructions[0]).toMatchObject({
         mnemonic: "PUSH1",
-        opcode: OPCODES.PUSH1,
         immediates: [42],
       });
     });
@@ -1005,9 +1003,9 @@ describe("EVM Code Generator", () => {
       // Deployment bytecode should be longer (includes constructor + runtime)
       expect(result.create!.length).toBeGreaterThan(result.runtime.length);
 
-      // Should have CODECOPY and RETURN opcodes for deployment
-      expect(result.create).toContain(OPCODES.CODECOPY);
-      expect(result.create).toContain(OPCODES.RETURN);
+      // Should have CODECOPY and RETURN instructions for deployment
+      expect(result.createInstructions?.some(inst => inst.mnemonic === "CODECOPY")).toBe(true);
+      expect(result.createInstructions?.some(inst => inst.mnemonic === "RETURN")).toBe(true);
     });
 
     it("should handle local variable operations", () => {

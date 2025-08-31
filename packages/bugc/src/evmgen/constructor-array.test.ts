@@ -11,7 +11,6 @@ import {
 import { analyzeModuleBlockLayout, layoutBlocks } from "../memory/block-layout";
 import { generateModule } from "./generator";
 import { generateFunction } from "./ir-handlers";
-import { OPCODES } from "../evm";
 
 describe("Constructor array storage", () => {
   it("should correctly store values in fixed-size arrays during construction", () => {
@@ -146,19 +145,17 @@ code {}
 
     expect(result.create).toBeDefined();
     expect(result.runtime).toBeDefined();
+    expect(result.createInstructions).toBeDefined();
 
-    // The deployment bytecode should contain the constructor code
-    const createBytecode = result.create!;
+    // Should have 3 SSTORE instructions in the constructor
+    const sstoreInstructions = result.createInstructions!.filter(
+      inst => inst.mnemonic === "SSTORE"
+    );
+    expect(sstoreInstructions).toHaveLength(3);
 
-    // Should have 3 SSTORE operations
-    const sstoreCount = createBytecode.filter(
-      (b) => b === OPCODES.SSTORE,
-    ).length;
-    expect(sstoreCount).toBe(3);
-
-    // Should end with CODECOPY and RETURN
-    expect(createBytecode).toContain(OPCODES.CODECOPY);
-    expect(createBytecode).toContain(OPCODES.RETURN);
+    // Should have deployment wrapper instructions
+    expect(result.createInstructions!.some(inst => inst.mnemonic === "CODECOPY")).toBe(true);
+    expect(result.createInstructions!.some(inst => inst.mnemonic === "RETURN")).toBe(true)
   });
 
   it("should not allocate memory for intermediate slot calculations", () => {

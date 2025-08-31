@@ -14,13 +14,14 @@ import {
 import { displayErrors, displayWarnings } from "./output";
 import { formatJson, formatIrText } from "./formatters";
 import { IrValidator, IrStats, IrFormatter } from "../ir/analysis";
-import { Disassembler } from "../evm/analysis";
+import { EvmFormatter } from "../evm/analysis";
 import type { IrModule } from "../ir";
 import type { Program } from "../ast";
 import type { EvmGenerationOutput } from "../evmgen/pass";
 import { compile } from "../compiler";
 import { Result } from "../result";
 import type { BugError } from "../errors";
+
 
 type Phase = "ast" | "ir" | "bytecode";
 
@@ -280,19 +281,13 @@ function formatBytecode(
     };
     return formatJson(output, pretty);
   } else if (format === "asm") {
-    // For asm format, show disassembled instructions
-    const runtimeHex = Buffer.from(bytecode.runtime).toString("hex");
-    const runtimeInstructions = Disassembler.disassemble(runtimeHex);
-
+    // For asm format, use the instruction objects directly
     let output = `; Runtime bytecode (${bytecode.runtime.length} bytes)\n`;
-    output += Disassembler.format(runtimeInstructions);
+    output += EvmFormatter.formatInstructions(bytecode.runtimeInstructions);
 
-    if (bytecode.create) {
-      const createHex = Buffer.from(bytecode.create).toString("hex");
-      const createInstructions = Disassembler.disassemble(createHex);
-
+    if (bytecode.create && bytecode.createInstructions) {
       output += `\n\n; Creation bytecode (${bytecode.create.length} bytes)\n`;
-      output += Disassembler.format(createInstructions);
+      output += EvmFormatter.formatInstructions(bytecode.createInstructions);
     }
 
     return output;

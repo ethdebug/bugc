@@ -10,6 +10,7 @@ import type { MemoryInfo } from "../memory/memory-planner";
 import type { BlockInfo } from "../memory/block-layout";
 import { generateFunction } from "./ir-handlers";
 import type { EvmError } from "./errors";
+import type { Instruction } from "../evm/operations";
 
 /**
  * Generate bytecode for entire module
@@ -18,7 +19,13 @@ export function generateModule(
   module: Ir.IrModule,
   memory: MemoryInfo,
   blocks: BlockInfo,
-): { create?: number[]; runtime: number[]; warnings: EvmError[] } {
+): {
+  create?: number[];
+  runtime: number[];
+  createInstructions?: Instruction[];
+  runtimeInstructions: Instruction[];
+  warnings: EvmError[]
+} {
   // Generate runtime function
   const runtimeResult = generateFunction(module.main, memory.main, blocks.main);
 
@@ -27,6 +34,7 @@ export function generateModule(
 
   // Generate constructor function if present
   let createBytes: number[] = [];
+  let allCreateInstructions: Instruction[] = [];
   if (module.create && memory.create && blocks.create) {
     const createResult = generateFunction(
       module.create,
@@ -34,18 +42,26 @@ export function generateModule(
       blocks.create,
     );
     createBytes = createResult.bytecode;
+    allCreateInstructions = [...createResult.instructions];
     allWarnings = [...allWarnings, ...createResult.warnings];
   }
 
-  // Build complete deployment bytecode
-  const deployBytes = buildDeploymentInstructions(
+  // Build complete deployment bytecode and get deployment wrapper instructions
+  const { deployBytes, deploymentWrapperInstructions } = buildDeploymentInstructions(
     createBytes,
     runtimeResult.bytecode,
   );
 
+  // Combine constructor instructions with deployment wrapper
+  const finalCreateInstructions = allCreateInstructions.length > 0 || deploymentWrapperInstructions.length > 0
+    ? [...allCreateInstructions, ...deploymentWrapperInstructions]
+    : undefined;
+
   return {
     create: deployBytes,
     runtime: runtimeResult.bytecode,
+    createInstructions: finalCreateInstructions,
+    runtimeInstructions: runtimeResult.instructions,
     warnings: allWarnings,
   };
 }
@@ -97,12 +113,12 @@ function calculateDeploymentSize(
 }
 
 /**
- * Build deployment bytecode (constructor + runtime deployment wrapper)
+ * Build deployment bytecode and instructions (constructor + runtime deployment wrapper)
  */
 function buildDeploymentInstructions(
   createBytes: number[],
   runtimeBytes: number[],
-): number[] {
+): { deployBytes: number[]; deploymentWrapperInstructions: Instruction[] } {
   const state: GenState<[]> = {
     brands: [],
     stack: [],
@@ -133,5 +149,10 @@ function buildDeploymentInstructions(
   const deploymentWrapperBytes = serialize(s7.instructions);
 
   // Combine everything
-  return [...createBytes, ...deploymentWrapperBytes, ...runtimeBytes];
+  const deployBytes = [...createBytes, ...deploymentWrapperBytes, ...runtimeBytes];
+
+  return {
+    deployBytes,
+    deploymentWrapperInstructions: s7.instructions,
+  };
 }

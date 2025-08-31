@@ -1,2 +1,5 @@
-export { Disassembler } from "./disassembler";
-export type { Instruction } from "./disassembler";
+/**
+ * EVM analysis utilities exports
+ */
+
+export { EvmFormatter } from "./formatter";

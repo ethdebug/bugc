@@ -5,6 +5,7 @@ import type { MemoryInfo } from "../memory/memory-planner";
 import type { BlockInfo } from "../memory/block-layout";
 import { generateModule } from "./generator";
 import { EvmError, EvmErrorCode } from "./errors";
+import type { Instruction } from "../evm/operations";
 
 /**
  * Output produced by the EVM generation pass
@@ -14,6 +15,10 @@ export interface EvmGenerationOutput {
   runtime: Uint8Array;
   /** Constructor bytecode (optional) */
   create?: Uint8Array;
+  /** Runtime instructions */
+  runtimeInstructions: Instruction[];
+  /** Constructor instructions (optional) */
+  createInstructions?: Instruction[];
 }
 
 /**
@@ -44,6 +49,8 @@ export const pass: Pass<{
           bytecode: {
             runtime,
             create,
+            runtimeInstructions: result.runtimeInstructions,
+            createInstructions: result.createInstructions,
           },
         },
         { warning: result.warnings },
