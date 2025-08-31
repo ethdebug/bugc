@@ -1,5 +1,10 @@
 import { $ } from "./hkts";
 
+/**
+ * Semantic labels for EVM stack items representing different types of values.
+ * These brands provide type-level documentation of what each stack item represents,
+ * from basic operands (a, b) to complex operations (a + b, hash, etc.).
+ */
 export type StackBrand =
   | "a"
   | "b"
@@ -61,8 +66,16 @@ export type StackBrand =
   | "salt"
   | "unknown";
 
+/**
+ * Represents an EVM stack as an ordered list of semantic stack brands.
+ * The stack grows from left to right, with the leftmost item being the top.
+ */
 export type Stack = readonly StackBrand[];
 
+/**
+ * Converts a stack type specification into concrete stack items.
+ * Maps each StackBrand in the stack to a concrete item of type I.
+ */
 export type StackItems<I, S extends Stack> = S extends unknown
   ? S extends readonly []
     ? readonly []
@@ -74,7 +87,10 @@ export type StackItems<I, S extends Stack> = S extends unknown
       : never
   : never;
 
-// Helper type to extract top N items from stack without modifying it
+/**
+ * Type-level function to extract the top N items from a stack without modifying it.
+ * Supports up to 17 items (maximum EVM instruction operand count).
+ */
 export type TopN<S extends Stack, N extends number> = S extends unknown
   ? N extends 0
     ? readonly []
@@ -438,13 +454,20 @@ export type TopN<S extends Stack, N extends number> = S extends unknown
                                       : never
   : never;
 
+/**
+ * Type-level function to push new items onto the front of a stack.
+ * Items in T are prepended to stack S, making T[0] the new top item.
+ */
 export type Push<S extends Stack, T extends Stack> = S extends unknown
   ? T extends unknown
     ? readonly [...T, ...S]
     : never
   : never;
 
-// Helper type to remove N items from top of stack (index 1)
+/**
+ * Type-level function to remove N items from the top of a stack.
+ * Supports up to 17 items (maximum EVM instruction operand count).
+ */
 export type PopN<S extends Stack, N extends number> = S extends unknown
   ? N extends N
     ? N extends 0

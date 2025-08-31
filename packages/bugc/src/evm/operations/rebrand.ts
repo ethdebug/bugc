@@ -1,7 +1,14 @@
+/**
+ * Stack rebranding utilities for changing semantic types of stack items.
+ *
+ * This module provides type-level operations for changing the semantic brands
+ * of existing stack items without affecting the runtime stack structure.
+ * Useful for refining types when more specific information becomes available.
+ */
+
 import { $ } from "./hkts";
 
 import type { Stack, PopN, StackBrand } from "./stack";
-
 /**
  * Rebrand stack items at specified positions.
  * Uses 1-based indexing to match EVM convention:
@@ -32,17 +39,13 @@ export const makeRebrands = <U>() => {
     _brand: B,
   ): $<U, [readonly [B, ...S]]> => state as $<U, [readonly [B, ...S]]>;
 
-  // const rebrandTop = <
-  //   A extends StackBrand,
-  //   B extends StackBrand,
-  //   S extends Stack
-  // >(
-  //   state: $<U, [readonly [A, ...S]]>,
-  //   brand: B
-  // ): $<U, [readonly [B, ...S]]> => rebrand<S, { 1: B }>(state, { 1: brand });
-
   return { rebrand, rebrandTop };
 };
+
+export type Rebranded<
+  S extends Stack,
+  Rebrands extends Record<number, StackBrand>,
+> = ApplyRebrands<S, Rebrands, MaxKey<Rebrands>>;
 
 // Helper to get the highest key in the Rebrands record
 type MaxKey<R extends Record<number, StackBrand>> = 17 extends keyof R
@@ -646,7 +649,3 @@ type ApplyRebrands<
                                       : S
                                     : S;
 
-export type Rebranded<
-  S extends Stack,
-  Rebrands extends Record<number, StackBrand>,
-> = ApplyRebrands<S, Rebrands, MaxKey<Rebrands>>;
