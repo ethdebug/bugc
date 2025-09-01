@@ -1,5 +1,6 @@
 import type { Stack, StackBrand } from "../evm";
-import { type GenState, type Operations, operations } from "./emit";
+import type { GenState } from "./state";
+import { type Operations, operations } from "./emit";
 
 export function emitPush<S extends Stack, B extends StackBrand = "value">(
   state: GenState<S>,

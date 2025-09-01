@@ -23,8 +23,7 @@ import { $ } from "./hkts";
 import { type Stack, type StackBrand } from "./stack";
 
 import {
-  type UnsafeStateControls,
-  makeStateControls,
+  type StateControls,
   makeSpecifiers,
   mapInstruction,
 } from "./state";
@@ -35,9 +34,7 @@ export type Operations<U, I> = ReturnType<typeof makeOperations<U, I>>;
  * Creates a complete set of type-safe EVM operations from unsafe state controls.
  * Returns an object mapping instruction mnemonics to their operation functions.
  */
-export const makeOperations = <U, I>(unsafe: UnsafeStateControls<U, I>) => {
-  const controls = makeStateControls(unsafe);
-
+export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
   const {
     makeOperationForInstruction,
     makeOperationWithImmediatesForInstruction,

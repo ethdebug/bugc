@@ -3,7 +3,8 @@
  */
 
 import type * as Ir from "../ir";
-import { type GenState, operations } from "./emit";
+import type { GenState } from "./state";
+import { operations } from "./emit";
 import { emitPush } from "./push";
 import { serialize, calculateSize } from "./serialize";
 import type { MemoryInfo } from "../memory/memory-planner";
