@@ -6,10 +6,10 @@ import {
   type StateControls,
   type _,
   makeStateControls,
-} from "../evm";
+} from "../../evm";
 
-import type { FunctionMemoryLayout } from "../memory/memory-planner";
-import type { EvmError } from "./errors";
+import type { FunctionMemoryLayout } from "../analysis/memory";
+import type { EvmError } from "../errors";
 
 // Track stack at type level
 export interface GenState<S extends Stack> {

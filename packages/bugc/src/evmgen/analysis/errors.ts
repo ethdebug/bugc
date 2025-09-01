@@ -2,9 +2,9 @@
  * Memory planning error types
  */
 
-import { BugError } from "../errors/base";
-import { Severity } from "../result";
-import type { SourceLocation } from "../ast";
+import { BugError } from "../../errors/base";
+import { Severity } from "../../result";
+import type { SourceLocation } from "../../ast";
 
 export enum MemoryErrorCode {
   STACK_TOO_DEEP = "MEMORY_STACK_TOO_DEEP",

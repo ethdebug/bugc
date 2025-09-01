@@ -3,12 +3,12 @@
  */
 
 import type * as Ir from "../ir";
-import type { GenState } from "./state";
-import { operations } from "./operations";
-import { emitPush } from "./push";
+import type { GenState } from "./operations/state";
+import { operations } from "./operations/operations";
+import { emitPush } from "./operations/push";
 import { serialize, calculateSize } from "./serialize";
-import type { MemoryInfo } from "../memory/memory-planner";
-import type { BlockInfo } from "../memory/block-layout";
+import type { MemoryInfo } from "./analysis/memory";
+import type { BlockInfo } from "./analysis/layout";
 import { generateFunction } from "./ir-handlers";
 import type { EvmError } from "./errors";
 import type { Instruction } from "../evm";

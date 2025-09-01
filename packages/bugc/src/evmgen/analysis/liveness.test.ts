@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { analyzeLiveness } from "./liveness";
-import type { IrFunction, BasicBlock } from "../ir";
+import type { IrFunction, BasicBlock } from "../../ir";
 
 describe("Liveness Analysis", () => {
   it("should identify live-in and live-out sets for a simple function", () => {

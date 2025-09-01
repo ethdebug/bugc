@@ -7,8 +7,6 @@ import { pass as typeCheckingPass } from "../../typechecker/pass";
 import { pass as irGenerationPass } from "../../irgen/pass";
 import { pass as phiInsertionPass } from "../../phi-insertion/pass";
 import { pass as optimizationPass } from "../../optimizer/pass";
-import { pass as livenessPass } from "../../liveness/pass";
-import { pass as memoryPass } from "../../memory/pass";
 import { pass as evmGenerationPass } from "../../evmgen/pass";
 
 // AST-only sequence (just parsing)
@@ -26,8 +24,6 @@ export const irSequence = [
 // Bytecode sequence (parsing through bytecode generation)
 export const bytecodeSequence = [
   ...irSequence,
-  livenessPass,
-  memoryPass,
   evmGenerationPass,
 ] as const;
 

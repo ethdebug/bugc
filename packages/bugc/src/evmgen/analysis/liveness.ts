@@ -5,7 +5,7 @@
  * essential for memory allocation and stack management.
  */
 
-import type { IrModule, IrFunction, Value, IrInstruction } from "../ir";
+import type { IrModule, IrFunction, Value, IrInstruction } from "../../ir";
 
 export interface FunctionLivenessInfo {
   /** Values live at block entry */

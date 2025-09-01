@@ -11,9 +11,9 @@ import type {
   Value,
   IrModule,
   TypeRef,
-} from "../ir";
-import type { FunctionLivenessInfo } from "../liveness";
-import { Result } from "../result";
+} from "../../ir";
+import type { FunctionLivenessInfo } from "./liveness";
+import { Result } from "../../result";
 import { MemoryError, MemoryErrorCode } from "./errors";
 
 export interface MemoryAllocation {

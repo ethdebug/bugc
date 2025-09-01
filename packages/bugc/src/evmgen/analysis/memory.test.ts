@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { planFunctionMemory } from "./memory-planner";
-import { analyzeLiveness } from "../liveness";
-import type { IrFunction, BasicBlock } from "../ir";
+import { planFunctionMemory } from "./memory";
+import { analyzeLiveness } from "./liveness";
+import type { IrFunction, BasicBlock } from "../../ir";
 
 describe("Memory Planning", () => {
   it("should allocate memory for phi destinations", () => {

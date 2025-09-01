@@ -1,11 +1,12 @@
 import { Result } from "../result";
 import type { Pass } from "../compiler/pass";
 import type { IrModule } from "../ir";
-import type { MemoryInfo } from "../memory/memory-planner";
-import type { BlockInfo } from "../memory/block-layout";
 import { generateModule } from "./generator";
 import { EvmError, EvmErrorCode } from "./errors";
 import type { Instruction } from "../evm";
+import { analyzeModuleLiveness } from "./analysis/liveness";
+import { analyzeModuleMemory } from "./analysis/memory";
+import { analyzeModuleBlockLayout } from "./analysis/layout";
 
 /**
  * Output produced by the EVM generation pass
@@ -27,18 +28,31 @@ export interface EvmGenerationOutput {
 export const pass: Pass<{
   needs: {
     ir: IrModule;
-    memory: MemoryInfo;
-    blocks: BlockInfo;
   };
   adds: {
     bytecode: EvmGenerationOutput;
   };
   error: EvmError;
 }> = {
-  async run({ ir, memory, blocks }) {
+  async run({ ir }) {
     try {
+      // Analyze liveness
+      const liveness = analyzeModuleLiveness(ir);
+      
+      // Analyze memory requirements
+      const memoryResult = analyzeModuleMemory(ir, liveness);
+      if (!memoryResult.success) {
+        return Result.err(new EvmError(EvmErrorCode.INTERNAL_ERROR, memoryResult.messages.error?.[0]?.message ?? "Memory analysis failed"));
+      }
+
+      // Analyze block layout
+      const blockResult = analyzeModuleBlockLayout(ir);
+      if (!blockResult.success) {
+        return Result.err(new EvmError(EvmErrorCode.INTERNAL_ERROR, blockResult.messages.error?.[0]?.message ?? "Block layout analysis failed"));
+      }
+
       // Generate bytecode
-      const result = generateModule(ir, memory, blocks);
+      const result = generateModule(ir, memoryResult.value, blockResult.value);
 
       // Convert to Uint8Array
       const runtime = new Uint8Array(result.runtime);

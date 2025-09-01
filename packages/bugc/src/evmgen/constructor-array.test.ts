@@ -3,12 +3,12 @@ import { parse } from "../parser";
 import { TypeChecker } from "../typechecker";
 import { IrGenerator } from "../irgen/generator";
 import type { BinaryOpInstruction } from "../ir";
-import { analyzeModuleLiveness, analyzeLiveness } from "../liveness";
+import { analyzeModuleLiveness, analyzeLiveness } from "./analysis/liveness";
 import {
   analyzeModuleMemory,
   planFunctionMemory,
-} from "../memory/memory-planner";
-import { analyzeModuleBlockLayout, layoutBlocks } from "../memory/block-layout";
+} from "./analysis/memory";
+import { analyzeModuleBlockLayout, layoutBlocks } from "./analysis/layout";
 import { generateModule } from "./generator";
 import { generateFunction } from "./ir-handlers";
 

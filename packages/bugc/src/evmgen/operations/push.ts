@@ -1,4 +1,4 @@
-import type { Stack, StackBrand } from "../evm";
+import type { Stack, StackBrand } from "../../evm";
 import type { GenState } from "./state";
 import { type Operations, operations } from "./operations";
 

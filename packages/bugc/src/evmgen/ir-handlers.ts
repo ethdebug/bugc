@@ -6,13 +6,13 @@ import * as Ir from "../ir";
 import type { Stack, StackBrand } from "../evm";
 import { EvmError, EvmErrorCode } from "./errors";
 import { Severity } from "../result";
-import type { GenState } from "./state";
-import { rebrandTop, operations } from "./operations";
-import { emitPush } from "./push";
-import { emitDup } from "./dup";
+import type { GenState } from "./operations/state";
+import { rebrandTop, operations } from "./operations/operations";
+import { emitPush } from "./operations/push";
+import { emitDup } from "./operations/dup";
 import { serialize, calculateSize } from "./serialize";
-import type { FunctionBlockLayout } from "../memory/block-layout";
-import type { FunctionMemoryLayout } from "../memory/memory-planner";
+import type { FunctionBlockLayout } from "./analysis/layout";
+import type { FunctionMemoryLayout } from "./analysis/memory";
 
 /**
  * Get the ID for a value
