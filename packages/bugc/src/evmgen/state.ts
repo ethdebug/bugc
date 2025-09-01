@@ -53,6 +53,10 @@ const unsafe: UnsafeStateControls<
     ...item,
     id,
   }),
+  rebrand: (item, brand) => ({
+    ...item,
+    brand,
+  }),
   readTop: (state, num) => {
     // Return the top N stack items with their IDs and brands
     const items = [];

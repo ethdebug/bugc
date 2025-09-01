@@ -42,6 +42,9 @@ export interface UnsafeStateControls<U, I> {
   /** Create a copy of an existing stack item with a new identifier */
   duplicate(item: UnsafeStackItem<I>, id: string): UnsafeStackItem<I>;
 
+  /** Rebrand a stack item while keeping everything else the same */
+  rebrand(item: UnsafeStackItem<I>, brand: StackBrand): UnsafeStackItem<I>;
+
   /** Generate a unique identifier and update state to track it */
   generateId(
     state: UnsafeState<U>,
@@ -69,6 +72,7 @@ export const makeStateControls = <U, I>({
   generateId,
   create,
   duplicate,
+  rebrand,
   emit,
 }: UnsafeStateControls<U, I>) =>
   ({
@@ -100,6 +104,10 @@ export const makeStateControls = <U, I>({
     /** Duplicate a typed stack item with a new identifier */
     duplicate<B extends StackBrand>(item: $<I, [B]>, id: string) {
       return duplicate(item, id);
+    },
+    /** Duplicate a typed stack item with a new identifier */
+    rebrand<B extends StackBrand>(item: $<I, [B]>, brand: B) {
+      return rebrand(item, brand);
     },
     /** Generate a unique identifier while preserving stack type */
     generateId<S extends Stack>(

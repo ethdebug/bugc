@@ -9,6 +9,8 @@
 import { $ } from "./hkts";
 
 import type { Stack, PopN, StackBrand } from "./stack";
+import type { StateControls } from "./state";
+
 /**
  * Rebrand stack items at specified positions.
  * Uses 1-based indexing to match EVM convention:
@@ -19,15 +21,43 @@ import type { Stack, PopN, StackBrand } from "./stack";
  * This matches DUP and SWAP opcode numbering where DUP1
  * duplicates the 1st item (top), DUP2 duplicates the 2nd, etc.
  */
-export const makeRebrands = <U>() => {
+export const makeRebrands = <U, I>(
+  controls: StateControls<U, I>
+) => {
   const rebrand = <
     S extends Stack,
     Rebrands extends Record<number, StackBrand>,
   >(
     state: $<U, [S]>,
-    _brands: Rebrands,
+    brands: Rebrands,
   ): $<U, [Rebranded<S, Rebrands>]> => {
-    return state as $<U, [Rebranded<S, Rebrands>]>;
+    // Find the maximum position we need to rebrand
+    const positions = Object.keys(brands).map(Number).sort((a, b) => b - a);
+    if (positions.length === 0) {
+      return state as $<U, [Rebranded<S, Rebrands>]>;
+    }
+
+    const maxPosition = positions[0];
+
+    // Pop the top N items from the stack
+    const items = controls.topN(state, maxPosition);
+    let newState = controls.popN(state, maxPosition);
+
+    // Work backwards and push each item possibly rebranded
+    for (let i = items.length - 1; i >= 0; i--) {
+      const originalItem = items[i];
+      // note addition because stack offsets in user code use 1-index
+      const newBrand = brands[i + 1];
+
+      newState = controls.push(
+        newState,
+        newBrand
+          ? controls.rebrand(originalItem, newBrand)
+          : originalItem
+      );
+    }
+
+    return newState as $<U, [Rebranded<S, Rebrands>]>;
   };
 
   const rebrandTop = <
@@ -36,8 +66,8 @@ export const makeRebrands = <U>() => {
     S extends Stack,
   >(
     state: $<U, [readonly [A, ...S]]>,
-    _brand: B,
-  ): $<U, [readonly [B, ...S]]> => state as $<U, [readonly [B, ...S]]>;
+    brand: B,
+  ): $<U, [readonly [B, ...S]]> => rebrand(state, { 1: brand })
 
   return { rebrand, rebrandTop };
 };

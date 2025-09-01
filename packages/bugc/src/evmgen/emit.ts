@@ -16,4 +16,4 @@ export const operations: GenericOperations<
 
 export type Operations = typeof operations;
 
-export const { rebrand, rebrandTop } = makeRebrands<GenState<_ & Stack>>();
+export const { rebrand, rebrandTop } = makeRebrands(controls);
