@@ -33,6 +33,7 @@ export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
     const positions = Object.keys(brands)
       .map(Number)
       .sort((a, b) => b - a);
+
     if (positions.length === 0) {
       return state as $<U, [Rebranded<S, Rebrands>]>;
     }
@@ -41,21 +42,20 @@ export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
 
     // Pop the top N items from the stack
     const items = controls.topN(state, maxPosition);
-    let newState = controls.popN(state, maxPosition);
+    const poppedState = controls.popN(state, maxPosition);
 
     // Work backwards and push each item possibly rebranded
-    for (let i = items.length - 1; i >= 0; i--) {
-      const originalItem = items[i];
-      // note addition because stack offsets in user code use 1-index
-      const newBrand = brands[i + 1];
-
-      newState = controls.push(
-        newState,
-        newBrand ? controls.rebrand(originalItem, newBrand) : originalItem,
-      );
-    }
-
-    return newState as $<U, [Rebranded<S, Rebrands>]>;
+    return items.reduceRight(
+      (accState, originalItem, i) =>
+        controls.push(
+          accState,
+          // note addition because stack offsets in user code use 1-index
+          i + 1 in brands
+            ? controls.rebrand(originalItem, brands[i + 1])
+            : originalItem,
+        ),
+      poppedState,
+    );
   };
 
   const rebrandTop = <
