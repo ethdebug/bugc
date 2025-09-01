@@ -4,13 +4,10 @@ import { TypeChecker } from "../typechecker";
 import { IrGenerator } from "../irgen/generator";
 import type { BinaryOpInstruction } from "../ir";
 import { analyzeModuleLiveness, analyzeLiveness } from "./analysis/liveness";
-import {
-  analyzeModuleMemory,
-  planFunctionMemory,
-} from "./analysis/memory";
+import { analyzeModuleMemory, planFunctionMemory } from "./analysis/memory";
 import { analyzeModuleBlockLayout, layoutBlocks } from "./analysis/layout";
 import { generateModule } from "./generator";
-import { generateFunction } from "./ir-handlers";
+import { generateFunction } from "./generation/function";
 
 describe("Constructor array storage", () => {
   it("should correctly store values in fixed-size arrays during construction", () => {

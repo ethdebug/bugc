@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generateModule } from "./generator";
-import { generateFunction } from "./ir-handlers";
+import { generateFunction } from "./generation/function";
 import type { IrFunction, IrModule, BasicBlock } from "../ir";
 import type { MemoryAllocation } from "./analysis/memory";
 

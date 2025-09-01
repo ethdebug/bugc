@@ -22,10 +22,7 @@ export const irSequence = [
 ] as const;
 
 // Bytecode sequence (parsing through bytecode generation)
-export const bytecodeSequence = [
-  ...irSequence,
-  evmGenerationPass,
-] as const;
+export const bytecodeSequence = [...irSequence, evmGenerationPass] as const;
 
 // Future sequences will go here:
 // export const debugSequence = [...bytecodeSequence, debugGenerationPass] as const;

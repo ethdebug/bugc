@@ -9,7 +9,7 @@ import { emitPush } from "./operations/push";
 import { serialize, calculateSize } from "./serialize";
 import type { MemoryInfo } from "./analysis/memory";
 import type { BlockInfo } from "./analysis/layout";
-import { generateFunction } from "./ir-handlers";
+import { generateFunction } from "./generation/function";
 import type { EvmError } from "./errors";
 import type { Instruction } from "../evm";
 

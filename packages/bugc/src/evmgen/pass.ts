@@ -38,17 +38,29 @@ export const pass: Pass<{
     try {
       // Analyze liveness
       const liveness = analyzeModuleLiveness(ir);
-      
+
       // Analyze memory requirements
       const memoryResult = analyzeModuleMemory(ir, liveness);
       if (!memoryResult.success) {
-        return Result.err(new EvmError(EvmErrorCode.INTERNAL_ERROR, memoryResult.messages.error?.[0]?.message ?? "Memory analysis failed"));
+        return Result.err(
+          new EvmError(
+            EvmErrorCode.INTERNAL_ERROR,
+            memoryResult.messages.error?.[0]?.message ??
+              "Memory analysis failed",
+          ),
+        );
       }
 
       // Analyze block layout
       const blockResult = analyzeModuleBlockLayout(ir);
       if (!blockResult.success) {
-        return Result.err(new EvmError(EvmErrorCode.INTERNAL_ERROR, blockResult.messages.error?.[0]?.message ?? "Block layout analysis failed"));
+        return Result.err(
+          new EvmError(
+            EvmErrorCode.INTERNAL_ERROR,
+            blockResult.messages.error?.[0]?.message ??
+              "Block layout analysis failed",
+          ),
+        );
       }
 
       // Generate bytecode
