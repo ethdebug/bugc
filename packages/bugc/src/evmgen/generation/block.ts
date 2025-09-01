@@ -12,48 +12,6 @@ import { generateInstruction, generateTerminator } from "./instruction";
 import { loadValue } from "./utils";
 
 /**
- * Generate code for phi nodes
- */
-export function generatePhis<S extends Stack>(
-  state: GenState<readonly [...S]>,
-  phis: Ir.PhiInstruction[],
-  predecessor: string,
-) {
-  return phis.reduce(
-    (state, phi) => generatePhi(state, phi, predecessor),
-    state,
-  );
-}
-
-export function generatePhi<S extends Stack>(
-  state: GenState<readonly [...S]>,
-  phi: Ir.PhiInstruction,
-  predecessor: string,
-): GenState<readonly [...S]> {
-  const source = phi.sources.get(predecessor);
-  if (!source) {
-    throw new EvmError(
-      EvmErrorCode.PHI_NODE_UNRESOLVED,
-      `Phi ${phi.dest} missing source from ${predecessor}`,
-    );
-  }
-
-  // Load source value and store to phi destination
-  const s1 = loadValue(state, source);
-  const allocation = state.memory.allocations[phi.dest];
-  if (allocation === undefined) {
-    throw new EvmError(
-      EvmErrorCode.MEMORY_ALLOCATION_FAILED,
-      `Phi destination ${phi.dest} not allocated`,
-    );
-  }
-
-  const s2 = emitPush(s1, BigInt(allocation.offset), { brand: "offset" });
-  const s3 = operations.MSTORE(s2);
-  return s3;
-}
-
-/**
  * Generate code for a basic block
  */
 export function generateBlock<S extends Stack>(
@@ -100,4 +58,46 @@ export function generateBlock<S extends Stack>(
   ) as GenState<Stack>;
 
   return currentState;
+}
+
+/**
+ * Generate code for phi nodes
+ */
+function generatePhis<S extends Stack>(
+  state: GenState<readonly [...S]>,
+  phis: Ir.PhiInstruction[],
+  predecessor: string,
+) {
+  return phis.reduce(
+    (state, phi) => generatePhi(state, phi, predecessor),
+    state,
+  );
+}
+
+function generatePhi<S extends Stack>(
+  state: GenState<readonly [...S]>,
+  phi: Ir.PhiInstruction,
+  predecessor: string,
+): GenState<readonly [...S]> {
+  const source = phi.sources.get(predecessor);
+  if (!source) {
+    throw new EvmError(
+      EvmErrorCode.PHI_NODE_UNRESOLVED,
+      `Phi ${phi.dest} missing source from ${predecessor}`,
+    );
+  }
+
+  // Load source value and store to phi destination
+  const s1 = loadValue(state, source);
+  const allocation = state.memory.allocations[phi.dest];
+  if (allocation === undefined) {
+    throw new EvmError(
+      EvmErrorCode.MEMORY_ALLOCATION_FAILED,
+      `Phi destination ${phi.dest} not allocated`,
+    );
+  }
+
+  const s2 = emitPush(s1, BigInt(allocation.offset), { brand: "offset" });
+  const s3 = operations.MSTORE(s2);
+  return s3;
 }
