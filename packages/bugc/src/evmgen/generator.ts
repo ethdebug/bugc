@@ -25,7 +25,7 @@ export function generateModule(
   runtime: number[];
   createInstructions?: Instruction[];
   runtimeInstructions: Instruction[];
-  warnings: EvmError[]
+  warnings: EvmError[];
 } {
   // Generate runtime function
   const runtimeResult = generateFunction(module.main, memory.main, blocks.main);
@@ -48,15 +48,14 @@ export function generateModule(
   }
 
   // Build complete deployment bytecode and get deployment wrapper instructions
-  const { deployBytes, deploymentWrapperInstructions } = buildDeploymentInstructions(
-    createBytes,
-    runtimeResult.bytecode,
-  );
+  const { deployBytes, deploymentWrapperInstructions } =
+    buildDeploymentInstructions(createBytes, runtimeResult.bytecode);
 
   // Combine constructor instructions with deployment wrapper
-  const finalCreateInstructions = allCreateInstructions.length > 0 || deploymentWrapperInstructions.length > 0
-    ? [...allCreateInstructions, ...deploymentWrapperInstructions]
-    : undefined;
+  const finalCreateInstructions =
+    allCreateInstructions.length > 0 || deploymentWrapperInstructions.length > 0
+      ? [...allCreateInstructions, ...deploymentWrapperInstructions]
+      : undefined;
 
   return {
     create: deployBytes,
@@ -150,7 +149,11 @@ function buildDeploymentInstructions(
   const deploymentWrapperBytes = serialize(s7.instructions);
 
   // Combine everything
-  const deployBytes = [...createBytes, ...deploymentWrapperBytes, ...runtimeBytes];
+  const deployBytes = [
+    ...createBytes,
+    ...deploymentWrapperBytes,
+    ...runtimeBytes,
+  ];
 
   return {
     deployBytes,

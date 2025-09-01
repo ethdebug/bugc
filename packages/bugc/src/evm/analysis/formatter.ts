@@ -18,14 +18,14 @@ export class EvmFormatter {
         let line = `${offset.toString().padStart(4, "0")}: ${inst.mnemonic}`;
         if (inst.immediates && inst.immediates.length > 0) {
           const dataHex = inst.immediates
-            .map(byte => byte.toString(16).padStart(2, "0"))
+            .map((byte) => byte.toString(16).padStart(2, "0"))
             .join("");
           line += ` 0x${dataHex}`;
         }
-        
+
         // Update offset for next instruction
         offset += 1 + (inst.immediates?.length || 0);
-        
+
         return line;
       })
       .join("\n");

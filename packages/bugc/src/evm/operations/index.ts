@@ -16,7 +16,7 @@ export {
   type Instruction,
   type UnsafeStateControls,
   type StateControls,
-  makeStateControls
+  makeStateControls,
 } from "./state";
 
 export { type Operations, makeOperations } from "./definitions";

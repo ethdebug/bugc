@@ -22,7 +22,6 @@ import { compile } from "../compiler";
 import { Result } from "../result";
 import type { BugError } from "../errors";
 
-
 type Phase = "ast" | "ir" | "bytecode";
 
 // Helper type to represent the compiler output

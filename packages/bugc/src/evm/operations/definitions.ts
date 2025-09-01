@@ -22,11 +22,7 @@ import { $ } from "./hkts";
 
 import { type Stack, type StackBrand } from "./stack";
 
-import {
-  type StateControls,
-  makeSpecifiers,
-  mapInstruction,
-} from "./state";
+import { type StateControls, makeSpecifiers, mapInstruction } from "./state";
 
 export type Operations<U, I> = ReturnType<typeof makeOperations<U, I>>;
 

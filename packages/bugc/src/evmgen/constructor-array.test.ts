@@ -82,7 +82,9 @@ code {}
     const { instructions } = generateFunction(createFunc, memory, layout);
 
     // Check instructions contain SSTORE operations
-    const sstoreInstructions = instructions.filter(inst => inst.mnemonic === "SSTORE");
+    const sstoreInstructions = instructions.filter(
+      (inst) => inst.mnemonic === "SSTORE",
+    );
     expect(sstoreInstructions.length).toBe(3);
 
     // Should have exactly 3 SSTORE operations
@@ -149,13 +151,17 @@ code {}
 
     // Should have 3 SSTORE instructions in the constructor
     const sstoreInstructions = result.createInstructions!.filter(
-      inst => inst.mnemonic === "SSTORE"
+      (inst) => inst.mnemonic === "SSTORE",
     );
     expect(sstoreInstructions).toHaveLength(3);
 
     // Should have deployment wrapper instructions
-    expect(result.createInstructions!.some(inst => inst.mnemonic === "CODECOPY")).toBe(true);
-    expect(result.createInstructions!.some(inst => inst.mnemonic === "RETURN")).toBe(true)
+    expect(
+      result.createInstructions!.some((inst) => inst.mnemonic === "CODECOPY"),
+    ).toBe(true);
+    expect(
+      result.createInstructions!.some((inst) => inst.mnemonic === "RETURN"),
+    ).toBe(true);
   });
 
   it("should not allocate memory for intermediate slot calculations", () => {

@@ -21,9 +21,7 @@ import type { StateControls } from "./state";
  * This matches DUP and SWAP opcode numbering where DUP1
  * duplicates the 1st item (top), DUP2 duplicates the 2nd, etc.
  */
-export const makeRebrands = <U, I>(
-  controls: StateControls<U, I>
-) => {
+export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
   const rebrand = <
     S extends Stack,
     Rebrands extends Record<number, StackBrand>,
@@ -32,7 +30,9 @@ export const makeRebrands = <U, I>(
     brands: Rebrands,
   ): $<U, [Rebranded<S, Rebrands>]> => {
     // Find the maximum position we need to rebrand
-    const positions = Object.keys(brands).map(Number).sort((a, b) => b - a);
+    const positions = Object.keys(brands)
+      .map(Number)
+      .sort((a, b) => b - a);
     if (positions.length === 0) {
       return state as $<U, [Rebranded<S, Rebrands>]>;
     }
@@ -51,9 +51,7 @@ export const makeRebrands = <U, I>(
 
       newState = controls.push(
         newState,
-        newBrand
-          ? controls.rebrand(originalItem, newBrand)
-          : originalItem
+        newBrand ? controls.rebrand(originalItem, newBrand) : originalItem,
       );
     }
 
@@ -67,7 +65,7 @@ export const makeRebrands = <U, I>(
   >(
     state: $<U, [readonly [A, ...S]]>,
     brand: B,
-  ): $<U, [readonly [B, ...S]]> => rebrand(state, { 1: brand })
+  ): $<U, [readonly [B, ...S]]> => rebrand(state, { 1: brand });
 
   return { rebrand, rebrandTop };
 };

@@ -126,10 +126,12 @@ describe("EVM Code Generator", () => {
       const { instructions } = generateFunction(func, memory, layout);
 
       // Should contain ADD instruction
-      expect(instructions.some(inst => inst.mnemonic === "ADD")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "ADD")).toBe(true);
 
       // Should have memory stores (MSTORE instructions)
-      expect(instructions.some(inst => inst.mnemonic === "MSTORE")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "MSTORE")).toBe(
+        true,
+      );
     });
 
     it("should handle jumps between blocks", () => {
@@ -177,14 +179,18 @@ describe("EVM Code Generator", () => {
       const { instructions } = generateFunction(func, memory, layout);
 
       // Should have JUMP instruction
-      expect(instructions.some(inst => inst.mnemonic === "JUMP")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "JUMP")).toBe(true);
 
       // Should have one JUMPDEST (only for the 'next' block which is jumped to)
-      const jumpdests = instructions.filter(inst => inst.mnemonic === "JUMPDEST");
+      const jumpdests = instructions.filter(
+        (inst) => inst.mnemonic === "JUMPDEST",
+      );
       expect(jumpdests).toHaveLength(1);
 
       // Should have PUSH2 for jump target
-      const push2Instructions = instructions.filter(inst => inst.mnemonic === "PUSH2");
+      const push2Instructions = instructions.filter(
+        (inst) => inst.mnemonic === "PUSH2",
+      );
       expect(push2Instructions).toHaveLength(1);
 
       // Target should be patched (not [0, 0])
@@ -263,14 +269,16 @@ describe("EVM Code Generator", () => {
       const { instructions } = generateFunction(func, memory, layout);
 
       // Should have JUMPI for conditional jump
-      expect(instructions.some(inst => inst.mnemonic === "JUMPI")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "JUMPI")).toBe(true);
 
       // Should have PUSH2 instructions for both targets
-      const push2Instructions = instructions.filter(inst => inst.mnemonic === "PUSH2");
+      const push2Instructions = instructions.filter(
+        (inst) => inst.mnemonic === "PUSH2",
+      );
       expect(push2Instructions.length).toBe(2);
 
       // Should have JUMP for unconditional fallthrough
-      expect(instructions.some(inst => inst.mnemonic === "JUMP")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "JUMP")).toBe(true);
     });
 
     it("should handle storage operations", () => {
@@ -334,7 +342,9 @@ describe("EVM Code Generator", () => {
       const { instructions } = generateFunction(func, memory, layout);
 
       // Should have SSTORE instruction
-      expect(instructions.some(inst => inst.mnemonic === "SSTORE")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "SSTORE")).toBe(
+        true,
+      );
     });
 
     it("should handle environment operations", () => {
@@ -383,8 +393,12 @@ describe("EVM Code Generator", () => {
       const { instructions } = generateFunction(func, memory, layout);
 
       // Should have CALLER and CALLVALUE instructions
-      expect(instructions.some(inst => inst.mnemonic === "CALLER")).toBe(true);
-      expect(instructions.some(inst => inst.mnemonic === "CALLVALUE")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "CALLER")).toBe(
+        true,
+      );
+      expect(instructions.some((inst) => inst.mnemonic === "CALLVALUE")).toBe(
+        true,
+      );
     });
 
     it("should handle array slot computation", () => {
@@ -474,17 +488,21 @@ describe("EVM Code Generator", () => {
       const { instructions } = generateFunction(func, memory, layout);
 
       // Should contain KECCAK256 for array slot computation
-      expect(instructions.some(inst => inst.mnemonic === "KECCAK256")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "KECCAK256")).toBe(
+        true,
+      );
 
       // Should contain MSTORE instructions for hash setup
-      const mstores = instructions.filter(inst => inst.mnemonic === "MSTORE");
+      const mstores = instructions.filter((inst) => inst.mnemonic === "MSTORE");
       expect(mstores.length).toBeGreaterThanOrEqual(1);
 
       // Should contain ADD for index offset
-      expect(instructions.some(inst => inst.mnemonic === "ADD")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "ADD")).toBe(true);
 
       // Should contain SSTORE for storage write
-      expect(instructions.some(inst => inst.mnemonic === "SSTORE")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "SSTORE")).toBe(
+        true,
+      );
     });
 
     it("should handle array element load", () => {
@@ -572,16 +590,18 @@ describe("EVM Code Generator", () => {
       const { instructions } = generateFunction(func, memory, layout);
 
       // Should compute array base with KECCAK256
-      expect(instructions.some(inst => inst.mnemonic === "KECCAK256")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "KECCAK256")).toBe(
+        true,
+      );
 
       // Should add index to base
-      expect(instructions.some(inst => inst.mnemonic === "ADD")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "ADD")).toBe(true);
 
       // Should load from storage
-      expect(instructions.some(inst => inst.mnemonic === "SLOAD")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "SLOAD")).toBe(true);
 
       // No STOP at the end since it's the last block
-      expect(instructions.some(inst => inst.mnemonic === "STOP")).toBe(false);
+      expect(instructions.some((inst) => inst.mnemonic === "STOP")).toBe(false);
     });
 
     it("should handle mapping slot computation", () => {
@@ -660,13 +680,19 @@ describe("EVM Code Generator", () => {
       const { instructions } = generateFunction(func, memory, layout);
 
       // Should have CALLER for msg.sender
-      expect(instructions.some(inst => inst.mnemonic === "CALLER")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "CALLER")).toBe(
+        true,
+      );
 
       // Should have KECCAK256 for mapping slot computation
-      expect(instructions.some(inst => inst.mnemonic === "KECCAK256")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "KECCAK256")).toBe(
+        true,
+      );
 
       // Should have SSTORE for final storage
-      expect(instructions.some(inst => inst.mnemonic === "SSTORE")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "SSTORE")).toBe(
+        true,
+      );
     });
 
     it("should handle mapping value load", () => {
@@ -743,16 +769,20 @@ describe("EVM Code Generator", () => {
       const { instructions } = generateFunction(func, memory, layout);
 
       // Should get msg.sender
-      expect(instructions.some(inst => inst.mnemonic === "CALLER")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "CALLER")).toBe(
+        true,
+      );
 
       // Should compute slot with KECCAK256
-      expect(instructions.some(inst => inst.mnemonic === "KECCAK256")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "KECCAK256")).toBe(
+        true,
+      );
 
       // Should load from storage
-      expect(instructions.some(inst => inst.mnemonic === "SLOAD")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "SLOAD")).toBe(true);
 
       // Should have proper memory operations for hash
-      const mstores = instructions.filter(inst => inst.mnemonic === "MSTORE");
+      const mstores = instructions.filter((inst) => inst.mnemonic === "MSTORE");
       expect(mstores.length).toBeGreaterThanOrEqual(2); // For key and baseSlot
     });
 
@@ -868,15 +898,17 @@ describe("EVM Code Generator", () => {
       const { instructions } = generateFunction(func, memory, layout);
 
       // Should have KECCAK256 operations for both mapping and array
-      const keccakInstructions = instructions.filter(inst => inst.mnemonic === "KECCAK256");
+      const keccakInstructions = instructions.filter(
+        (inst) => inst.mnemonic === "KECCAK256",
+      );
       // We expect at least 2 (one for mapping, one for array)
       expect(keccakInstructions.length).toBeGreaterThanOrEqual(2);
 
       // Should have ADD for index offset
-      expect(instructions.some(inst => inst.mnemonic === "ADD")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "ADD")).toBe(true);
 
       // Should load from storage
-      expect(instructions.some(inst => inst.mnemonic === "SLOAD")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "SLOAD")).toBe(true);
     });
   });
 
@@ -1004,8 +1036,12 @@ describe("EVM Code Generator", () => {
       expect(result.create!.length).toBeGreaterThan(result.runtime.length);
 
       // Should have CODECOPY and RETURN instructions for deployment
-      expect(result.createInstructions?.some(inst => inst.mnemonic === "CODECOPY")).toBe(true);
-      expect(result.createInstructions?.some(inst => inst.mnemonic === "RETURN")).toBe(true);
+      expect(
+        result.createInstructions?.some((inst) => inst.mnemonic === "CODECOPY"),
+      ).toBe(true);
+      expect(
+        result.createInstructions?.some((inst) => inst.mnemonic === "RETURN"),
+      ).toBe(true);
     });
 
     it("should handle local variable operations", () => {
@@ -1095,7 +1131,7 @@ describe("EVM Code Generator", () => {
       // Whether through stack manipulation or memory depends on the implementation
 
       // Should contain ADD for the increment
-      expect(instructions.some(inst => inst.mnemonic === "ADD")).toBe(true);
+      expect(instructions.some((inst) => inst.mnemonic === "ADD")).toBe(true);
     });
   });
 });
