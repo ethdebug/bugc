@@ -1,6 +1,6 @@
 import type { Stack } from "../evm";
 import type { GenState } from "./state";
-import { operations, type Operations } from "./emit";
+import { operations, type Operations } from "./operations";
 
 /**
  * Type-safe DUP operation that preserves irValue annotations

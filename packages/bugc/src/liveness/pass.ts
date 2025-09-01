@@ -18,7 +18,6 @@ export const pass: Pass<{
     ir: IrModule;
   };
   adds: {
-    ir: IrModule;
     liveness: LivenessInfo;
   };
   error: never;
@@ -27,8 +26,7 @@ export const pass: Pass<{
     const liveness = analyzeModuleLiveness(ir);
 
     return Result.ok({
-      ir, // Pass through unchanged
-      liveness,
+      liveness
     });
   },
 };

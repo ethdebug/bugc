@@ -7,7 +7,7 @@ import type { Stack, StackBrand } from "../evm";
 import { EvmError, EvmErrorCode } from "./errors";
 import { Severity } from "../result";
 import type { GenState } from "./state";
-import { rebrandTop, operations } from "./emit";
+import { rebrandTop, operations } from "./operations";
 import { emitPush } from "./push";
 import { emitDup } from "./dup";
 import { serialize, calculateSize } from "./serialize";
