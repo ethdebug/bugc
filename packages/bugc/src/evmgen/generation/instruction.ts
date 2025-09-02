@@ -6,9 +6,7 @@ import * as Ir from "../../ir";
 import type { Stack, StackBrand } from "../../evm";
 import { EvmError, EvmErrorCode } from "../errors";
 import { Severity } from "../../result";
-import type { GenState } from "../operations/state";
-import { rebrandTop, operations } from "../operations/operations";
-import { emitPush } from "../operations/push";
+import { type GenState, rebrandTop, operations } from "../operations";
 import { loadValue, storeValueIfNeeded } from "./utils";
 
 /**
@@ -114,7 +112,7 @@ export function generateUnary<S extends Stack>(
     not: operations.NOT,
     neg: (state) => {
       const s0 = rebrandTop(state, "b");
-      const s1 = emitPush(s0, 0n, { brand: "a" });
+      const s1 = operations.PUSHn(s0, 0n, { brand: "a" });
       return operations.SUB(s1);
     },
   };
@@ -131,7 +129,7 @@ export function generateConst<S extends Stack>(
   state: GenState<S>,
   inst: Ir.ConstInstruction,
 ): GenState<readonly ["value", ...S]> {
-  const s = emitPush(state, BigInt(inst.value));
+  const s = operations.PUSHn(state, BigInt(inst.value));
   return storeValueIfNeeded(s, inst.dest);
 }
 
@@ -142,6 +140,8 @@ export function generateLoadLocal<S extends Stack>(
   state: GenState<S>,
   inst: Ir.LoadLocalInstruction,
 ): GenState<readonly ["value", ...S]> {
+  const { PUSHn, MLOAD } = operations;
+
   const allocation = state.memory.allocations[inst.local];
   if (allocation === undefined) {
     throw new EvmError(
@@ -150,8 +150,8 @@ export function generateLoadLocal<S extends Stack>(
     );
   }
 
-  const s1 = emitPush(state, BigInt(allocation.offset), { brand: "offset" });
-  const s2 = operations.MLOAD(s1);
+  const s1 = PUSHn(state, BigInt(allocation.offset), { brand: "offset" });
+  const s2 = MLOAD(s1);
 
   return storeValueIfNeeded(s2, inst.dest);
 }
@@ -172,7 +172,7 @@ export function generateStoreLocal<S extends Stack>(
   }
 
   const s1 = loadValue(state, inst.value);
-  const s2 = emitPush(s1, BigInt(allocation.offset), { brand: "offset" });
+  const s2 = operations.PUSHn(s1, BigInt(allocation.offset), { brand: "offset" });
   return operations.MSTORE(s2);
 }
 
@@ -234,7 +234,7 @@ export function generateLength<S extends Stack>(
   if (objectType.kind === "array") {
     if (objectType.size !== undefined) {
       // Fixed-size array - emit the constant
-      const s1 = emitPush(state, BigInt(objectType.size));
+      const s1 = operations.PUSHn(state, BigInt(objectType.size));
       return storeValueIfNeeded(s1, inst.dest);
     } else {
       // Dynamic array - length is stored at the array's base slot
@@ -247,7 +247,7 @@ export function generateLength<S extends Stack>(
   if (objectType.kind === "bytes") {
     if (objectType.size !== undefined) {
       // Fixed-size bytes - emit the constant
-      const s1 = emitPush(state, BigInt(objectType.size));
+      const s1 = operations.PUSHn(state, BigInt(objectType.size));
       return storeValueIfNeeded(s1, inst.dest);
     }
   }
@@ -265,12 +265,12 @@ export function generateHashOp<S extends Stack>(
   const s1 = loadValue(state, inst.value);
 
   // Store value at memory offset 0
-  const s2 = emitPush(s1, 0n, { brand: "offset" });
+  const s2 = operations.PUSHn(s1, 0n, { brand: "offset" });
   const s3 = operations.MSTORE(s2);
 
   // Hash 32 bytes starting at offset 0
-  const s4 = emitPush(s3, 32n, { brand: "size" });
-  const s5 = emitPush(s4, 0n, { brand: "offset" });
+  const s4 = operations.PUSHn(s3, 32n, { brand: "size" });
+  const s5 = operations.PUSHn(s4, 0n, { brand: "offset" });
   const s6 = operations.KECCAK256(s5);
 
   const s7 = rebrandTop(s6, "value");
@@ -285,15 +285,15 @@ export function generateComputeSlot<S extends Stack>(
   // store key then baseSlot in memory as 32 bytes each
   const s1 = loadValue(state, inst.key);
 
-  const s2 = emitPush(s1, 0n, { brand: "offset" });
+  const s2 = operations.PUSHn(s1, 0n, { brand: "offset" });
   const s3 = operations.MSTORE(s2);
 
   const s4 = loadValue(s3, inst.baseSlot);
-  const s5 = emitPush(s4, 32n, { brand: "offset" });
+  const s5 = operations.PUSHn(s4, 32n, { brand: "offset" });
   const s6 = operations.MSTORE(s5);
 
-  const s7 = emitPush(s6, 64n, { brand: "size" });
-  const s8 = emitPush(s7, 0n, { brand: "offset" });
+  const s7 = operations.PUSHn(s6, 64n, { brand: "size" });
+  const s8 = operations.PUSHn(s7, 0n, { brand: "offset" });
   const s9 = operations.KECCAK256(s8, { produces: ["value"] as const });
 
   return storeValueIfNeeded(s9, inst.dest);
@@ -308,12 +308,12 @@ export function generateComputeArraySlot<S extends Stack>(
   // s1 has baseSlot on tracked stack
 
   // Store baseSlot at memory offset 0
-  const s2 = emitPush(s1, 0n, { brand: "offset" });
+  const s2 = operations.PUSHn(s1, 0n, { brand: "offset" });
   const s3 = operations.MSTORE(s2);
 
   // Hash 32 bytes starting at offset 0
-  const s4 = emitPush(s3, 32n, { brand: "size" });
-  const s5 = emitPush(s4, 0n, { brand: "offset" });
+  const s4 = operations.PUSHn(s3, 32n, { brand: "size" });
+  const s5 = operations.PUSHn(s4, 0n, { brand: "offset" });
   const s6 = operations.KECCAK256(s5);
 
   const s7 = rebrandTop(s6, "value");

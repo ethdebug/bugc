@@ -4,7 +4,7 @@
 
 import * as Ir from "../../ir";
 import type { Stack } from "../../evm";
-import type { GenState } from "../operations/state";
+import type { GenState } from "../operations";
 import type { FunctionBlockLayout } from "../analysis/layout";
 import type { FunctionMemoryLayout } from "../analysis/memory";
 import { generateBlock } from "./block";

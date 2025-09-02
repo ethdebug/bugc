@@ -27,5 +27,4 @@ export { generateBlock } from "./generation/block";
 export { generateInstruction } from "./generation/instruction";
 
 // Operations and state management
-export type { GenState } from "./operations/state";
-export { operations } from "./operations/operations";
+export { type GenState, operations } from "./operations";

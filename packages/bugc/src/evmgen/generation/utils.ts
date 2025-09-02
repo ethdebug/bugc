@@ -4,11 +4,7 @@
 
 import * as Ir from "../../ir";
 import type { Stack } from "../../evm";
-import type { GenState } from "../operations/state";
-import { rebrandTop } from "../operations/operations";
-import { emitPush } from "../operations/push";
-import { emitDup } from "../operations/dup";
-import { operations } from "../operations/operations";
+import { type GenState, rebrandTop, operations } from "../operations";
 
 /**
  * Get the ID for a value
@@ -58,7 +54,7 @@ export function loadValue<S extends Stack>(
 
   if (value.kind === "const") {
     // Push constant directly and annotate it
-    const newState = emitPush(state, BigInt(value.value));
+    const newState = operations.PUSHn(state, BigInt(value.value));
     return annotateTop(newState, id);
   }
 
@@ -67,13 +63,13 @@ export function loadValue<S extends Stack>(
   const stackPos = state.stack.findIndex(({ irValue }) => irValue === id) + 1;
   if (stackPos > 0 && stackPos <= 16) {
     // Cast is safe - we know DUP produces an item and we're rebranding it to "value"
-    return rebrandTop(emitDup(state, stackPos), "value");
+    return rebrandTop(operations.DUPn(state, stackPos), "value");
   }
 
   // Check if in memory
   if (id in state.memory.allocations) {
     const offset = state.memory.allocations[id].offset;
-    const s1 = emitPush(state, BigInt(offset), { brand: "offset" });
+    const s1 = operations.PUSHn(state, BigInt(offset), { brand: "offset" });
     const s2 = operations.MLOAD(s1);
     // Annotate the loaded value
     return annotateTop(s2, id);
@@ -97,7 +93,7 @@ export function storeValueIfNeeded<S extends Stack>(
     return s0;
   }
 
-  const s1 = emitPush(s0, BigInt(allocation.offset), { brand: "offset" });
+  const s1 = operations.PUSHn(s0, BigInt(allocation.offset), { brand: "offset" });
   const s2 = operations.DUP2(s1);
   const s3 = operations.SWAP1(s2);
   return operations.MSTORE(s3);

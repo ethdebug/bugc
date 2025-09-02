@@ -5,9 +5,7 @@
 import * as Ir from "../../ir";
 import type { Stack } from "../../evm";
 import { EvmError, EvmErrorCode } from "../errors";
-import type { GenState } from "../operations/state";
-import { rebrandTop, operations } from "../operations/operations";
-import { emitPush } from "../operations/push";
+import { type GenState, rebrandTop, operations } from "../operations";
 import { generateInstruction } from "./instruction";
 import { loadValue, valueId } from "./utils";
 
@@ -97,7 +95,7 @@ function generatePhi<S extends Stack>(
     );
   }
 
-  const s2 = emitPush(s1, BigInt(allocation.offset), { brand: "offset" });
+  const s2 = operations.PUSHn(s1, BigInt(allocation.offset), { brand: "offset" });
   const s3 = operations.MSTORE(s2);
   return s3;
 }
@@ -125,17 +123,17 @@ function generateTerminator<S extends Stack>(
           // Allocate memory for it (simplified - assuming we track free pointer elsewhere)
           offset = state.memory.freePointer;
           const s1 = loadValue(state, term.value);
-          const s2 = emitPush(s1, BigInt(offset), { brand: "offset" });
+          const s2 = operations.PUSHn(s1, BigInt(offset), { brand: "offset" });
           const s4 = operations.MSTORE(s2);
           // Now return from that memory location
-          const s5 = emitPush(s4, 32n, { brand: "size" });
-          const s6 = emitPush(s5, BigInt(offset), { brand: "offset" });
+          const s5 = operations.PUSHn(s4, 32n, { brand: "size" });
+          const s6 = operations.PUSHn(s5, BigInt(offset), { brand: "offset" });
           return operations.RETURN(s6);
         } else {
           // Value already in memory, return from there
           offset = allocation.offset;
-          const s1 = emitPush(state, 32n, { brand: "size" });
-          const s2 = emitPush(s1, BigInt(offset), { brand: "offset" });
+          const s1 = operations.PUSHn(state, 32n, { brand: "size" });
+          const s2 = operations.PUSHn(s1, BigInt(offset), { brand: "offset" });
           return operations.RETURN(s2);
         }
       } else {

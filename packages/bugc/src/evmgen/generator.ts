@@ -3,9 +3,7 @@
  */
 
 import type * as Ir from "../ir";
-import type { GenState } from "./operations/state";
-import { operations } from "./operations/operations";
-import { emitPush } from "./operations/push";
+import { type GenState, operations } from "./operations";
 import { serialize, calculateSize } from "./serialize";
 import type { MemoryInfo } from "./analysis/memory";
 import type { BlockInfo } from "./analysis/layout";
@@ -98,12 +96,12 @@ function calculateDeploymentSize(
 
     // Build deployment wrapper instructions
     const testState = state;
-    const s1 = emitPush(testState, runtimeLength, { brand: "size" });
-    const s2 = emitPush(s1, runtimeOffset, { brand: "offset" });
-    const s3 = emitPush(s2, 0n, { brand: "destOffset" });
+    const s1 = operations.PUSHn(testState, runtimeLength, { brand: "size" });
+    const s2 = operations.PUSHn(s1, runtimeOffset, { brand: "offset" });
+    const s3 = operations.PUSHn(s2, 0n, { brand: "destOffset" });
     const s4 = operations.CODECOPY(s3);
-    const s5 = emitPush(s4, runtimeLength, { brand: "size" });
-    const s6 = emitPush(s5, 0n, { brand: "offset" });
+    const s5 = operations.PUSHn(s4, runtimeLength, { brand: "size" });
+    const s6 = operations.PUSHn(s5, 0n, { brand: "offset" });
     const s7 = operations.RETURN(s6);
 
     deploymentPrefixSize = calculateSize(s7.instructions);
@@ -138,12 +136,12 @@ function buildDeploymentInstructions(
   const runtimeLength = BigInt(runtimeBytes.length);
 
   // Build deployment wrapper
-  const s1 = emitPush(state, runtimeLength, { brand: "size" });
-  const s2 = emitPush(s1, runtimeOffset, { brand: "offset" });
-  const s3 = emitPush(s2, 0n, { brand: "destOffset" });
+  const s1 = operations.PUSHn(state, runtimeLength, { brand: "size" });
+  const s2 = operations.PUSHn(s1, runtimeOffset, { brand: "offset" });
+  const s3 = operations.PUSHn(s2, 0n, { brand: "destOffset" });
   const s4 = operations.CODECOPY(s3);
-  const s5 = emitPush(s4, runtimeLength, { brand: "size" });
-  const s6 = emitPush(s5, 0n, { brand: "offset" });
+  const s5 = operations.PUSHn(s4, runtimeLength, { brand: "size" });
+  const s6 = operations.PUSHn(s5, 0n, { brand: "offset" });
   const s7 = operations.RETURN(s6);
 
   const deploymentWrapperBytes = serialize(s7.instructions);
