@@ -7,6 +7,5 @@ export {
   pipe,
   operations,
   rebrand,
-  rebrandTop
+  rebrandTop,
 } from "./operations";
-

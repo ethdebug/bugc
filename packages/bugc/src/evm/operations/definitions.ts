@@ -989,7 +989,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x80, mnemonic: "DUP1" } as const,
       (instruction) =>
-        () => <A extends StackBrand, S extends Stack>(
+        () =>
+        <A extends StackBrand, S extends Stack>(
           initialState: $<U, [readonly [A, ...S]]>,
         ): $<U, [readonly [A, A, ...S]]> => {
           // DUP1 duplicates the top stack item
@@ -1004,7 +1005,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x81, mnemonic: "DUP2" } as const,
       (instruction) =>
-        () => <A extends StackBrand, B extends StackBrand, S extends Stack>(
+        () =>
+        <A extends StackBrand, B extends StackBrand, S extends Stack>(
           initialState: $<U, [readonly [A, B, ...S]]>,
         ): $<U, [readonly [B, A, B, ...S]]> => {
           const [_a, b] = controls.topN(initialState, 2);
@@ -1017,7 +1019,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x82, mnemonic: "DUP3" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1035,7 +1038,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x83, mnemonic: "DUP4" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1054,7 +1058,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x84, mnemonic: "DUP5" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1074,7 +1079,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x85, mnemonic: "DUP6" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1095,7 +1101,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x86, mnemonic: "DUP7" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1117,7 +1124,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x87, mnemonic: "DUP8" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1143,7 +1151,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x88, mnemonic: "DUP9" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1170,7 +1179,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x89, mnemonic: "DUP10" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1198,7 +1208,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x8a, mnemonic: "DUP11" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1230,7 +1241,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x8b, mnemonic: "DUP12" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1263,7 +1275,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x8c, mnemonic: "DUP13" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1298,7 +1311,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x8d, mnemonic: "DUP14" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1334,7 +1348,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x8e, mnemonic: "DUP15" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1371,7 +1386,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x8f, mnemonic: "DUP16" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1430,7 +1446,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x90, mnemonic: "SWAP1" } as const,
       (instruction) =>
-        () => <A extends StackBrand, B extends StackBrand, S extends Stack>(
+        () =>
+        <A extends StackBrand, B extends StackBrand, S extends Stack>(
           initialState: $<U, [readonly [A, B, ...S]]>,
         ): $<U, [readonly [B, A, ...S]]> => {
           // SWAP1 exchanges 1st and 2nd stack items
@@ -1452,7 +1469,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x91, mnemonic: "SWAP2" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1476,7 +1494,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x92, mnemonic: "SWAP3" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1502,7 +1521,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x93, mnemonic: "SWAP4" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1530,7 +1550,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x94, mnemonic: "SWAP5" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1555,7 +1576,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x95, mnemonic: "SWAP6" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1582,7 +1604,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x96, mnemonic: "SWAP7" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1611,7 +1634,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x97, mnemonic: "SWAP8" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1642,7 +1666,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x98, mnemonic: "SWAP9" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1678,7 +1703,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x99, mnemonic: "SWAP10" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1719,7 +1745,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x9a, mnemonic: "SWAP11" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1762,7 +1789,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x9b, mnemonic: "SWAP12" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1807,7 +1835,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x9c, mnemonic: "SWAP13" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1857,7 +1886,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x9d, mnemonic: "SWAP14" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1909,7 +1939,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x9e, mnemonic: "SWAP15" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,
@@ -1961,7 +1992,8 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x9f, mnemonic: "SWAP16" } as const,
       (instruction) =>
-        () => <
+        () =>
+        <
           A extends StackBrand,
           B extends StackBrand,
           C extends StackBrand,

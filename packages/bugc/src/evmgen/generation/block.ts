@@ -25,14 +25,13 @@ export function generateBlock<S extends Stack>(
       // Record block offset for jump patching
       const blockOffset = state.instructions.length;
 
-      let result = builder
-        .then((s) => ({
-          ...s,
-          blockOffsets: {
-            ...s.blockOffsets,
-            [block.id]: blockOffset,
-          },
-        }));
+      let result = builder.then((s) => ({
+        ...s,
+        blockOffsets: {
+          ...s.blockOffsets,
+          [block.id]: blockOffset,
+        },
+      }));
 
       // Set JUMPDEST for non-first blocks
       if (!isFirstBlock) {
@@ -64,10 +63,12 @@ function generatePhis<S extends Stack>(
   phis: Ir.PhiInstruction[],
   predecessor: string,
 ): Transition<S, S> {
-  return phis.reduce(
-    (builder, phi) => builder.then(generatePhi(phi, predecessor)),
-    pipe<S>(),
-  ).done();
+  return phis
+    .reduce(
+      (builder, phi) => builder.then(generatePhi(phi, predecessor)),
+      pipe<S>(),
+    )
+    .done();
 }
 
 function generatePhi<S extends Stack>(
@@ -84,22 +85,24 @@ function generatePhi<S extends Stack>(
     );
   }
 
-  return pipe<S>()
-    // Load source value and store to phi destination
-    .then(loadValue(source))
-    .peek((state, builder) => {
-      const allocation = state.memory.allocations[phi.dest];
-      if (allocation === undefined) {
-        throw new EvmError(
-          EvmErrorCode.MEMORY_ALLOCATION_FAILED,
-          `Phi destination ${phi.dest} not allocated`,
-        );
-      }
-      return builder
-        .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
-        .then(MSTORE())
-    })
-    .done();
+  return (
+    pipe<S>()
+      // Load source value and store to phi destination
+      .then(loadValue(source))
+      .peek((state, builder) => {
+        const allocation = state.memory.allocations[phi.dest];
+        if (allocation === undefined) {
+          throw new EvmError(
+            EvmErrorCode.MEMORY_ALLOCATION_FAILED,
+            `Phi destination ${phi.dest} not allocated`,
+          );
+        }
+        return builder
+          .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
+          .then(MSTORE());
+      })
+      .done()
+  );
 }
 
 /**
@@ -127,14 +130,16 @@ function generateTerminator<S extends Stack>(
               // Value is on stack, need to store it first
               // Allocate memory for it (simplified - assuming we track free pointer elsewhere)
               const offset = state.memory.freePointer;
-              return builder
-                .then(loadValue(value))
-                .then(PUSHn(BigInt(offset)), { as: "offset" })
-                .then(MSTORE())
-                // Now return from that memory location
-                .then(PUSHn(32n), { as: "size" })
-                .then(PUSHn(BigInt(offset)), { as: "offset" })
-                .then(RETURN());
+              return (
+                builder
+                  .then(loadValue(value))
+                  .then(PUSHn(BigInt(offset)), { as: "offset" })
+                  .then(MSTORE())
+                  // Now return from that memory location
+                  .then(PUSHn(32n), { as: "size" })
+                  .then(PUSHn(BigInt(offset)), { as: "offset" })
+                  .then(RETURN())
+              );
             } else {
               // Value already in memory, return from there
               const offset = allocation.offset;
@@ -146,9 +151,7 @@ function generateTerminator<S extends Stack>(
           })
           .done();
       } else {
-        return isLastBlock
-          ? (state) => state
-          : pipe<S>().then(STOP()).done();
+        return isLastBlock ? (state) => state : pipe<S>().then(STOP()).done();
       }
     }
 

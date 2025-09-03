@@ -9,7 +9,10 @@ import { Severity } from "../../result";
 import {
   type GenState,
   type Transition,
-  pipe, rebrandTop, operations } from "../operations";
+  pipe,
+  rebrandTop,
+  operations,
+} from "../operations";
 import { loadValue, storeValueIfNeeded } from "./utils";
 
 /**
@@ -67,19 +70,7 @@ export function generateInstruction<S extends Stack>(
 export function generateBinary<S extends Stack>(
   inst: Ir.BinaryOpInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const {
-    ADD,
-    SUB,
-    MUL,
-    DIV,
-    MOD,
-    EQ,
-    NOT,
-    LT,
-    GT,
-    AND,
-    OR
-  } = operations;
+  const { ADD, SUB, MUL, DIV, MOD, EQ, NOT, LT, GT, AND, OR } = operations;
 
   const map: {
     [O in Ir.BinaryOp]: (
@@ -134,9 +125,9 @@ export function generateUnary<S extends Stack>(
     not: NOT(),
     neg: pipe<readonly ["a", ...S]>()
       .then(rebrandTop("b"))
-      .then(PUSHn(0n, { brand: "a" }))
+      .then(PUSHn(0n), { as: "a" })
       .then(SUB())
-      .done()
+      .done(),
   };
 
   return pipe<S>()
@@ -181,8 +172,7 @@ export function generateLoadLocal<S extends Stack>(
       return builder
         .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
         .then(MLOAD())
-        .then(storeValueIfNeeded(inst.dest))
-        ;
+        .then(storeValueIfNeeded(inst.dest));
     })
     .done();
 }
@@ -193,24 +183,24 @@ export function generateLoadLocal<S extends Stack>(
 export function generateStoreLocal<S extends Stack>(
   inst: Ir.StoreLocalInstruction,
 ): Transition<S, S> {
+  const { PUSHn, MSTORE } = operations;
 
-    const { PUSHn, MSTORE } = operations;
+  return pipe<S>()
+    .peek((state, builder) => {
+      const allocation = state.memory.allocations[inst.local];
+      if (allocation === undefined) {
+        throw new EvmError(
+          EvmErrorCode.MEMORY_ALLOCATION_FAILED,
+          `Local ${inst.local} not allocated in memory`,
+        );
+      }
 
-    return pipe<S>()
-      .peek((state, builder) => {
-        const allocation = state.memory.allocations[inst.local];
-        if (allocation === undefined) {
-          throw new EvmError(
-            EvmErrorCode.MEMORY_ALLOCATION_FAILED,
-            `Local ${inst.local} not allocated in memory`,
-          );
-        }
-
-        return builder.then(loadValue(inst.value))
-          .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
-          .then(MSTORE())
-      })
-      .done();
+      return builder
+        .then(loadValue(inst.value))
+        .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
+        .then(MSTORE());
+    })
+    .done();
 }
 
 /**
@@ -330,20 +320,22 @@ function generateComputeSlot<S extends Stack>(
 ): Transition<S, readonly ["value", ...S]> {
   const { PUSHn, MSTORE, KECCAK256 } = operations;
 
-  return pipe<S>()
-    // store key then baseSlot in memory as 32 bytes each
-    .then(loadValue(inst.key))
-    .then(PUSHn(0n), { as: "offset" })
-    .then(MSTORE())
+  return (
+    pipe<S>()
+      // store key then baseSlot in memory as 32 bytes each
+      .then(loadValue(inst.key))
+      .then(PUSHn(0n), { as: "offset" })
+      .then(MSTORE())
 
-    .then(loadValue(inst.baseSlot))
-    .then(PUSHn(32n), { as: "offset" })
-    .then(MSTORE())
-    .then(PUSHn(64n), { as: "size" })
-    .then(PUSHn(0n), { as: "offset" })
-    .then(KECCAK256(), { as: "value" })
-    .then(storeValueIfNeeded(inst.dest))
-    .done();
+      .then(loadValue(inst.baseSlot))
+      .then(PUSHn(32n), { as: "offset" })
+      .then(MSTORE())
+      .then(PUSHn(64n), { as: "size" })
+      .then(PUSHn(0n), { as: "offset" })
+      .then(KECCAK256(), { as: "value" })
+      .then(storeValueIfNeeded(inst.dest))
+      .done()
+  );
 }
 
 function generateComputeArraySlot<S extends Stack>(
@@ -352,16 +344,18 @@ function generateComputeArraySlot<S extends Stack>(
   const { PUSHn, MSTORE, KECCAK256 } = operations;
 
   // For arrays: keccak256(baseSlot)
-  return pipe<readonly [...S]>()
-    // Store baseSlot at memory offset 0
-    .then(loadValue(inst.baseSlot))
-    .then(PUSHn(0n), { as: "offset" })
-    .then(MSTORE())
+  return (
+    pipe<readonly [...S]>()
+      // Store baseSlot at memory offset 0
+      .then(loadValue(inst.baseSlot))
+      .then(PUSHn(0n), { as: "offset" })
+      .then(MSTORE())
 
-    // Hash 32 bytes starting at offset 0
-    .then(PUSHn(32n), { as: "size" })
-    .then(PUSHn(0n), { as: "offset" })
-    .then(KECCAK256(), { as: "value" })
-    .then(storeValueIfNeeded(inst.dest))
-    .done();
+      // Hash 32 bytes starting at offset 0
+      .then(PUSHn(32n), { as: "size" })
+      .then(PUSHn(0n), { as: "offset" })
+      .then(KECCAK256(), { as: "value" })
+      .then(storeValueIfNeeded(inst.dest))
+      .done()
+  );
 }

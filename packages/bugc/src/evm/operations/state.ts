@@ -189,19 +189,17 @@ export const makeSpecifiers = <U, I>(controls: StateControls<U, I>) => {
       idPrefix,
     }: MakeOperationOptions<C, P>) =>
     <T extends Instruction>(instruction: T) =>
-    <P2 extends Stack = P>(
-      options?: { produces: P2 },
-    ) =>
+    () =>
     <S extends Stack>(
       initialState: $<U, [readonly [...C, ...S]]>,
-    ): $<U, [readonly [...P2, ...S]]> =>
+    ): $<U, [readonly [...P, ...S]]> =>
       executeOperation(
         initialState,
         consumes,
         produces,
         instruction,
         idPrefix,
-        options,
+        undefined,
       );
 
   /**
@@ -216,20 +214,17 @@ export const makeSpecifiers = <U, I>(controls: StateControls<U, I>) => {
       idPrefix,
     }: MakeOperationOptions<C, P>) =>
     <T extends Instruction>(instruction: T) =>
-    <P2 extends Stack = P>(
-      immediates: number[],
-      options?: { produces: P2 },
-    ) =>
+    (immediates: number[]) =>
     <S extends Stack>(
       initialState: $<U, [readonly [...C, ...S]]>,
-    ): $<U, [readonly [...P2, ...S]]> =>
+    ): $<U, [readonly [...P, ...S]]> =>
       executeOperation(
         initialState,
         consumes,
         produces,
         { ...instruction, immediates },
         idPrefix,
-        options,
+        undefined,
       );
 
   return {

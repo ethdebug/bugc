@@ -22,52 +22,46 @@ import type { StateControls } from "./state";
  * duplicates the 1st item (top), DUP2 duplicates the 2nd, etc.
  */
 export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
-  const rebrand = <
-    Rebrands extends Record<number, StackBrand>,
-  >(
-    brands: Rebrands,
-  ) => <S extends Stack>(
-    state: $<U, [readonly [...S]]>,
-  ): $<U, [Rebranded<S, Rebrands>]> => {
-    // Find the maximum position we need to rebrand
-    const positions = Object.keys(brands)
-      .map(Number)
-      .sort((a, b) => b - a);
+  const rebrand =
+    <Rebrands extends Record<number, StackBrand>>(brands: Rebrands) =>
+    <S extends Stack>(
+      state: $<U, [readonly [...S]]>,
+    ): $<U, [Rebranded<S, Rebrands>]> => {
+      // Find the maximum position we need to rebrand
+      const positions = Object.keys(brands)
+        .map(Number)
+        .sort((a, b) => b - a);
 
-    if (positions.length === 0) {
-      return state as $<U, [Rebranded<S, Rebrands>]>;
-    }
+      if (positions.length === 0) {
+        return state as $<U, [Rebranded<S, Rebrands>]>;
+      }
 
-    const maxPosition = positions[0];
+      const maxPosition = positions[0];
 
-    // Pop the top N items from the stack
-    const items = controls.topN(state, maxPosition);
-    const poppedState = controls.popN(state, maxPosition);
+      // Pop the top N items from the stack
+      const items = controls.topN(state, maxPosition);
+      const poppedState = controls.popN(state, maxPosition);
 
-    // Work backwards and push each item possibly rebranded
-    return items.reduceRight(
-      (accState, originalItem, i) =>
-        controls.push(
-          accState,
-          // note addition because stack offsets in user code use 1-index
-          i + 1 in brands
-            ? controls.rebrand(originalItem, brands[i + 1])
-            : originalItem,
-        ),
-      poppedState,
-    );
-  };
+      // Work backwards and push each item possibly rebranded
+      return items.reduceRight(
+        (accState, originalItem, i) =>
+          controls.push(
+            accState,
+            // note addition because stack offsets in user code use 1-index
+            i + 1 in brands
+              ? controls.rebrand(originalItem, brands[i + 1])
+              : originalItem,
+          ),
+        poppedState,
+      );
+    };
 
-  const rebrandTop = <
-    A extends StackBrand,
-    B extends StackBrand,
-  >(
-    brand: B,
-  ) => <
-    S extends Stack,
-  >(
-    state: $<U, [readonly [A, ...S]]>,
-  ): $<U, [readonly [B, ...S]]> => rebrand({ 1: brand })(state);
+  const rebrandTop =
+    <A extends StackBrand, B extends StackBrand>(brand: B) =>
+    <S extends Stack>(
+      state: $<U, [readonly [A, ...S]]>,
+    ): $<U, [readonly [B, ...S]]> =>
+      rebrand({ 1: brand })(state);
 
   return { rebrand, rebrandTop };
 };

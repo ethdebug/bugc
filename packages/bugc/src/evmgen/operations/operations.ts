@@ -13,8 +13,11 @@ import { type GenState, type StackItem, controls } from "./state";
 
 export const { rebrand, rebrandTop } = makeRebrands(controls);
 
-export type Transition<X extends Stack, Y extends Stack> =
-  GenericTransition<GenState<_ & Stack>, X, Y>;
+export type Transition<X extends Stack, Y extends Stack> = GenericTransition<
+  GenState<_ & Stack>,
+  X,
+  Y
+>;
 
 export const pipe = makePipe<
   GenState<_ & Stack>,
@@ -31,50 +34,39 @@ export type Operations = typeof operations;
 export const operations = {
   ...makeOperations(controls),
 
-  DUPn: <B extends StackBrand = "value">(
+  DUPn: <S extends Stack>(
     position: number,
-    options?: {
-      brand: B;
-    },
-  ) => <S extends Stack>(
-    state: GenState<S>
-  ): GenState<readonly [B, ...S]> => {
-    // Check if stack has enough elements
-    if (position < 1 || position > 16 || state.stack.length < position) {
-      throw new Error("Stack too short");
+  ): Transition<S, readonly ["value", ...S]> => {
+    if (position < 1 || position > 16) {
+      throw new Error(`Cannot reach stack position ${position}`);
     }
 
     type DUPn = {
       [O in keyof EvmOperations]: O extends `DUP${infer _N}` ? O : never;
     }[keyof EvmOperations];
 
-    const DUP = operations[`DUP${position}` as DUPn]() as <
-      S extends Stack,
-      P extends Stack
-    >(
-      state: GenState<S>,
-    ) => GenState<readonly [...P, ...S]>;
+    const DUP = operations[
+      `DUP${position}` as DUPn
+    ] as unknown as () => Transition<S, readonly [StackBrand, ...S]>;
 
-    return rebrandTop(
-      (options?.brand || "value") as B
-    )(DUP<S, readonly ["unknown"]>(state));
+    return pipe<S>()
+      .peek((state, builder) => {
+        // Check if stack has enough elements
+        if (state.stack.length < position) {
+          throw new Error("Stack too short");
+        }
+
+        return builder;
+      })
+      .then(DUP(), { as: "value" })
+      .done();
   },
 
-  PUSHn: <B extends StackBrand = "value">(
+  PUSHn: <S extends Stack>(
     value: bigint,
-    options?: {
-      brand: B;
-    },
-  ) => <S extends Stack>(
-    state: GenState<S>,
-  ): GenState<readonly [B, ...S]> => {
-    const pushOptions = options
-      ? { produces: [options.brand] as const }
-      : undefined;
-
+  ): Transition<S, readonly ["value", ...S]> => {
     if (value === 0n) {
-      const newState = operations.PUSH0<readonly [B]>(pushOptions)<S>(state);
-      return newState;
+      return operations.PUSH0();
     }
 
     const immediates = bigintToBytes(value);
@@ -82,23 +74,11 @@ export const operations = {
     type PUSHn = {
       [O in keyof EvmOperations]: O extends `PUSH${infer _N}` ? O : never;
     }[keyof EvmOperations];
-    const PUSH = operations[`PUSH${immediates.length}` as PUSHn] as <
-      P extends Stack,
-    >(
-      immediates: number[],
-      options?: {
-        produces: P;
-      },
-    ) => <
-    S extends Stack,
-    >(
-      state: GenState<S>,
-    ) => GenState<readonly [...P, ...S]>;
+    const PUSH = operations[`PUSH${immediates.length}` as PUSHn];
 
-    return PUSH<readonly [B]>(immediates, pushOptions)<S>(state);
-  }
+    return PUSH(immediates);
+  },
 };
-
 
 function bigintToBytes(value: bigint): number[] {
   if (value === 0n) return [];

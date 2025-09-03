@@ -93,7 +93,7 @@ function calculateDeploymentSize(
     // Calculate size based on current estimate
     const result = deploymentTransition(
       BigInt(createBytesLength + deploymentPrefixSize),
-      BigInt(runtimeBytesLength)
+      BigInt(runtimeBytesLength),
     )(state);
 
     deploymentPrefixSize = calculateSize(result.instructions);
@@ -145,10 +145,7 @@ function buildDeploymentInstructions(
   };
 }
 
-function deploymentTransition(
-  runtimeOffset: bigint,
-  runtimeLength: bigint
-) {
+function deploymentTransition(runtimeOffset: bigint, runtimeLength: bigint) {
   const { PUSHn, CODECOPY, RETURN } = operations;
 
   return pipe()

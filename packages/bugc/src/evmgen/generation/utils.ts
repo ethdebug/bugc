@@ -4,7 +4,12 @@
 
 import * as Ir from "../../ir";
 import type { Stack } from "../../evm";
-import { type GenState, type Transition, pipe, operations } from "../operations";
+import {
+  type GenState,
+  type Transition,
+  pipe,
+  operations,
+} from "../operations";
 
 /**
  * Get the ID for a value
@@ -23,26 +28,24 @@ export function valueId(val: Ir.Value): string {
 /**
  * Annotate the top stack item with an IR value
  */
-export const annotateTop = (
-  irValue: string,
-) => <S extends Stack>(
-  state: GenState<S>,
-): GenState<S> => {
-  if (state.stack.length === 0) {
-    throw new Error("Cannot annotate empty stack");
-  }
+export const annotateTop =
+  (irValue: string) =>
+  <S extends Stack>(state: GenState<S>): GenState<S> => {
+    if (state.stack.length === 0) {
+      throw new Error("Cannot annotate empty stack");
+    }
 
-  const newStack = [...state.stack];
-  newStack[0] = {
-    ...newStack[0],
-    irValue,
-  };
+    const newStack = [...state.stack];
+    newStack[0] = {
+      ...newStack[0],
+      irValue,
+    };
 
-  return {
-    ...state,
-    stack: newStack,
+    return {
+      ...state,
+      stack: newStack,
+    };
   };
-}
 
 /**
  * Load a value onto the stack, handling constants, stack values, and memory
@@ -65,10 +68,10 @@ export const loadValue = <S extends Stack>(
     .peek((state, builder) => {
       // Check if value is on stack
       // Note addition because DUP uses 1-based indexing
-      const stackPos = state.stack.findIndex(({ irValue }) => irValue === id) + 1;
+      const stackPos =
+        state.stack.findIndex(({ irValue }) => irValue === id) + 1;
       if (stackPos > 0 && stackPos <= 16) {
-        return builder
-          .then(DUPn(stackPos), { as: "value" });
+        return builder.then(DUPn(stackPos), { as: "value" });
       }
       // Check if in memory
       if (id in state.memory.allocations) {
@@ -80,12 +83,9 @@ export const loadValue = <S extends Stack>(
       }
 
       throw new Error(`Cannot load value ${id} - not in stack or memory`);
-
     })
     .done();
-
-
-}
+};
 
 /**
  * Store a value to memory if it has an allocation
@@ -95,19 +95,21 @@ export const storeValueIfNeeded = <S extends Stack>(
 ): Transition<readonly ["value", ...S], readonly ["value", ...S]> => {
   const { PUSHn, DUP2, SWAP1, MSTORE } = operations;
 
-  return pipe<readonly ["value", ...S]>()
-    // First annotate the top value with the destination ID
-    .then(annotateTop(destId))
-    .peek((state, builder) => {
-      const allocation = state.memory.allocations[destId];
-      if (allocation === undefined) {
-        return builder;
-      }
-      return builder
-        .then(PUSHn(BigInt(allocation.offset), { brand: "offset" }))
-        .then(DUP2())
-        .then(SWAP1())
-        .then(MSTORE())
-    })
-    .done();
-}
+  return (
+    pipe<readonly ["value", ...S]>()
+      // First annotate the top value with the destination ID
+      .then(annotateTop(destId))
+      .peek((state, builder) => {
+        const allocation = state.memory.allocations[destId];
+        if (allocation === undefined) {
+          return builder;
+        }
+        return builder
+          .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
+          .then(DUP2())
+          .then(SWAP1())
+          .then(MSTORE());
+      })
+      .done()
+  );
+};
