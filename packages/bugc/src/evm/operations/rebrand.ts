@@ -23,11 +23,11 @@ import type { StateControls } from "./state";
  */
 export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
   const rebrand = <
-    S extends Stack,
     Rebrands extends Record<number, StackBrand>,
   >(
-    state: $<U, [S]>,
     brands: Rebrands,
+  ) => <S extends Stack>(
+    state: $<U, [readonly [...S]]>,
   ): $<U, [Rebranded<S, Rebrands>]> => {
     // Find the maximum position we need to rebrand
     const positions = Object.keys(brands)
@@ -61,11 +61,13 @@ export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
   const rebrandTop = <
     A extends StackBrand,
     B extends StackBrand,
+  >(
+    brand: B,
+  ) => <
     S extends Stack,
   >(
     state: $<U, [readonly [A, ...S]]>,
-    brand: B,
-  ): $<U, [readonly [B, ...S]]> => rebrand(state, { 1: brand });
+  ): $<U, [readonly [B, ...S]]> => rebrand({ 1: brand })(state);
 
   return { rebrand, rebrandTop };
 };

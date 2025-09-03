@@ -23,4 +23,6 @@ export { type Operations, makeOperations } from "./definitions";
 
 export { makeRebrands } from "./rebrand";
 
+export { type Transition, makePipe } from "./builder";
+
 export type { $, _ } from "./hkts";

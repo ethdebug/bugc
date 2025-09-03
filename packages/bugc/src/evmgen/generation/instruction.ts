@@ -6,52 +6,56 @@ import * as Ir from "../../ir";
 import type { Stack, StackBrand } from "../../evm";
 import { EvmError, EvmErrorCode } from "../errors";
 import { Severity } from "../../result";
-import { type GenState, rebrandTop, operations } from "../operations";
+import {
+  type GenState,
+  type Transition,
+  pipe, rebrandTop, operations } from "../operations";
 import { loadValue, storeValueIfNeeded } from "./utils";
 
 /**
  * Generate code for a single IR instruction
  */
 export function generateInstruction<S extends Stack>(
-  state: GenState<S>,
   inst: Ir.IrInstruction,
-) {
+): Transition<S, Stack> {
   switch (inst.kind) {
     case "const":
-      return generateConst(state, inst);
+      return generateConst(inst);
     case "binary":
-      return generateBinary(state, inst);
+      return generateBinary(inst);
     case "unary":
-      return generateUnary(state, inst);
+      return generateUnary(inst);
     case "load_storage":
-      return generateLoadStorage(state, inst);
+      return generateLoadStorage(inst);
     case "store_storage":
-      return generateStoreStorage(state, inst);
+      return generateStoreStorage(inst);
     case "load_local":
-      return generateLoadLocal(state, inst);
+      return generateLoadLocal(inst);
     case "store_local":
-      return generateStoreLocal(state, inst);
+      return generateStoreLocal(inst);
     case "env":
-      return generateEnvOp(state, inst as Ir.EnvInstruction);
+      return generateEnvOp(inst);
     case "hash":
-      return generateHashOp(state, inst);
+      return generateHashOp(inst);
     case "length":
-      return generateLength(state, inst);
+      return generateLength(inst);
     case "compute_slot":
-      return generateComputeSlot(state, inst);
+      return generateComputeSlot(inst);
     case "compute_array_slot":
-      return generateComputeArraySlot(state, inst);
+      return generateComputeArraySlot(inst);
     default: {
-      // Add warning for unsupported instructions
-      const warning = new EvmError(
-        EvmErrorCode.UNSUPPORTED_INSTRUCTION,
-        inst.kind,
-        inst.loc,
-        Severity.Warning,
-      );
-      return {
-        ...state,
-        warnings: [...state.warnings, warning],
+      return (state) => {
+        // Add warning for unsupported instructions
+        const warning = new EvmError(
+          EvmErrorCode.UNSUPPORTED_INSTRUCTION,
+          inst.kind,
+          inst.loc,
+          Severity.Warning,
+        );
+        return {
+          ...state,
+          warnings: [...state.warnings, warning],
+        };
       };
     }
   }
@@ -61,194 +65,241 @@ export function generateInstruction<S extends Stack>(
  * Generate a binary operation
  */
 export function generateBinary<S extends Stack>(
-  state: GenState<S>,
   inst: Ir.BinaryOpInstruction,
-): GenState<readonly ["value", ...S]> {
-  const s1 = rebrandTop(loadValue(state, inst.left), "b");
-  const s2 = rebrandTop(loadValue(s1, inst.right), "a");
+): Transition<S, readonly ["value", ...S]> {
+  const {
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOD,
+    EQ,
+    NOT,
+    LT,
+    GT,
+    AND,
+    OR
+  } = operations;
 
   const map: {
-    [O in Ir.BinaryOp]: <S extends Stack>(
+    [O in Ir.BinaryOp]: (
       state: GenState<readonly ["a", "b", ...S]>,
     ) => GenState<readonly [StackBrand, ...S]>;
   } = {
-    add: operations.ADD,
-    sub: operations.SUB,
-    mul: operations.MUL,
-    div: operations.DIV,
-    mod: operations.MOD,
-    eq: operations.EQ,
-    ne: (state) =>
-      operations.NOT(operations.EQ(state, { produces: ["a"] as const })),
-    lt: operations.LT,
-    le: (state) =>
-      operations.NOT(operations.GT(state, { produces: ["a"] as const })),
-    gt: operations.GT,
-    ge: (state) =>
-      operations.NOT(operations.LT(state, { produces: ["a"] as const })),
-    and: operations.AND,
-    or: operations.OR,
+    add: ADD(),
+    sub: SUB(),
+    mul: MUL(),
+    div: DIV(),
+    mod: MOD(),
+    eq: EQ(),
+    ne: pipe<readonly ["a", "b", ...S]>()
+      .then(EQ(), { as: "a" })
+      .then(NOT())
+      .done(),
+    lt: LT(),
+    le: pipe<readonly ["a", "b", ...S]>()
+      .then(GT(), { as: "a" })
+      .then(NOT())
+      .done(),
+    gt: GT(),
+    ge: pipe<readonly ["a", "b", ...S]>()
+      .then(LT(), { as: "a" })
+      .then(NOT())
+      .done(),
+    and: AND(),
+    or: OR(),
   };
 
-  const result = rebrandTop(map[inst.op](s2), "value");
-
-  return storeValueIfNeeded(result, inst.dest);
+  return pipe<S>()
+    .then(loadValue(inst.left), { as: "b" })
+    .then(loadValue(inst.right), { as: "a" })
+    .then(map[inst.op], { as: "value" })
+    .then(storeValueIfNeeded(inst.dest))
+    .done();
 }
 
 /**
  * Generate a unary operation
  */
 export function generateUnary<S extends Stack>(
-  state: GenState<S>,
   inst: Ir.UnaryOpInstruction,
-): GenState<readonly ["value", ...S]> {
-  const s1 = rebrandTop(loadValue(state, inst.operand), "a");
+): Transition<S, readonly ["value", ...S]> {
+  const { NOT, PUSHn, SUB } = operations;
 
   const map: {
-    [O in Ir.UnaryOp]: <S extends Stack>(
+    [O in Ir.UnaryOp]: (
       state: GenState<readonly ["a", ...S]>,
     ) => GenState<readonly [StackBrand, ...S]>;
   } = {
-    not: operations.NOT,
-    neg: (state) => {
-      const s0 = rebrandTop(state, "b");
-      const s1 = operations.PUSHn(s0, 0n, { brand: "a" });
-      return operations.SUB(s1);
-    },
+    not: NOT(),
+    neg: pipe<readonly ["a", ...S]>()
+      .then(rebrandTop("b"))
+      .then(PUSHn(0n, { brand: "a" }))
+      .then(SUB())
+      .done()
   };
 
-  const result = rebrandTop(map[inst.op](s1), "value");
-
-  return storeValueIfNeeded(result, inst.dest);
+  return pipe<S>()
+    .then(loadValue(inst.operand), { as: "a" })
+    .then(map[inst.op], { as: "value" })
+    .then(storeValueIfNeeded(inst.dest))
+    .done();
 }
 
 /**
  * Generate a const instruction
  */
 export function generateConst<S extends Stack>(
-  state: GenState<S>,
   inst: Ir.ConstInstruction,
-): GenState<readonly ["value", ...S]> {
-  const s = operations.PUSHn(state, BigInt(inst.value));
-  return storeValueIfNeeded(s, inst.dest);
+): Transition<S, readonly ["value", ...S]> {
+  const { PUSHn } = operations;
+
+  return pipe<S>()
+    .then(PUSHn(BigInt(inst.value)))
+    .then(storeValueIfNeeded(inst.dest))
+    .done();
 }
 
 /**
  * Generate local load
  */
 export function generateLoadLocal<S extends Stack>(
-  state: GenState<S>,
   inst: Ir.LoadLocalInstruction,
-): GenState<readonly ["value", ...S]> {
+): Transition<S, readonly ["value", ...S]> {
   const { PUSHn, MLOAD } = operations;
 
-  const allocation = state.memory.allocations[inst.local];
-  if (allocation === undefined) {
-    throw new EvmError(
-      EvmErrorCode.MEMORY_ALLOCATION_FAILED,
-      `Local ${inst.local} not allocated in memory`,
-    );
-  }
+  return pipe<S>()
+    .peek((state, builder) => {
+      const allocation = state.memory.allocations[inst.local];
+      if (allocation === undefined) {
+        throw new EvmError(
+          EvmErrorCode.MEMORY_ALLOCATION_FAILED,
+          `Local ${inst.local} not allocated in memory`,
+        );
+      }
 
-  const s1 = PUSHn(state, BigInt(allocation.offset), { brand: "offset" });
-  const s2 = MLOAD(s1);
-
-  return storeValueIfNeeded(s2, inst.dest);
+      return builder
+        .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
+        .then(MLOAD())
+        .then(storeValueIfNeeded(inst.dest))
+        ;
+    })
+    .done();
 }
 
 /**
  * Generate local store
  */
 export function generateStoreLocal<S extends Stack>(
-  state: GenState<readonly [...S]>,
   inst: Ir.StoreLocalInstruction,
-): GenState<readonly [...S]> {
-  const allocation = state.memory.allocations[inst.local];
-  if (allocation === undefined) {
-    throw new EvmError(
-      EvmErrorCode.MEMORY_ALLOCATION_FAILED,
-      `Local ${inst.local} not allocated in memory`,
-    );
-  }
+): Transition<S, S> {
 
-  const s1 = loadValue(state, inst.value);
-  const s2 = operations.PUSHn(s1, BigInt(allocation.offset), { brand: "offset" });
-  return operations.MSTORE(s2);
+    const { PUSHn, MSTORE } = operations;
+
+    return pipe<S>()
+      .peek((state, builder) => {
+        const allocation = state.memory.allocations[inst.local];
+        if (allocation === undefined) {
+          throw new EvmError(
+            EvmErrorCode.MEMORY_ALLOCATION_FAILED,
+            `Local ${inst.local} not allocated in memory`,
+          );
+        }
+
+        return builder.then(loadValue(inst.value))
+          .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
+          .then(MSTORE())
+      })
+      .done();
 }
 
 /**
  * Generate storage load
  */
 export function generateLoadStorage<S extends Stack>(
-  state: GenState<S>,
   inst: Ir.LoadStorageInstruction,
-): GenState<readonly ["value", ...S]> {
-  const s1 = rebrandTop(loadValue(state, inst.slot), "key");
-  const result = operations.SLOAD(s1);
-  return storeValueIfNeeded(rebrandTop(result, "value"), inst.dest);
+): Transition<S, readonly ["value", ...S]> {
+  const { SLOAD } = operations;
+
+  return pipe<S>()
+    .then(loadValue(inst.slot), { as: "key" })
+    .then(SLOAD(), { as: "value" })
+    .then(storeValueIfNeeded(inst.dest))
+    .done();
 }
 
 /**
  * Generate storage store
  */
-export function generateStoreStorage<S extends Stack>(
-  state: GenState<readonly [...S]>,
+function generateStoreStorage<S extends Stack>(
   inst: Ir.StoreStorageInstruction,
-): GenState<readonly [...S]> {
-  const s1 = rebrandTop(loadValue(state, inst.value), "value");
-  const s2 = rebrandTop(loadValue(s1, inst.slot), "key");
-  const s3 = operations.SSTORE(s2);
-  return s3;
+): Transition<S, S> {
+  const { SSTORE } = operations;
+
+  return pipe<S>()
+    .then(loadValue(inst.value), { as: "value" })
+    .then(loadValue(inst.slot), { as: "key" })
+    .then(SSTORE())
+    .done();
 }
 
 /**
  * Generate environment operations
  */
-export function generateEnvOp<S extends Stack>(
-  state: GenState<readonly [...S]>,
+function generateEnvOp<S extends Stack>(
   inst: Ir.EnvInstruction,
-): GenState<readonly ["value", ...S]> {
+): Transition<S, readonly ["value", ...S]> {
   const map: {
     [O in Ir.EnvOp]: <S extends Stack>(
       state: GenState<readonly [...S]>,
     ) => GenState<readonly [StackBrand, ...S]>;
   } = {
-    msg_sender: operations.CALLER,
-    msg_value: operations.CALLVALUE,
-    msg_data: operations.PUSH0, // Simplified for now
-    block_timestamp: operations.TIMESTAMP,
-    block_number: operations.NUMBER,
+    msg_sender: operations.CALLER(),
+    msg_value: operations.CALLVALUE(),
+    msg_data: operations.PUSH0(), // Simplified for now
+    block_timestamp: operations.TIMESTAMP(),
+    block_number: operations.NUMBER(),
   };
 
-  const result = rebrandTop(map[inst.op](state), "value");
-  return storeValueIfNeeded(result, inst.dest);
+  return pipe<S>()
+    .then(map[inst.op], { as: "value" })
+    .then(storeValueIfNeeded(inst.dest))
+    .done();
 }
 
 export function generateLength<S extends Stack>(
-  state: GenState<readonly [...S]>,
   inst: Ir.LengthInstruction,
-) {
+): Transition<S, readonly ["value", ...S]> {
   // Length instruction - behavior depends on the type
   const objectType = inst.object.type;
 
   if (objectType.kind === "array") {
     if (objectType.size !== undefined) {
-      // Fixed-size array - emit the constant
-      const s1 = operations.PUSHn(state, BigInt(objectType.size));
-      return storeValueIfNeeded(s1, inst.dest);
+      const { PUSHn } = operations;
+
+      return pipe<S>()
+        .then(PUSHn(BigInt(objectType.size)))
+        .then(storeValueIfNeeded(inst.dest))
+        .done();
     } else {
-      // Dynamic array - length is stored at the array's base slot
-      const s1 = rebrandTop(loadValue(state, inst.object), "key");
-      const s2 = operations.SLOAD(s1);
-      return storeValueIfNeeded(s2, inst.dest);
+      const { SLOAD } = operations;
+
+      return pipe<S>()
+        .then(loadValue(inst.object), { as: "key" })
+        .then(SLOAD())
+        .then(storeValueIfNeeded(inst.dest))
+        .done();
     }
   }
 
   if (objectType.kind === "bytes") {
     if (objectType.size !== undefined) {
-      // Fixed-size bytes - emit the constant
-      const s1 = operations.PUSHn(state, BigInt(objectType.size));
-      return storeValueIfNeeded(s1, inst.dest);
+      const { PUSHn } = operations;
+
+      return pipe<S>()
+        .then(PUSHn(BigInt(objectType.size)))
+        .then(storeValueIfNeeded(inst.dest))
+        .done();
     }
   }
 
@@ -258,66 +309,59 @@ export function generateLength<S extends Stack>(
   );
 }
 
-export function generateHashOp<S extends Stack>(
-  state: GenState<readonly [...S]>,
+function generateHashOp<S extends Stack>(
   inst: Ir.HashInstruction,
-) {
-  const s1 = loadValue(state, inst.value);
+): Transition<S, readonly ["value", ...S]> {
+  const { PUSHn, MSTORE, KECCAK256 } = operations;
 
-  // Store value at memory offset 0
-  const s2 = operations.PUSHn(s1, 0n, { brand: "offset" });
-  const s3 = operations.MSTORE(s2);
-
-  // Hash 32 bytes starting at offset 0
-  const s4 = operations.PUSHn(s3, 32n, { brand: "size" });
-  const s5 = operations.PUSHn(s4, 0n, { brand: "offset" });
-  const s6 = operations.KECCAK256(s5);
-
-  const s7 = rebrandTop(s6, "value");
-
-  return storeValueIfNeeded(s7, inst.dest);
+  return pipe<S>()
+    .then(loadValue(inst.value))
+    .then(PUSHn(0n), { as: "offset" })
+    .then(MSTORE())
+    .then(PUSHn(32n), { as: "size" })
+    .then(PUSHn(0n), { as: "offset" })
+    .then(KECCAK256(), { as: "value" })
+    .then(storeValueIfNeeded(inst.dest))
+    .done();
 }
 
-export function generateComputeSlot<S extends Stack>(
-  state: GenState<readonly [...S]>,
+function generateComputeSlot<S extends Stack>(
   inst: Ir.ComputeSlotInstruction,
-) {
-  // store key then baseSlot in memory as 32 bytes each
-  const s1 = loadValue(state, inst.key);
+): Transition<S, readonly ["value", ...S]> {
+  const { PUSHn, MSTORE, KECCAK256 } = operations;
 
-  const s2 = operations.PUSHn(s1, 0n, { brand: "offset" });
-  const s3 = operations.MSTORE(s2);
+  return pipe<S>()
+    // store key then baseSlot in memory as 32 bytes each
+    .then(loadValue(inst.key))
+    .then(PUSHn(0n), { as: "offset" })
+    .then(MSTORE())
 
-  const s4 = loadValue(s3, inst.baseSlot);
-  const s5 = operations.PUSHn(s4, 32n, { brand: "offset" });
-  const s6 = operations.MSTORE(s5);
-
-  const s7 = operations.PUSHn(s6, 64n, { brand: "size" });
-  const s8 = operations.PUSHn(s7, 0n, { brand: "offset" });
-  const s9 = operations.KECCAK256(s8, { produces: ["value"] as const });
-
-  return storeValueIfNeeded(s9, inst.dest);
+    .then(loadValue(inst.baseSlot))
+    .then(PUSHn(32n), { as: "offset" })
+    .then(MSTORE())
+    .then(PUSHn(64n), { as: "size" })
+    .then(PUSHn(0n), { as: "offset" })
+    .then(KECCAK256(), { as: "value" })
+    .then(storeValueIfNeeded(inst.dest))
+    .done();
 }
 
-export function generateComputeArraySlot<S extends Stack>(
-  state: GenState<readonly [...S]>,
+function generateComputeArraySlot<S extends Stack>(
   inst: Ir.ComputeArraySlotInstruction,
-) {
+): Transition<S, readonly ["value", ...S]> {
+  const { PUSHn, MSTORE, KECCAK256 } = operations;
+
   // For arrays: keccak256(baseSlot)
-  const s1 = loadValue(state, inst.baseSlot);
-  // s1 has baseSlot on tracked stack
+  return pipe<readonly [...S]>()
+    // Store baseSlot at memory offset 0
+    .then(loadValue(inst.baseSlot))
+    .then(PUSHn(0n), { as: "offset" })
+    .then(MSTORE())
 
-  // Store baseSlot at memory offset 0
-  const s2 = operations.PUSHn(s1, 0n, { brand: "offset" });
-  const s3 = operations.MSTORE(s2);
-
-  // Hash 32 bytes starting at offset 0
-  const s4 = operations.PUSHn(s3, 32n, { brand: "size" });
-  const s5 = operations.PUSHn(s4, 0n, { brand: "offset" });
-  const s6 = operations.KECCAK256(s5);
-
-  const s7 = rebrandTop(s6, "value");
-
-  return storeValueIfNeeded(s7, inst.dest);
+    // Hash 32 bytes starting at offset 0
+    .then(PUSHn(32n), { as: "size" })
+    .then(PUSHn(0n), { as: "offset" })
+    .then(KECCAK256(), { as: "value" })
+    .then(storeValueIfNeeded(inst.dest))
+    .done();
 }
-

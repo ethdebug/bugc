@@ -3,7 +3,7 @@
  */
 
 import type * as Ir from "../ir";
-import { type GenState, operations } from "./operations";
+import { type GenState, pipe, operations } from "./operations";
 import { serialize, calculateSize } from "./serialize";
 import type { MemoryInfo } from "./analysis/memory";
 import type { BlockInfo } from "./analysis/layout";
@@ -91,20 +91,12 @@ function calculateDeploymentSize(
     lastSize = deploymentPrefixSize;
 
     // Calculate size based on current estimate
-    const runtimeOffset = BigInt(createBytesLength + deploymentPrefixSize);
-    const runtimeLength = BigInt(runtimeBytesLength);
+    const result = deploymentTransition(
+      BigInt(createBytesLength + deploymentPrefixSize),
+      BigInt(runtimeBytesLength)
+    )(state);
 
-    // Build deployment wrapper instructions
-    const testState = state;
-    const s1 = operations.PUSHn(testState, runtimeLength, { brand: "size" });
-    const s2 = operations.PUSHn(s1, runtimeOffset, { brand: "offset" });
-    const s3 = operations.PUSHn(s2, 0n, { brand: "destOffset" });
-    const s4 = operations.CODECOPY(s3);
-    const s5 = operations.PUSHn(s4, runtimeLength, { brand: "size" });
-    const s6 = operations.PUSHn(s5, 0n, { brand: "offset" });
-    const s7 = operations.RETURN(s6);
-
-    deploymentPrefixSize = calculateSize(s7.instructions);
+    deploymentPrefixSize = calculateSize(result.instructions);
   }
 
   return createBytesLength + deploymentPrefixSize;
@@ -136,15 +128,9 @@ function buildDeploymentInstructions(
   const runtimeLength = BigInt(runtimeBytes.length);
 
   // Build deployment wrapper
-  const s1 = operations.PUSHn(state, runtimeLength, { brand: "size" });
-  const s2 = operations.PUSHn(s1, runtimeOffset, { brand: "offset" });
-  const s3 = operations.PUSHn(s2, 0n, { brand: "destOffset" });
-  const s4 = operations.CODECOPY(s3);
-  const s5 = operations.PUSHn(s4, runtimeLength, { brand: "size" });
-  const s6 = operations.PUSHn(s5, 0n, { brand: "offset" });
-  const s7 = operations.RETURN(s6);
+  const result = deploymentTransition(runtimeOffset, runtimeLength)(state);
 
-  const deploymentWrapperBytes = serialize(s7.instructions);
+  const deploymentWrapperBytes = serialize(result.instructions);
 
   // Combine everything
   const deployBytes = [
@@ -155,6 +141,23 @@ function buildDeploymentInstructions(
 
   return {
     deployBytes,
-    deploymentWrapperInstructions: s7.instructions,
+    deploymentWrapperInstructions: result.instructions,
   };
+}
+
+function deploymentTransition(
+  runtimeOffset: bigint,
+  runtimeLength: bigint
+) {
+  const { PUSHn, CODECOPY, RETURN } = operations;
+
+  return pipe()
+    .then(PUSHn(runtimeLength), { as: "size" })
+    .then(PUSHn(runtimeOffset), { as: "offset" })
+    .then(PUSHn(0n), { as: "destOffset" })
+    .then(CODECOPY())
+    .then(PUSHn(runtimeLength), { as: "size" })
+    .then(PUSHn(0n), { as: "offset" })
+    .then(RETURN())
+    .done();
 }

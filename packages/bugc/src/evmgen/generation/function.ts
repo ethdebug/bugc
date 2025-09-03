@@ -43,12 +43,11 @@ export function generateFunction(
       const isLastBlock = index === layout.order.length - 1;
 
       return generateBlock(
-        state,
         block,
         predecessor,
         isLastBlock,
         isFirstBlock,
-      );
+      )(state);
     },
     initialState,
   );
