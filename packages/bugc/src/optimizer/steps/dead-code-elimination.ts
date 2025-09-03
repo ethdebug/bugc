@@ -87,7 +87,10 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
     return optimized;
   }
 
-  private collectUsedValues(inst: PhiInstruction | IrInstruction, used: Set<string>): void {
+  private collectUsedValues(
+    inst: PhiInstruction | IrInstruction,
+    used: Set<string>,
+  ): void {
     switch (inst.kind) {
       case "binary":
         this.collectValueUse(inst.left, used);

@@ -44,7 +44,7 @@ describe("EVM Code Generator", () => {
 
       const memory: MemoryLayout = {
         allocations: {},
-        freePointer: 0x80,
+        nextStaticOffset: 0x80,
       };
 
       const layout: BlockLayout = {
@@ -54,9 +54,21 @@ describe("EVM Code Generator", () => {
 
       const { instructions } = generateFunction(func, memory, layout);
 
-      // Should have PUSH1 42 (no JUMPDEST for entry with no predecessors, no STOP since it's the last block)
-      expect(instructions).toHaveLength(1);
+      // Should have memory initialization (PUSH1 0x80, PUSH1 0x40, MSTORE) followed by PUSH1 42
+      // No JUMPDEST for entry with no predecessors, no STOP since it's the last block
+      expect(instructions).toHaveLength(4);
       expect(instructions[0]).toMatchObject({
+        mnemonic: "PUSH1",
+        immediates: [0x80],
+      });
+      expect(instructions[1]).toMatchObject({
+        mnemonic: "PUSH1",
+        immediates: [0x40],
+      });
+      expect(instructions[2]).toMatchObject({
+        mnemonic: "MSTORE",
+      });
+      expect(instructions[3]).toMatchObject({
         mnemonic: "PUSH1",
         immediates: [42],
       });
@@ -115,7 +127,7 @@ describe("EVM Code Generator", () => {
           "%2": makeAllocation(0xa0),
           "%3": makeAllocation(0xc0),
         },
-        freePointer: 0xe0,
+        nextStaticOffset: 0xe0,
       };
 
       const layout: BlockLayout = {
@@ -168,7 +180,7 @@ describe("EVM Code Generator", () => {
 
       const memory: MemoryLayout = {
         allocations: {},
-        freePointer: 0x80,
+        nextStaticOffset: 0x80,
       };
 
       const layout: BlockLayout = {
@@ -258,7 +270,7 @@ describe("EVM Code Generator", () => {
 
       const memory: MemoryLayout = {
         allocations: { "%cond": { offset: 0x80, size: 32 } },
-        freePointer: 0xa0,
+        nextStaticOffset: 0xa0,
       };
 
       const layout: BlockLayout = {
@@ -331,7 +343,7 @@ describe("EVM Code Generator", () => {
           "%slot": { offset: 0x80, size: 32 },
           "%value": { offset: 0xa0, size: 32 },
         },
-        freePointer: 0xc0,
+        nextStaticOffset: 0xc0,
       };
 
       const layout: BlockLayout = {
@@ -382,7 +394,7 @@ describe("EVM Code Generator", () => {
           "%sender": { offset: 0x80, size: 20 },
           "%value": { offset: 0xa0, size: 32 },
         },
-        freePointer: 0xc0,
+        nextStaticOffset: 0xc0,
       };
 
       const layout: BlockLayout = {
@@ -477,7 +489,7 @@ describe("EVM Code Generator", () => {
           "%arrayBase": { offset: 0xc0, size: 32 },
           "%slot": { offset: 0xe0, size: 32 },
         },
-        freePointer: 0x100,
+        nextStaticOffset: 0x100,
       };
 
       const layout: BlockLayout = {
@@ -579,7 +591,7 @@ describe("EVM Code Generator", () => {
           "%slot": { offset: 0xc0, size: 32 },
           "%value": { offset: 0xe0, size: 32 },
         },
-        freePointer: 0x100,
+        nextStaticOffset: 0x100,
       };
 
       const layout: BlockLayout = {
@@ -669,7 +681,7 @@ describe("EVM Code Generator", () => {
           "%value": { offset: 0xa0, size: 32 },
           "%slot": { offset: 0xc0, size: 32 },
         },
-        freePointer: 0xe0,
+        nextStaticOffset: 0xe0,
       };
 
       const layout: BlockLayout = {
@@ -758,7 +770,7 @@ describe("EVM Code Generator", () => {
           "%slot": { offset: 0xa0, size: 32 },
           "%balance": { offset: 0xc0, size: 32 },
         },
-        freePointer: 0xe0,
+        nextStaticOffset: 0xe0,
       };
 
       const layout: BlockLayout = {
@@ -887,7 +899,7 @@ describe("EVM Code Generator", () => {
           "%finalSlot": { offset: 0x100, size: 32 },
           "%value": { offset: 0x120, size: 32 },
         },
-        freePointer: 0x140,
+        nextStaticOffset: 0x140,
       };
 
       const layout: BlockLayout = {
@@ -940,7 +952,7 @@ describe("EVM Code Generator", () => {
       const memoryLayouts = {
         main: {
           allocations: {},
-          freePointer: 0x80,
+          nextStaticOffset: 0x80,
         },
         functions: {},
       };
@@ -957,8 +969,9 @@ describe("EVM Code Generator", () => {
 
       expect(result.runtime).toBeDefined();
       expect(result.create).toBeDefined(); // Always generates constructor
-      // Empty bytecode is valid - program does nothing
-      expect(result.runtime.length).toBe(0);
+      // Runtime now includes memory initialization (5 bytes) even for empty function
+      // PUSH1 0x80 (2) + PUSH1 0x40 (2) + MSTORE (1) = 5 bytes minimum
+      expect(result.runtime.length).toBeGreaterThanOrEqual(5);
       expect(result.create!.length).toBeGreaterThan(0); // Constructor needs deployment code
     });
 
@@ -1006,11 +1019,11 @@ describe("EVM Code Generator", () => {
       const memoryLayouts = {
         create: {
           allocations: {},
-          freePointer: 0x80,
+          nextStaticOffset: 0x80,
         },
         main: {
           allocations: {},
-          freePointer: 0x80,
+          nextStaticOffset: 0x80,
         },
         functions: {},
       };
@@ -1132,6 +1145,177 @@ describe("EVM Code Generator", () => {
 
       // Should contain ADD for the increment
       expect(instructions.some((inst) => inst.mnemonic === "ADD")).toBe(true);
+    });
+
+    it("should generate slice operation with MCOPY", () => {
+      const func: IrFunction = {
+        name: "test",
+        locals: [],
+        entry: "entry",
+        blocks: new Map([
+          [
+            "entry",
+            {
+              id: "entry",
+              phis: [],
+              instructions: [
+                {
+                  kind: "const",
+                  value: 0x100n,  // Array pointer in memory
+                  type: { kind: "uint", bits: 256 },
+                  dest: "%1",
+                },
+                {
+                  kind: "const",
+                  value: 2n,  // Start index
+                  type: { kind: "uint", bits: 256 },
+                  dest: "%2",
+                },
+                {
+                  kind: "const",
+                  value: 5n,  // End index
+                  type: { kind: "uint", bits: 256 },
+                  dest: "%3",
+                },
+                {
+                  kind: "slice",
+                  object: {
+                    kind: "temp",
+                    id: "%1",
+                    type: { kind: "uint", bits: 256 },
+                  },
+                  start: {
+                    kind: "temp",
+                    id: "%2",
+                    type: { kind: "uint", bits: 256 },
+                  },
+                  end: {
+                    kind: "temp",
+                    id: "%3",
+                    type: { kind: "uint", bits: 256 },
+                  },
+                  dest: "%4",
+                },
+              ],
+              terminator: {
+                kind: "return",
+                value: {
+                  kind: "temp",
+                  id: "%4",
+                  type: { kind: "uint", bits: 256 },
+                },
+              },
+              predecessors: new Set(),
+            } as BasicBlock,
+          ],
+        ]),
+      };
+
+      const liveness = analyzeLiveness(func);
+      const memoryResult = planFunctionMemory(func, liveness);
+      if (!memoryResult.success) throw new Error("Memory planning failed");
+      const memory = memoryResult.value;
+      const layout = layoutBlocks(func);
+
+      const { instructions } = generateFunction(func, memory, layout);
+
+      // Should contain:
+      // 1. Memory initialization (PUSH 0x80, PUSH 0x40, MSTORE)
+      // 2. Loading start and end indices
+      // 3. SUB to calculate length
+      // 4. MUL by 32 to get byte size
+      // 5. Memory allocation (updating free memory pointer)
+      // 6. MCOPY for the actual copy
+      // 7. Return sequence
+
+      // Check for key instructions
+      const mnemonics = instructions.map(inst => inst.mnemonic);
+
+      // Should have SUB for length calculation
+      expect(mnemonics).toContain("SUB");
+
+      // Should have MUL for byte size calculation
+      expect(mnemonics).toContain("MUL");
+
+      // Should have MLOAD for reading free memory pointer
+      expect(mnemonics).toContain("MLOAD");
+
+      // Should have MCOPY for the memory copy
+      expect(mnemonics).toContain("MCOPY");
+
+      // Should have RETURN since we're returning a value
+      expect(mnemonics).toContain("RETURN");
+    });
+
+    it("should handle slice with zero length", () => {
+      const func: IrFunction = {
+        name: "test",
+        locals: [],
+        entry: "entry",
+        blocks: new Map([
+          [
+            "entry",
+            {
+              id: "entry",
+              phis: [],
+              instructions: [
+                {
+                  kind: "const",
+                  value: 0x100n,  // Array pointer
+                  type: { kind: "uint", bits: 256 },
+                  dest: "%1",
+                },
+                {
+                  kind: "const",
+                  value: 3n,  // Start index
+                  type: { kind: "uint", bits: 256 },
+                  dest: "%2",
+                },
+                {
+                  kind: "const",
+                  value: 3n,  // End index (same as start = empty slice)
+                  type: { kind: "uint", bits: 256 },
+                  dest: "%3",
+                },
+                {
+                  kind: "slice",
+                  object: {
+                    kind: "temp",
+                    id: "%1",
+                    type: { kind: "uint", bits: 256 },
+                  },
+                  start: {
+                    kind: "temp",
+                    id: "%2",
+                    type: { kind: "uint", bits: 256 },
+                  },
+                  end: {
+                    kind: "temp",
+                    id: "%3",
+                    type: { kind: "uint", bits: 256 },
+                  },
+                  dest: "%4",
+                },
+              ],
+              terminator: { kind: "return" },
+              predecessors: new Set(),
+            } as BasicBlock,
+          ],
+        ]),
+      };
+
+      const liveness = analyzeLiveness(func);
+      const memoryResult = planFunctionMemory(func, liveness);
+      if (!memoryResult.success) throw new Error("Memory planning failed");
+      const memory = memoryResult.value;
+      const layout = layoutBlocks(func);
+
+      const { instructions } = generateFunction(func, memory, layout);
+
+      // Should still have MCOPY even for zero-length copy
+      // (though it will copy 0 bytes)
+      const mnemonics = instructions.map(inst => inst.mnemonic);
+      expect(mnemonics).toContain("MCOPY");
     });
   });
 });

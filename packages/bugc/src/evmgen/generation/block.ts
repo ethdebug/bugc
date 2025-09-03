@@ -8,6 +8,7 @@ import { EvmError, EvmErrorCode } from "../errors";
 import { type Transition, pipe, operations } from "../operations";
 import { generateInstruction } from "./instruction";
 import { loadValue, valueId } from "./utils";
+import { MEMORY_REGIONS } from "../analysis/memory";
 
 /**
  * Generate code for a basic block
@@ -32,6 +33,13 @@ export function generateBlock<S extends Stack>(
           [block.id]: blockOffset,
         },
       }));
+
+      // Initialize memory for first block
+      if (isFirstBlock) {
+        // Always initialize the free memory pointer for consistency
+        // This ensures dynamic allocations start after static ones
+        result = result.then(initializeMemory(state.memory.nextStaticOffset));
+      }
 
       // Set JUMPDEST for non-first blocks
       if (!isFirstBlock) {
@@ -129,7 +137,7 @@ function generateTerminator<S extends Stack>(
             if (allocation === undefined) {
               // Value is on stack, need to store it first
               // Allocate memory for it (simplified - assuming we track free pointer elsewhere)
-              const offset = state.memory.freePointer;
+              const offset = state.memory.nextStaticOffset;
               return (
                 builder
                   .then(loadValue(value))
@@ -213,4 +221,25 @@ function generateTerminator<S extends Stack>(
         .done();
     }
   }
+}
+
+/**
+ * Initialize the free memory pointer at runtime
+ * Sets the value at 0x40 to the next available memory location after static allocations
+ */
+function initializeMemory<S extends Stack>(
+  nextStaticOffset: number,
+): Transition<S, S> {
+  const { PUSHn, MSTORE } = operations;
+
+  return (
+    pipe<S>()
+      // Push the static offset value (the value to store)
+      .then(PUSHn(BigInt(nextStaticOffset)), { as: "value" })
+      // Push the free memory pointer location (0x40) (the offset)
+      .then(PUSHn(BigInt(MEMORY_REGIONS.FREE_MEMORY_POINTER)), { as: "offset" })
+      // Store the initial free pointer (expects [value, offset] on stack)
+      .then(MSTORE())
+      .done()
+  );
 }

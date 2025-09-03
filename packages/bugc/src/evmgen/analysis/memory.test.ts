@@ -273,6 +273,6 @@ describe("Memory Planning", () => {
     expect(Math.abs(phi2Offset - phi1Offset)).toBe(32);
 
     // Free pointer should be after all allocations
-    expect(memory.freePointer).toBeGreaterThanOrEqual(0x80 + 64);
+    expect(memory.nextStaticOffset).toBeGreaterThanOrEqual(0x80 + 64);
   });
 });

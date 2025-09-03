@@ -16,6 +16,17 @@ import type { FunctionLivenessInfo } from "./liveness";
 import { Result } from "../../result";
 import { MemoryError, MemoryErrorCode } from "./errors";
 
+/**
+ * EVM memory layout following Solidity conventions
+ */
+export const MEMORY_REGIONS = {
+  SCRATCH_SPACE_1: 0x00, // 0x00-0x1f: First scratch space slot
+  SCRATCH_SPACE_2: 0x20, // 0x20-0x3f: Second scratch space slot
+  FREE_MEMORY_POINTER: 0x40, // 0x40-0x5f: Dynamic memory pointer
+  ZERO_SLOT: 0x60, // 0x60-0x7f: Zero slot (reserved)
+  STATIC_MEMORY_START: 0x80, // 0x80+: Static allocations start here
+} as const;
+
 export interface MemoryAllocation {
   /** Memory offset in bytes */
   offset: number;
@@ -26,8 +37,8 @@ export interface MemoryAllocation {
 export interface FunctionMemoryLayout {
   /** Memory allocation info for each value that needs allocation */
   allocations: Record<string, MemoryAllocation>;
-  /** Next available memory slot */
-  freePointer: number;
+  /** Next available memory offset after all static allocations */
+  nextStaticOffset: number;
 }
 
 /**
@@ -39,6 +50,155 @@ export interface MemoryInfo {
   functions: {
     [functionName: string]: FunctionMemoryLayout;
   };
+}
+
+/**
+ * Analyze memory requirements for entire module
+ */
+export function analyzeModuleMemory(
+  module: IrModule,
+  liveness: {
+    create?: FunctionLivenessInfo;
+    main?: FunctionLivenessInfo;
+    functions: {
+      [functionName: string]: FunctionLivenessInfo;
+    };
+  },
+): Result<MemoryInfo, MemoryError> {
+  const result: MemoryInfo = {
+    main: {} as FunctionMemoryLayout,
+    functions: {},
+  };
+
+  // Process constructor if present
+  if (module.create && liveness.create) {
+    const createMemory = planFunctionMemory(module.create, liveness.create);
+    if (!createMemory.success) {
+      return createMemory;
+    }
+    result.create = createMemory.value;
+  }
+
+  // Process main function
+  if (!liveness.main) {
+    return Result.err(
+      new MemoryError(
+        MemoryErrorCode.INVALID_LAYOUT,
+        "Missing liveness info for main function",
+      ),
+    );
+  }
+  const mainMemory = planFunctionMemory(module.main, liveness.main);
+  if (!mainMemory.success) {
+    return mainMemory;
+  }
+  result.main = mainMemory.value;
+
+  // Process user-defined functions
+  for (const [name, func] of module.functions) {
+    const funcLiveness = liveness.functions[name];
+    if (!funcLiveness) {
+      return Result.err(
+        new MemoryError(
+          MemoryErrorCode.INVALID_LAYOUT,
+          `Missing liveness info for function ${name}`,
+        ),
+      );
+    }
+    const funcMemory = planFunctionMemory(func, funcLiveness);
+    if (!funcMemory.success) {
+      return funcMemory;
+    }
+    result.functions[name] = funcMemory.value;
+  }
+
+  return Result.ok(result);
+}
+
+/**
+ * Plan memory layout for a function with type-aware packing
+ */
+export function planFunctionMemory(
+  func: IrFunction,
+  liveness: FunctionLivenessInfo,
+): Result<FunctionMemoryLayout, MemoryError> {
+  try {
+    const allocations: Record<string, MemoryAllocation> = {};
+    let nextStaticOffset = MEMORY_REGIONS.STATIC_MEMORY_START;
+
+    const needsMemory = identifyMemoryValues(func, liveness);
+
+    // Also allocate memory for all locals (they always need memory)
+    for (const local of func.locals || []) {
+      needsMemory.set(local.id, local.type);
+    }
+
+    // Check if we have too many values for memory
+    if (needsMemory.size > 1000) {
+      return Result.err(
+        new MemoryError(
+          MemoryErrorCode.ALLOCATION_FAILED,
+          `Too many values need memory allocation: ${needsMemory.size}`,
+        ),
+      );
+    }
+
+    // Sort values by size (largest first) for better packing
+    const sortedValues = Array.from(needsMemory.entries()).sort(
+      ([_a, typeA], [_b, typeB]) => getTypeSize(typeB) - getTypeSize(typeA),
+    );
+
+    // Track current slot usage for packing
+    let currentSlotOffset = nextStaticOffset;
+    let currentSlotUsed = 0;
+    const SLOT_SIZE = 32;
+
+    for (const [valueId, type] of sortedValues) {
+      const size = getTypeSize(type);
+
+      // If this value needs a full slot or won't fit in current slot, start new slot
+      if (size >= SLOT_SIZE || currentSlotUsed + size > SLOT_SIZE) {
+        if (currentSlotUsed > 0) {
+          // Move to next slot if current slot has something
+          currentSlotOffset += SLOT_SIZE;
+          currentSlotUsed = 0;
+        }
+      }
+
+      // Allocate in current slot
+      allocations[valueId] = {
+        offset: currentSlotOffset + currentSlotUsed,
+        size: size,
+      };
+
+      currentSlotUsed += size;
+
+      // If we filled the slot exactly, prepare for next slot
+      if (currentSlotUsed >= SLOT_SIZE) {
+        currentSlotOffset += SLOT_SIZE;
+        currentSlotUsed = 0;
+      }
+    }
+
+    // Update next static offset to next available slot
+    if (currentSlotUsed > 0) {
+      nextStaticOffset = currentSlotOffset + SLOT_SIZE;
+    } else {
+      nextStaticOffset = currentSlotOffset;
+    }
+
+    return Result.ok({
+      allocations,
+      nextStaticOffset,
+    });
+  } catch (error) {
+    return Result.err(
+      new MemoryError(
+        MemoryErrorCode.ALLOCATION_FAILED,
+        error instanceof Error ? error.message : "Unknown error",
+      ),
+    );
+  }
 }
 
 /**
@@ -380,153 +540,4 @@ function identifyMemoryValues(
   }
 
   return needsMemory;
-}
-
-/**
- * Plan memory layout for a function with type-aware packing
- */
-export function planFunctionMemory(
-  func: IrFunction,
-  liveness: FunctionLivenessInfo,
-): Result<FunctionMemoryLayout, MemoryError> {
-  try {
-    const allocations: Record<string, MemoryAllocation> = {};
-    let freePointer = 0x80; // Start after Solidity's free memory pointer
-
-    const needsMemory = identifyMemoryValues(func, liveness);
-
-    // Also allocate memory for all locals (they always need memory)
-    for (const local of func.locals || []) {
-      needsMemory.set(local.id, local.type);
-    }
-
-    // Check if we have too many values for memory
-    if (needsMemory.size > 1000) {
-      return Result.err(
-        new MemoryError(
-          MemoryErrorCode.ALLOCATION_FAILED,
-          `Too many values need memory allocation: ${needsMemory.size}`,
-        ),
-      );
-    }
-
-    // Sort values by size (largest first) for better packing
-    const sortedValues = Array.from(needsMemory.entries()).sort(
-      ([_a, typeA], [_b, typeB]) => getTypeSize(typeB) - getTypeSize(typeA),
-    );
-
-    // Track current slot usage for packing
-    let currentSlotOffset = freePointer;
-    let currentSlotUsed = 0;
-    const SLOT_SIZE = 32;
-
-    for (const [valueId, type] of sortedValues) {
-      const size = getTypeSize(type);
-
-      // If this value needs a full slot or won't fit in current slot, start new slot
-      if (size >= SLOT_SIZE || currentSlotUsed + size > SLOT_SIZE) {
-        if (currentSlotUsed > 0) {
-          // Move to next slot if current slot has something
-          currentSlotOffset += SLOT_SIZE;
-          currentSlotUsed = 0;
-        }
-      }
-
-      // Allocate in current slot
-      allocations[valueId] = {
-        offset: currentSlotOffset + currentSlotUsed,
-        size: size,
-      };
-
-      currentSlotUsed += size;
-
-      // If we filled the slot exactly, prepare for next slot
-      if (currentSlotUsed >= SLOT_SIZE) {
-        currentSlotOffset += SLOT_SIZE;
-        currentSlotUsed = 0;
-      }
-    }
-
-    // Update free pointer to next available slot
-    if (currentSlotUsed > 0) {
-      freePointer = currentSlotOffset + SLOT_SIZE;
-    } else {
-      freePointer = currentSlotOffset;
-    }
-
-    return Result.ok({
-      allocations,
-      freePointer,
-    });
-  } catch (error) {
-    return Result.err(
-      new MemoryError(
-        MemoryErrorCode.ALLOCATION_FAILED,
-        error instanceof Error ? error.message : "Unknown error",
-      ),
-    );
-  }
-}
-
-/**
- * Analyze memory requirements for entire module
- */
-export function analyzeModuleMemory(
-  module: IrModule,
-  liveness: {
-    create?: FunctionLivenessInfo;
-    main?: FunctionLivenessInfo;
-    functions: {
-      [functionName: string]: FunctionLivenessInfo;
-    };
-  },
-): Result<MemoryInfo, MemoryError> {
-  const result: MemoryInfo = {
-    main: {} as FunctionMemoryLayout,
-    functions: {},
-  };
-
-  // Process constructor if present
-  if (module.create && liveness.create) {
-    const createMemory = planFunctionMemory(module.create, liveness.create);
-    if (!createMemory.success) {
-      return createMemory;
-    }
-    result.create = createMemory.value;
-  }
-
-  // Process main function
-  if (!liveness.main) {
-    return Result.err(
-      new MemoryError(
-        MemoryErrorCode.INVALID_LAYOUT,
-        "Missing liveness info for main function",
-      ),
-    );
-  }
-  const mainMemory = planFunctionMemory(module.main, liveness.main);
-  if (!mainMemory.success) {
-    return mainMemory;
-  }
-  result.main = mainMemory.value;
-
-  // Process user-defined functions
-  for (const [name, func] of module.functions) {
-    const funcLiveness = liveness.functions[name];
-    if (!funcLiveness) {
-      return Result.err(
-        new MemoryError(
-          MemoryErrorCode.INVALID_LAYOUT,
-          `Missing liveness info for function ${name}`,
-        ),
-      );
-    }
-    const funcMemory = planFunctionMemory(func, funcLiveness);
-    if (!funcMemory.success) {
-      return funcMemory;
-    }
-    result.functions[name] = funcMemory.value;
-  }
-
-  return Result.ok(result);
 }

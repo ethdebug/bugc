@@ -13,7 +13,11 @@ import {
   rebrandTop,
   operations,
 } from "../operations";
-import { loadValue, storeValueIfNeeded } from "./utils";
+import {
+  loadValue,
+  storeValueIfNeeded,
+  allocateMemoryDynamic,
+} from "./utils";
 
 /**
  * Generate code for a single IR instruction
@@ -32,6 +36,10 @@ export function generateInstruction<S extends Stack>(
       return generateLoadStorage(inst);
     case "store_storage":
       return generateStoreStorage(inst);
+    case "load_mapping":
+      return generateLoadMapping(inst);
+    case "store_mapping":
+      return generateStoreMapping(inst);
     case "load_local":
       return generateLoadLocal(inst);
     case "store_local":
@@ -46,6 +54,10 @@ export function generateInstruction<S extends Stack>(
       return generateComputeSlot(inst);
     case "compute_array_slot":
       return generateComputeArraySlot(inst);
+    case "cast":
+      return generateCast(inst);
+    case "slice":
+      return generateSlice(inst);
     default: {
       return (state) => {
         // Add warning for unsupported instructions
@@ -356,6 +368,155 @@ function generateComputeArraySlot<S extends Stack>(
       .then(PUSHn(0n), { as: "offset" })
       .then(KECCAK256(), { as: "value" })
       .then(storeValueIfNeeded(inst.dest))
+      .done()
+  );
+}
+
+/**
+ * Generate code for cast instruction (type conversion)
+ */
+function generateCast<S extends Stack>(
+  inst: Ir.CastInstruction,
+): Transition<S, readonly ["value", ...S]> {
+  // Cast is a no-op at the EVM level since types are checked at compile time
+  // Just load the value and store it with the new type annotation
+  return pipe<S>()
+    .then(loadValue(inst.value), { as: "value" })
+    .then(storeValueIfNeeded(inst.dest))
+    .done();
+}
+
+/**
+ * Generate code for slice instruction
+ * Creates a new memory region containing elements from start to end
+ */
+function generateSlice<S extends Stack>(
+  inst: Ir.SliceInstruction,
+): Transition<S, readonly ["value", ...S]> {
+  const {
+    PUSHn, DUP1, DUP2, SUB, MUL, ADD, SWAP1, SWAP3, MCOPY
+  } = operations;
+
+  return pipe<S>()
+    .then(loadValue(inst.start), { as: "start" })
+    .then(loadValue(inst.end), { as: "end" })
+    // Stack: [end, start, ...]
+
+    // Calculate length = end - start
+    .then(DUP2(), { as: "b" })
+    // Stack: [start, end, start, ...]
+    .then(SWAP1(), { as: "a" })
+    // Stack: [end, start, start, ...]
+    .then(SUB(), { as: "b" })
+    // Stack: [count, start, ...]
+
+    // Calculate byte size = length * 32 (assuming word-sized elements)
+    .then(PUSHn(32n), { as: "a" })
+    // Stack: [itemSize, count, start, ...]
+    .then(MUL(), { as: "size" })
+    // Stack: [bytesSize, start, ...]
+
+    // save total bytes size because it's needed for MCOPY
+    .then(DUP1())
+    // Stack: [bytesSize, bytesSize, start, ...]
+
+    // Allocate memory dynamically
+    .then(allocateMemoryDynamic(), { as: "destOffset" })
+    // Stack: [destOffset, bytesSize, start, ...]
+
+    // Save destOffset for return value
+    .then(DUP1())
+    // Stack: [destOffset, destOffset, bytesSize, start, ...]
+
+    // and grab start now since we won't need this new destOffset for awhile
+    // this will be multiplied by the length
+    .then(SWAP3(), { as: "b" })
+    // Stack: [start, destOffset, bytesSize, destOffset, ...]
+
+    .then(PUSHn(32n), { as: "a" })
+    .then(MUL(), { as: "b" })
+
+    // load the pointer to the start of the sliced object
+    .then(loadValue(inst.object), { as: "a" })
+    // add the computed size before the slize to get
+    // the starting offset in memory
+    .then(ADD(), { as: "offset" })
+
+    // re-order for MCOPY
+    .then(SWAP1())
+    .then(MCOPY())
+
+    // only relevant item left on stack is the offset of the newly
+    // allocated memory.
+    .then(rebrandTop("value"))
+    .then(storeValueIfNeeded(inst.dest))
+    .done();
+}
+
+/**
+ * Generate code for loading from a mapping
+ * Computes storage slot as keccak256(key . slot) and loads the value
+ */
+function generateLoadMapping<S extends Stack>(
+  inst: Ir.LoadMappingInstruction,
+): Transition<S, readonly ["value", ...S]> {
+  const { PUSHn, MSTORE, KECCAK256, SLOAD } = operations;
+
+  return (
+    pipe<S>()
+      // Store key at scratch space offset 0
+      .then(loadValue(inst.key))
+      .then(PUSHn(0n), { as: "offset" })
+      .then(MSTORE())
+
+      // Store mapping slot at scratch space offset 32
+      .then(PUSHn(BigInt(inst.slot)))
+      .then(PUSHn(32n), { as: "offset" })
+      .then(MSTORE())
+
+      // Hash 64 bytes to get storage location: keccak256(key . slot)
+      .then(PUSHn(64n), { as: "size" })
+      .then(PUSHn(0n), { as: "offset" })
+      .then(KECCAK256(), { as: "key" })
+
+      // Load value from computed storage slot
+      .then(SLOAD(), { as: "value" })
+      .then(storeValueIfNeeded(inst.dest))
+      .done()
+  );
+}
+
+/**
+ * Generate code for storing to a mapping
+ * Computes storage slot as keccak256(key . slot) and stores the value
+ */
+function generateStoreMapping<S extends Stack>(
+  inst: Ir.StoreMappingInstruction,
+): Transition<S, S> {
+  const { PUSHn, MSTORE, KECCAK256, SSTORE } = operations;
+
+  return (
+    pipe<S>()
+      // Store key at scratch space offset 0
+      .then(loadValue(inst.key))
+      .then(PUSHn(0n), { as: "offset" })
+      .then(MSTORE())
+
+      // Store mapping slot at scratch space offset 32
+      .then(PUSHn(BigInt(inst.slot)))
+      .then(PUSHn(32n), { as: "offset" })
+      .then(MSTORE())
+
+      // Load value first (will be second on stack)
+      .then(loadValue(inst.value), { as: "value" })
+
+      // Hash 64 bytes to get storage location: keccak256(key . slot)
+      .then(PUSHn(64n), { as: "size" })
+      .then(PUSHn(0n), { as: "offset" })
+      .then(KECCAK256(), { as: "key" })
+
+      // Now we have [key, value, ...] on stack, which SSTORE expects
+      .then(SSTORE())
       .done()
   );
 }

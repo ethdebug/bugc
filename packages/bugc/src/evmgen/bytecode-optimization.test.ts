@@ -39,7 +39,7 @@ describe("Bytecode Optimization", () => {
       {
         main: {
           allocations: { "%1": { offset: 0x80, size: 32 } },
-          freePointer: 0xa0,
+          nextStaticOffset: 0xa0,
         },
         functions: {},
       },
@@ -125,7 +125,7 @@ describe("Bytecode Optimization", () => {
               { offset: v, size: 32 },
             ]),
           ),
-          freePointer: 32000,
+          nextStaticOffset: 32000,
         },
         functions: {},
       },
@@ -203,7 +203,7 @@ describe("Bytecode Optimization", () => {
     const result = generateModule(
       module,
       {
-        main: { allocations: {}, freePointer: 0x80 },
+        main: { allocations: {}, nextStaticOffset: 0x80 },
         functions: {},
       },
       {
@@ -298,7 +298,7 @@ describe("Bytecode Optimization", () => {
         {
           main: {
             allocations: { "%1": { offset: 0x80, size: 32 } },
-            freePointer: 0xa0,
+            nextStaticOffset: 0xa0,
           },
           functions: {},
         },

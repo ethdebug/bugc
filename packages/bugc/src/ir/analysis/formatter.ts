@@ -117,7 +117,6 @@ export class IrFormatter {
       sources.push(`[${this.formatValue(value)}, ${block}]`);
     }
     return `${inst.dest} = phi ${sources.join(", ")}`;
-
   }
   private formatInstruction(inst: IrInstruction): string {
     switch (inst.kind) {

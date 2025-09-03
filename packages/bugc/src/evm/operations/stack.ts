@@ -64,6 +64,10 @@ export type StackBrand =
   | "retSize"
   | "success"
   | "salt"
+  // custom:
+  | "start"
+  | "end"
+  | "object"
   | "unknown";
 
 /**
