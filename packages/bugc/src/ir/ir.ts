@@ -145,9 +145,7 @@ export type IrInstruction =
   // Function calls
   | CallInstruction
   // Length operations
-  | LengthInstruction
-  // Phi nodes for SSA form
-  | PhiInstruction;
+  | LengthInstruction;
 
 // Instruction definitions
 export interface ConstInstruction {

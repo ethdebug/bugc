@@ -1,4 +1,4 @@
-import { IrModule, IrInstruction, Value } from "../../ir";
+import { IrModule, PhiInstruction, IrInstruction, Value } from "../../ir";
 import { BaseOptimizationStep, OptimizationContext } from "../optimizer";
 
 export class DeadCodeEliminationStep extends BaseOptimizationStep {
@@ -87,7 +87,7 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
     return optimized;
   }
 
-  private collectUsedValues(inst: IrInstruction, used: Set<string>): void {
+  private collectUsedValues(inst: PhiInstruction | IrInstruction, used: Set<string>): void {
     switch (inst.kind) {
       case "binary":
         this.collectValueUse(inst.left, used);

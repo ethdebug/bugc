@@ -118,11 +118,6 @@ function getUsedValues(inst: IrInstruction): Set<string> {
     case "length":
       addValue(inst.object);
       break;
-    case "phi":
-      for (const source of inst.sources.values()) {
-        addValue(source);
-      }
-      break;
     // These instructions don't use any values
     case "const":
     case "env":
@@ -153,8 +148,6 @@ function getDefinedValue(inst: IrInstruction): string | undefined {
     case "hash":
     case "cast":
     case "length":
-    case "phi":
-      return inst.dest;
     case "call":
       return inst.dest; // May be undefined for void functions
     case "store_local":

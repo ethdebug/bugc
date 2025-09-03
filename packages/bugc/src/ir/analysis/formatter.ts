@@ -7,6 +7,7 @@ import {
   IrFunction,
   BasicBlock,
   IrInstruction,
+  PhiInstruction,
   Value,
   TypeRef,
   Terminator,
@@ -94,7 +95,7 @@ export class IrFormatter {
     // Phi nodes
     if (block.phis) {
       for (const phi of block.phis) {
-        this.line(this.formatInstruction(phi));
+        this.line(this.formatPhiInstruction(phi));
       }
     }
 
@@ -110,6 +111,14 @@ export class IrFormatter {
     this.line("");
   }
 
+  private formatPhiInstruction(inst: PhiInstruction): string {
+    const sources: string[] = [];
+    for (const [block, value] of inst.sources) {
+      sources.push(`[${this.formatValue(value)}, ${block}]`);
+    }
+    return `${inst.dest} = phi ${sources.join(", ")}`;
+
+  }
   private formatInstruction(inst: IrInstruction): string {
     switch (inst.kind) {
       case "const":
@@ -185,14 +194,6 @@ export class IrFormatter {
 
       case "length":
         return `${inst.dest} = length ${this.formatValue(inst.object)}`;
-
-      case "phi": {
-        const sources: string[] = [];
-        for (const [block, value] of inst.sources) {
-          sources.push(`[${this.formatValue(value)}, ${block}]`);
-        }
-        return `${inst.dest} = phi ${sources.join(", ")}`;
-      }
 
       default:
         return `; unknown instruction: ${(inst as unknown as { kind: string }).kind}`;
