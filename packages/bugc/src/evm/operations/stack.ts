@@ -5,7 +5,8 @@ import { $ } from "./hkts";
  * These brands provide type-level documentation of what each stack item represents,
  * from basic operands (a, b) to complex operations (a + b, hash, etc.).
  */
-export type StackBrand =
+export type StackBrand = string;
+/*
   | "a"
   | "b"
   | "a + b"
@@ -69,6 +70,7 @@ export type StackBrand =
   | "end"
   | "object"
   | "unknown";
+*/
 
 /**
  * Represents an EVM stack as an ordered list of semantic stack brands.

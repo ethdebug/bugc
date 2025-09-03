@@ -17,6 +17,7 @@ import {
   loadValue,
   storeValueIfNeeded,
   allocateMemoryDynamic,
+  getArrayElementSize,
 } from "./utils";
 
 /**
@@ -397,6 +398,8 @@ function generateSlice<S extends Stack>(
     PUSHn, DUP1, DUP2, SUB, MUL, ADD, SWAP1, SWAP3, MCOPY
   } = operations;
 
+  const elementSize = getArrayElementSize(inst.object.type);
+
   return pipe<S>()
     .then(loadValue(inst.start), { as: "start" })
     .then(loadValue(inst.end), { as: "end" })
@@ -410,8 +413,9 @@ function generateSlice<S extends Stack>(
     .then(SUB(), { as: "b" })
     // Stack: [count, start, ...]
 
-    // Calculate byte size = length * 32 (assuming word-sized elements)
-    .then(PUSHn(32n), { as: "a" })
+    // Calculate byte size = length * element_size
+    // Get element size from the array type
+    .then(PUSHn(elementSize), { as: "a" })
     // Stack: [itemSize, count, start, ...]
     .then(MUL(), { as: "size" })
     // Stack: [bytesSize, start, ...]
@@ -433,7 +437,7 @@ function generateSlice<S extends Stack>(
     .then(SWAP3(), { as: "b" })
     // Stack: [start, destOffset, bytesSize, destOffset, ...]
 
-    .then(PUSHn(32n), { as: "a" })
+    .then(PUSHn(elementSize), { as: "a" })
     .then(MUL(), { as: "b" })
 
     // load the pointer to the start of the sliced object

@@ -1162,7 +1162,11 @@ describe("EVM Code Generator", () => {
                 {
                   kind: "const",
                   value: 0x100n,  // Array pointer in memory
-                  type: { kind: "uint", bits: 256 },
+                  type: { 
+                    kind: "array", 
+                    element: { kind: "uint", bits: 256 },
+                    size: undefined  // dynamic array
+                  },
                   dest: "%1",
                 },
                 {
@@ -1182,7 +1186,11 @@ describe("EVM Code Generator", () => {
                   object: {
                     kind: "temp",
                     id: "%1",
-                    type: { kind: "uint", bits: 256 },
+                    type: { 
+                      kind: "array", 
+                      element: { kind: "uint", bits: 256 },
+                      size: undefined
+                    },
                   },
                   start: {
                     kind: "temp",
@@ -1262,7 +1270,11 @@ describe("EVM Code Generator", () => {
                 {
                   kind: "const",
                   value: 0x100n,  // Array pointer
-                  type: { kind: "uint", bits: 256 },
+                  type: { 
+                    kind: "array", 
+                    element: { kind: "uint", bits: 256 },
+                    size: undefined  // dynamic array
+                  },
                   dest: "%1",
                 },
                 {
@@ -1282,7 +1294,11 @@ describe("EVM Code Generator", () => {
                   object: {
                     kind: "temp",
                     id: "%1",
-                    type: { kind: "uint", bits: 256 },
+                    type: { 
+                      kind: "array", 
+                      element: { kind: "uint", bits: 256 },
+                      size: undefined
+                    },
                   },
                   start: {
                     kind: "temp",
