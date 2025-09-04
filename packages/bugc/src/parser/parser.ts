@@ -667,16 +667,20 @@ expression = precedenceParser(0, unaryExpression);
  * Statement Parsers
  */
 
-// Variable declaration: let x = expr;
+// Variable declaration: let x = expr; or let x: Type = expr;
 const letStatement = located(
   P.seq(
     Lang.keyword("let"),
     Lang.identifier,
+    // Optional type annotation
+    P.seq(Lang.colon, typeExpression)
+      .map(([_, type]) => type)
+      .fallback(undefined),
     Lang.equals,
     expression,
     Lang.semicolon,
-  ).map(([_, name, __, init, ___]) =>
-    Ast.declarationStmt(Ast.declaration("variable", name, undefined, init)),
+  ).map(([_, name, declaredType, __, init, ___]) =>
+    Ast.declarationStmt(Ast.declaration("variable", name, declaredType, init)),
   ),
 );
 

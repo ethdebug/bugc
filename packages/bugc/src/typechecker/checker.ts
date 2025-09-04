@@ -224,9 +224,33 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
           this.setType(node, errorType);
           return errorType;
         }
+
         const initType = this.visit(node.initializer);
-        // Always define the variable, even if the initializer has a type error
-        const type = initType || new TypeErrorType("invalid initializer");
+
+        // Determine the variable's type
+        let type: Type;
+        if (node.declaredType) {
+          // If a type is explicitly declared, use it
+          type = this.resolveType(node.declaredType);
+
+          // Check that the initializer is compatible with the declared type
+          if (initType && !this.isAssignable(type, initType)) {
+            this.error(
+              ErrorMessages.TYPE_MISMATCH(
+                this.typeToString(type),
+                this.typeToString(initType),
+              ),
+              node.initializer.loc,
+              TypeErrorCode.TYPE_MISMATCH,
+              this.typeToString(type),
+              this.typeToString(initType),
+            );
+          }
+        } else {
+          // Otherwise, infer the type from the initializer
+          type = initType || new TypeErrorType("invalid initializer");
+        }
+
         const symbol: BugSymbol = {
           name: node.name,
           type,
@@ -991,7 +1015,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
           );
         } else if (typeNode.kind === "bytes") {
           if (!typeNode.bits) {
-            return TypesUtil.string; // Dynamic bytes
+            return TypesUtil.bytes; // Dynamic bytes
           }
           const typeMap: Record<number, Type> = {
             256: TypesUtil.bytes32,

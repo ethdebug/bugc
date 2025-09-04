@@ -39,8 +39,7 @@ export const Types = {
   isBytesType(type: Type): boolean {
     return (
       type instanceof ElementaryType &&
-      type.kind === "bytes" &&
-      type.bits !== undefined
+      type.kind === "bytes"
     );
   },
 
