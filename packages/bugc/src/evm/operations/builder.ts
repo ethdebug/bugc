@@ -19,6 +19,10 @@ export class PipeBuilder<U, I, X extends Stack, Y extends Stack> {
     private readonly transition: Transition<U, X, Y>,
   ) {}
 
+  err(error: Error): PipeBuilder<U, I, X, Y> {
+    return this.then(() => { throw error });
+  }
+
   peek<Z extends Stack>(
     func: (
       state: $<U, [readonly [...Y]]>,

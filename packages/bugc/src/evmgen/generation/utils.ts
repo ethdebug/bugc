@@ -169,16 +169,43 @@ export function getTypeSize(type: TypeRef): bigint {
 }
 
 /**
- * Get the element size for array types
+ * Get the element size for sliceable types
  * Returns the size of each element in bytes
  */
-export function getArrayElementSize(type: TypeRef): bigint {
-  if (type.kind !== "array") {
-    throw new Error(`Expected array type, got ${type.kind}`);
+export function getSliceElementSize(type: TypeRef): bigint {
+  switch (type.kind) {
+    case "array":
+      // Copying Solidity, all array elements are padded to 32 bytes in memory
+      // Even if the element type is smaller
+      return 32n;
+    case "string":
+    case "bytes":
+      return 1n;
+    default:
+      throw new Error(`Expected type, got ${type.kind}`);
   }
-  // In Solidity, all array elements are padded to 32 bytes in memory
-  // Even if the element type is smaller
-  return 32n;
+}
+
+/**
+ * Get the offset where actual data starts for sliceable types.
+ * For dynamic bytes/strings in memory, data starts after the 32-byte length field.
+ * For fixed-size bytes and arrays, data starts immediately.
+ */
+export function getSliceDataOffset(type: TypeRef): bigint {
+  switch (type.kind) {
+    case "bytes":
+      // Dynamic bytes have a 32-byte length field before the data
+      return type.size === undefined ? 32n : 0n;
+    case "string":
+      // Strings always have a 32-byte length field before the data
+      return 32n;
+    case "array":
+      // Arrays in memory start with data immediately after the pointer
+      // (the length is stored separately if it's dynamic)
+      return 0n;
+    default:
+      throw new Error(`Cannot get data offset for type ${type.kind}`);
+  }
 }
 
 /**

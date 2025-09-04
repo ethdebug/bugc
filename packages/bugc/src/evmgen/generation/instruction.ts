@@ -10,6 +10,7 @@ import {
   type GenState,
   type Transition,
   pipe,
+  rebrand,
   rebrandTop,
   operations,
 } from "../operations";
@@ -17,7 +18,8 @@ import {
   loadValue,
   storeValueIfNeeded,
   allocateMemoryDynamic,
-  getArrayElementSize,
+  getSliceElementSize,
+  getSliceDataOffset,
   valueId,
 } from "./utils";
 
@@ -625,161 +627,136 @@ function generateCast<S extends Stack>(
 function generateSlice<S extends Stack>(
   inst: Ir.SliceInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  // For bytes/strings, each element is 1 byte. For arrays, use the element size.
-  const elementSize =
-    inst.object.type.kind === "bytes" || inst.object.type.kind === "string"
-      ? 1n
-      : getArrayElementSize(inst.object.type);
+  const objectId = valueId(inst.object);
 
-  // For storage arrays, we need to:
-  // 1. Compute the base storage slot (compute_array_slot gives us keccak256(slot))
-  // 2. For each element from start to end:
-  //    - Add the index to the base slot
-  //    - Load from storage
-  //    - Store to memory
+  // Check if it's calldata by looking at the value id pattern
+  // Calldata values typically come from msg_data or function arguments
+  const isCalldata =
+    objectId.includes("calldata") ||
+    objectId.includes("msg_data") ||
+    objectId.includes("msg.data");
 
-  // For memory arrays, we can use MCOPY directly
-  // For calldata arrays, we can use CALLDATACOPY
-
-  // We'll check if the value came from a compute_array_slot by checking
-  // if it's already in memory allocations. If not, we need to determine
-  // if it's storage or calldata.
+  const source: "calldata" | "memory" = isCalldata
+    ? "calldata"
+    : "memory";
 
   return pipe<S>()
     .peek((state, builder) => {
-      const objectId = valueId(inst.object);
       const isInMemory =
         objectId in state.memory.allocations ||
         state.stack.findIndex(({ irValue }) => irValue === objectId) > -1;
-
-      // Check if it's calldata by looking at the value id pattern
-      // Calldata values typically come from msg_data or function arguments
-      const isCalldata =
-        objectId.includes("calldata") ||
-        objectId.includes("msg_data") ||
-        objectId.includes("msg.data");
 
       if (!isInMemory && !isCalldata) {
         // Storage array - need to load each element
         // This is more complex, so for now we'll implement the memory case
         // and add a warning for storage arrays
-        return builder
-          .then((s) => {
-            const warning = new EvmError(
+        return builder.err(
+            new EvmError(
               EvmErrorCode.UNSUPPORTED_INSTRUCTION,
               "Slice of storage arrays not yet implemented",
               inst.loc,
-              Severity.Warning,
-            );
-            return {
-              ...s,
-              warnings: [...s.warnings, warning],
-            };
-          })
-          .then(PUSHn(0n), { as: "value" }) // Placeholder
-          .then(storeValueIfNeeded(inst.dest));
-      }
-
-      // Common logic for calculating slice parameters
-      const sliceBuilder = builder
-        .then(loadValue(inst.start), { as: "start" })
-        .then(loadValue(inst.end), { as: "end" })
-        // Stack: [end, start, ...]
-
-        // Calculate length = end - start
-        .then(DUP2(), { as: "b" })
-        // Stack: [start, end, start, ...]
-        .then(SWAP1(), { as: "a" })
-        // Stack: [end, start, start, ...]
-        .then(SUB(), { as: "b" })
-        // Stack: [count, start, ...]
-
-        // Calculate byte size = length * element_size
-        .then(PUSHn(elementSize), { as: "a" })
-        // Stack: [itemSize, count, start, ...]
-        .then(MUL(), { as: "size" })
-        // Stack: [bytesSize, start, ...]
-
-        // save total bytes size because it's needed for copy
-        .then(DUP1())
-        // Stack: [bytesSize, bytesSize, start, ...]
-
-        // Allocate memory dynamically
-        .then(allocateMemoryDynamic(), { as: "destOffset" })
-        // Stack: [destOffset, bytesSize, start, ...]
-
-        // Save destOffset for return value
-        .then(DUP1());
-      // Stack: [destOffset, destOffset, bytesSize, start, ...];
-
-      if (isCalldata) {
-        // Calldata array implementation using CALLDATACOPY
-        return (
-          sliceBuilder
-            // Stack: [destOffset, destOffset, bytesSize, start, ...]
-
-            // and grab start now to calculate calldata offset
-            .then(SWAP3(), { as: "b" })
-            // Stack: [start, destOffset, bytesSize, destOffset, ...]
-
-            .then(PUSHn(elementSize), { as: "a" })
-            .then(MUL(), { as: "b" })
-
-            // load the calldata offset of the array
-            .then(loadValue(inst.object), { as: "a" })
-            // add the computed size before the slice to get
-            // the starting offset in calldata
-            .then(ADD(), { as: "offset" })
-
-            // Stack needs to be [destOffset, offset, size] for CALLDATACOPY
-            .then(SWAP1())
-            // Stack: [destOffset, offset, bytesSize, destOffset, ...]
-            .then(CALLDATACOPY())
-
-            // only relevant item left on stack is the offset of the newly
-            // allocated memory.
-            .then(rebrandTop("value"))
-            .then(storeValueIfNeeded(inst.dest))
+              Severity.Error,
+            )
         );
-      } else {
-        // Memory array implementation using MCOPY
-        // Check if we need to skip the length field for dynamic bytes
-        const isDynamicBytes = inst.object.type.kind === "bytes" &&
-          inst.object.type.size === undefined;
-
-        let memBuilder = sliceBuilder
-          // and grab start now since we won't need this new destOffset for awhile
-          // this will be multiplied by the element size
-          .then(SWAP3(), { as: "b" })
-          // Stack: [start, destOffset, bytesSize, destOffset, ...]
-
-          .then(PUSHn(elementSize), { as: "a" })
-          .then(MUL(), { as: "b" })
-
-          // load the pointer to the start of the sliced object
-          .then(loadValue(inst.object), { as: "a" })
-          .then(ADD(), { as: "offset" });
-
-        // For dynamic bytes/strings, we need to skip the length field (32 bytes)
-        // to get to the actual data
-        if (isDynamicBytes) {
-          memBuilder = memBuilder
-            .then(rebrandTop("b"))
-            .then(PUSHn(32n), { as: "a" })
-            .then(ADD(), { as: "offset" });
-        }
-
-        return memBuilder
-          // re-order for MCOPY
-          .then(SWAP1())
-          .then(MCOPY())
-
-          // only relevant item left on stack is the offset of the newly
-          // allocated memory.
-          .then(rebrandTop("value"))
-          .then(storeValueIfNeeded(inst.dest));
       }
+      return builder;
     })
+    .then(loadValue(inst.start), { as: "startIndex" })
+    .then(DUP1())
+    .then(loadValue(inst.end), { as: "endIndex" })
+    .then(allocateSlice(inst.object))
+    .then(DUP1())
+    .then(SWAP3(), { as: "startIndex" })
+    .then(computeSliceStartOffset(inst.object), { as: "offset" })
+    .then(SWAP1(), { as: "destOffset" })
+    .then(rebrand({ 3: "size" } as const))
+    .then(performCopyFrom(source))
+    .then(rebrandTop("value"))
+    .then(storeValueIfNeeded(inst.dest))
+    .done();
+}
+
+function computeSliceStartOffset<S extends Stack>(
+  object: Ir.Value
+): Transition<
+  readonly ["startIndex", ...S],
+  readonly ["startOffset", ...S]
+> {
+  const { PUSHn, MUL, ADD } = operations;
+
+  // Get element size for the object type
+  const elementSize = getSliceElementSize(object.type);
+
+  // Get the offset where data starts (after length field for dynamic bytes/strings)
+  const dataOffset = getSliceDataOffset(object.type);
+
+  return pipe<readonly ["startIndex", ...S]>()
+    .then(rebrandTop("b"))
+    // Multiply start index by element size
+    .then(PUSHn(elementSize), { as: "a" })
+    .then(MUL(), { as: "b" })
+
+    // Load the base pointer to the object
+    .then(loadValue(object), { as: "a" })
+    .then(ADD(), { as: "offset" })
+
+    // Add data offset if needed (for dynamic bytes/strings)
+    .then(
+      dataOffset > 0n
+        ? pipe<readonly ["offset", ...S]>()
+          .then(rebrandTop("b"))
+          .then(PUSHn(dataOffset), { as: "a" })
+          .then(ADD(), { as: "startOffset" })
+          .done()
+        : pipe<readonly ["offset", ...S]>()
+          .then(rebrandTop("startOffset"))
+          .done()
+    )
+    .done();
+}
+
+
+function allocateSlice<S extends Stack>(
+  object: Ir.Value
+): Transition<
+  readonly ["endIndex", "startIndex", ...S],
+  readonly ["allocatedOffset", "totalSize", ...S]
+> {
+  const elementSize = getSliceElementSize(object.type);
+
+  return pipe<readonly ["endIndex", "startIndex", ...S]>()
+    // Calculate length = end - start
+    .then(rebrand({
+      1: "a",
+      2: "b"
+    } as const))
+    .then(state => state)
+    .then(SUB(), { as: "b" })
+
+    // Calculate byte size = length * element_size
+    .then(PUSHn(elementSize), { as: "a" })
+    .then(MUL(), { as: "totalSize" })
+
+    // preserve total bytes size
+    .then(DUP1(), { as: "size" })
+
+    // Allocate memory dynamically
+    .then(allocateMemoryDynamic(), { as: "allocatedOffset" })
+    .then(state => state)
+    .done();
+}
+
+function performCopyFrom<S extends Stack>(
+  source: "memory" | "calldata"
+): Transition<
+  readonly ["destOffset", "offset", "size", ...S],
+  readonly [...S]
+> {
+  const COPY = source === "memory"
+    ? MCOPY
+    : CALLDATACOPY;
+  return pipe<["destOffset", "offset", "size", ...S]>()
+    .then(COPY())
     .done();
 }
 

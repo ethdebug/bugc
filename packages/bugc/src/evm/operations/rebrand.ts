@@ -22,9 +22,95 @@ import type { StateControls } from "./state";
  * duplicates the 1st item (top), DUP2 duplicates the 2nd, etc.
  */
 export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
-  const rebrand =
-    <Rebrands extends Record<number, StackBrand>>(brands: Rebrands) =>
-    <S extends Stack>(
+  function rebrand<
+    A0 extends StackBrand,
+    A1 extends StackBrand,
+  >(rebrands: {
+    1: A1
+  }): <S extends Stack>(
+    state: $<U, [readonly [A0, ...S]]>
+  ) => $<U, [readonly [A1, ...S]]>;
+
+  function rebrand<
+    A0 extends StackBrand,
+    A1 extends StackBrand,
+    B0 extends StackBrand,
+    B1 extends StackBrand
+  >(rebrands: {
+    1: A1,
+    2: B1
+  }): <S extends Stack>(
+    state: $<U, [readonly [A0, B0, ...S]]>
+  ) => $<U, [readonly [A1, B1, ...S]]>;
+
+  function rebrand<
+    A extends StackBrand,
+    B0 extends StackBrand,
+    B1 extends StackBrand
+  >(rebrands: {
+    2: B1
+  }): <S extends Stack>(
+    state: $<U, [readonly [A, B0, ...S]]>
+  ) => $<U, [readonly [A, B1, ...S]]>;
+
+  function rebrand<
+    A0 extends StackBrand,
+    A1 extends StackBrand,
+    B0 extends StackBrand,
+    B1 extends StackBrand,
+    C0 extends StackBrand,
+    C1 extends StackBrand,
+  >(rebrands: {
+    1: A1,
+    2: B1,
+    3: C1,
+  }): <S extends Stack>(
+    state: $<U, [readonly [A0, B0, C0, ...S]]>
+  ) => $<U, [readonly [A1, B1, C1, ...S]]>;
+
+  function rebrand<
+    A extends StackBrand,
+    B0 extends StackBrand,
+    B1 extends StackBrand,
+    C0 extends StackBrand,
+    C1 extends StackBrand,
+  >(rebrands: {
+    2: B1,
+    3: C1,
+  }): <S extends Stack>(
+    state: $<U, [readonly [A, B0, C0, ...S]]>
+  ) => $<U, [readonly [A, B1, C1, ...S]]>;
+
+  function rebrand<
+    A0 extends StackBrand,
+    A1 extends StackBrand,
+    B extends StackBrand,
+    C0 extends StackBrand,
+    C1 extends StackBrand,
+  >(rebrands: {
+    1: A1,
+    3: C1,
+  }): <S extends Stack>(
+    state: $<U, [readonly [A0, B, C0, ...S]]>
+  ) => $<U, [readonly [A1, B, C1, ...S]]>;
+
+  function rebrand<
+    A extends StackBrand,
+    B extends StackBrand,
+    C0 extends StackBrand,
+    C1 extends StackBrand,
+  >(rebrands: {
+    3: C1,
+  }): <S extends Stack>(
+    state: $<U, [readonly [A, B, C0, ...S]]>
+  ) => $<U, [readonly [A, B, C1, ...S]]>;
+
+  function rebrand<
+    Rebrands extends Record<number, StackBrand>,
+  >(
+    brands: Rebrands,
+  ) {
+    return <S extends Stack>(
       state: $<U, [readonly [...S]]>,
     ): $<U, [Rebranded<S, Rebrands>]> => {
       // Find the maximum position we need to rebrand
@@ -55,13 +141,18 @@ export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
         poppedState,
       );
     };
+  }
 
-  const rebrandTop =
-    <A extends StackBrand, B extends StackBrand>(brand: B) =>
-    <S extends Stack>(
-      state: $<U, [readonly [A, ...S]]>,
-    ): $<U, [readonly [B, ...S]]> =>
-      rebrand({ 1: brand })(state);
+  const rebrandTop = <
+    A extends StackBrand,
+    B extends StackBrand,
+  >(
+    brand: B,
+  ) => <
+    S extends Stack,
+  >(
+    state: $<U, [readonly [A, ...S]]>,
+  ): $<U, [readonly [B, ...S]]> => rebrand({ 1: brand })(state);
 
   return { rebrand, rebrandTop };
 };
