@@ -157,8 +157,74 @@ export function generateUnary<S extends Stack>(
 export function generateConst<S extends Stack>(
   inst: Ir.ConstInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { PUSHn } = operations;
+  const { PUSHn, MSTORE, DUP2, ADD } = operations;
 
+  // Check the type to determine how to handle the constant
+  if (inst.type.kind === "string" || inst.type.kind === "bytes") {
+    const strValue = String(inst.value);
+
+    // Convert string to UTF-8 bytes
+    // Using TextEncoder for proper UTF-8 encoding
+    const encoder = new TextEncoder();
+    const utf8Bytes = encoder.encode(strValue);
+    const byteLength = BigInt(utf8Bytes.length);
+
+    // Calculate memory needed: 32 bytes for length + actual data (padded to 32-byte words)
+    const dataWords = (byteLength + 31n) / 32n;
+    const totalBytes = 32n + dataWords * 32n;
+
+    // String/bytes constants need to be stored in memory
+    return pipe<S>()
+      // Allocate memory dynamically
+      .then(PUSHn(totalBytes), { as: "size" })
+      .then(allocateMemoryDynamic(), { as: "offset" })
+
+      // Store the length at the allocated offset
+      .then(PUSHn(BigInt(byteLength)), { as: "value" })
+      .then(DUP2(), { as: "offset" })
+      .then(MSTORE())
+      .peek((_, builder) => {
+        let result = builder;
+
+        // Store the actual bytes
+        // For simplicity, we'll pack bytes into 32-byte words
+        for (let wordIdx = 0n; wordIdx < dataWords; wordIdx++) {
+          const wordStart = wordIdx * 32n;
+          const wordEnd = byteLength < wordStart + 32n
+            ? byteLength
+            : wordStart + 32n;
+
+          // Pack up to 32 bytes into a single word
+          let wordValue = 0n;
+          for (let i = wordStart; i < wordEnd; i++) {
+            // Shift left and add the byte (big-endian)
+            wordValue = (wordValue << 8n) | BigInt(utf8Bytes[Number(i)]);
+          }
+
+          // Pad remaining bytes with zeros (already done by shifting)
+          const remainingBytes = 32n - (wordEnd - wordStart);
+          wordValue = wordValue << remainingBytes * 8n;
+
+          // Store the word at offset + 32 + (wordIdx * 32)
+          const storeOffset = 32n + wordIdx * 32n;
+          result = result
+            .then(PUSHn(wordValue), { as: "value" })
+            .then(DUP2(), { as: "b" })
+            .then(PUSHn(storeOffset), { as: "a" })
+            .then(ADD(), { as: "offset" })
+            .then(MSTORE());
+        }
+
+        // The original offset is still on the stack (from DUP2 operations)
+        // Rebrand it as value for return
+        return result
+          .then(rebrandTop("value"))
+          .then(storeValueIfNeeded(inst.dest));
+      })
+      .done();
+  }
+
+  // For numeric and boolean constants, use existing behavior
   return pipe<S>()
     .then(PUSHn(BigInt(inst.value)))
     .then(storeValueIfNeeded(inst.dest))
@@ -260,7 +326,7 @@ function generateEnvOp<S extends Stack>(
   } = {
     msg_sender: operations.CALLER(),
     msg_value: operations.CALLVALUE(),
-    msg_data: operations.PUSH0(), // Simplified for now
+    msg_data: operations.PUSH0(), // Returns calldata offset (0)
     block_timestamp: operations.TIMESTAMP(),
     block_number: operations.NUMBER(),
   };
@@ -274,11 +340,25 @@ function generateEnvOp<S extends Stack>(
 export function generateLength<S extends Stack>(
   inst: Ir.LengthInstruction,
 ): Transition<S, readonly ["value", ...S]> {
+  // Check if this is msg.data (calldata) - use CALLDATASIZE
+  const objectId = valueId(inst.object);
+  const isCalldata = objectId.includes("calldata") || objectId.includes("msg_data") || objectId.includes("msg.data");
+
+  if (isCalldata) {
+    const { CALLDATASIZE } = operations;
+
+    return pipe<S>()
+      .then(CALLDATASIZE(), { as: "value" })
+      .then(storeValueIfNeeded(inst.dest))
+      .done();
+  }
+
   // Length instruction - behavior depends on the type
   const objectType = inst.object.type;
 
   if (objectType.kind === "array") {
     if (objectType.size !== undefined) {
+      // Fixed-size array - return the size
       const { PUSHn } = operations;
 
       return pipe<S>()
@@ -286,6 +366,7 @@ export function generateLength<S extends Stack>(
         .then(storeValueIfNeeded(inst.dest))
         .done();
     } else {
+      // Dynamic array - length is stored at the slot
       const { SLOAD } = operations;
 
       return pipe<S>()
@@ -298,13 +379,80 @@ export function generateLength<S extends Stack>(
 
   if (objectType.kind === "bytes") {
     if (objectType.size !== undefined) {
+      // Fixed-size bytes - return the size
       const { PUSHn } = operations;
 
       return pipe<S>()
         .then(PUSHn(BigInt(objectType.size)))
         .then(storeValueIfNeeded(inst.dest))
         .done();
+    } else {
+      // Dynamic bytes - need to check if in memory or storage
+      const { MLOAD, SLOAD, SHR, SUB, PUSHn } = operations;
+
+      return pipe<S>()
+        .peek((state, builder) => {
+          // Check if value is in memory
+          const isInMemory = objectId in state.memory.allocations ||
+            state.stack.findIndex(({ irValue }) => irValue === objectId) > -1;
+
+          if (isInMemory) {
+            // Memory bytes: length is stored at the pointer location
+            // First word contains length (in bytes)
+            return builder
+              .then(loadValue(inst.object), { as: "offset" })
+              .then(MLOAD(), { as: "value" })
+              .then(storeValueIfNeeded(inst.dest));
+          } else {
+            // Storage bytes: length is packed with data if short, or in slot if long
+            // For simplicity, assume it's stored at the slot (long string/bytes)
+            // The length is stored as 2 * length + 1 in the slot for long strings
+            return builder
+              .then(loadValue(inst.object), { as: "key" })
+              .then(SLOAD(), { as: "b" })
+              // Extract length from storage format
+              // For long strings: (value - 1) / 2
+              .then(PUSHn(1n), { as: "a" })
+              .then(SUB(), { as: "value" })
+              .then(PUSHn(1n), { as: "shift" })
+              .then(SHR(), { as: "value" })
+              .then(storeValueIfNeeded(inst.dest));
+          }
+        })
+        .done();
     }
+  }
+
+  if (objectType.kind === "string") {
+    // Strings work the same as dynamic bytes
+    const { MLOAD, SLOAD, SHR, SUB, PUSHn } = operations;
+
+    return pipe<S>()
+      .peek((state, builder) => {
+        // Check if value is in memory
+        const isInMemory = objectId in state.memory.allocations ||
+          state.stack.findIndex(({ irValue }) => irValue === objectId) > -1;
+
+        if (isInMemory) {
+          // Memory string: length is stored at the pointer location
+          return builder
+            .then(loadValue(inst.object), { as: "offset" })
+            .then(MLOAD(), { as: "value" })
+            .then(storeValueIfNeeded(inst.dest));
+        } else {
+          // Storage string: same as storage bytes
+          return builder
+            .then(loadValue(inst.object), { as: "key" })
+            .then(SLOAD(), { as: "b" })
+            // Extract length from storage format
+            .then(PUSHn(1n), { as: "a" })
+            .then(SUB(), { as: "value" })
+            .then(PUSHn(1n), { as: "shift" })
+            .then(SHR(), { as: "value" })
+            .then(storeValueIfNeeded(inst.dest));
+        }
+      })
+      .done();
   }
 
   throw new EvmError(
@@ -395,9 +543,13 @@ function generateCast<S extends Stack>(
 function generateSlice<S extends Stack>(
   inst: Ir.SliceInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { PUSHn, DUP1, DUP2, SUB, MUL, ADD, SWAP1, SWAP3, MCOPY } = operations;
+  const { PUSHn, DUP1, DUP2, SUB, MUL, ADD, SWAP1, SWAP3, MCOPY, CALLDATACOPY } = operations;
 
-  const elementSize = getArrayElementSize(inst.object.type);
+  // For bytes/strings, each element is 1 byte. For arrays, use the element size.
+  const elementSize =
+    inst.object.type.kind === "bytes" || inst.object.type.kind === "string"
+      ? 1n
+      : getArrayElementSize(inst.object.type);
 
   // For storage arrays, we need to:
   // 1. Compute the base storage slot (compute_array_slot gives us keccak256(slot))
@@ -407,9 +559,11 @@ function generateSlice<S extends Stack>(
   //    - Store to memory
 
   // For memory arrays, we can use MCOPY directly
+  // For calldata arrays, we can use CALLDATACOPY
 
   // We'll check if the value came from a compute_array_slot by checking
-  // if it's already in memory allocations. If not, assume it's a storage slot.
+  // if it's already in memory allocations. If not, we need to determine
+  // if it's storage or calldata.
 
   return pipe<S>()
     .peek((state, builder) => {
@@ -418,7 +572,11 @@ function generateSlice<S extends Stack>(
         objectId in state.memory.allocations ||
         state.stack.findIndex(({ irValue }) => irValue === objectId) > -1;
 
-      if (!isInMemory) {
+      // Check if it's calldata by looking at the value id pattern
+      // Calldata values typically come from msg_data or function arguments
+      const isCalldata = objectId.includes("calldata") || objectId.includes("msg_data") || objectId.includes("msg.data");
+
+      if (!isInMemory && !isCalldata) {
         // Storage array - need to load each element
         // This is more complex, so for now we'll implement the memory case
         // and add a warning for storage arrays
@@ -439,62 +597,95 @@ function generateSlice<S extends Stack>(
           .then(storeValueIfNeeded(inst.dest));
       }
 
-      // Memory array implementation (existing code)
-      return (
-        builder
-          .then(loadValue(inst.start), { as: "start" })
-          .then(loadValue(inst.end), { as: "end" })
-          // Stack: [end, start, ...]
+      // Common logic for calculating slice parameters
+      const sliceBuilder = builder
+        .then(loadValue(inst.start), { as: "start" })
+        .then(loadValue(inst.end), { as: "end" })
+        // Stack: [end, start, ...]
 
-          // Calculate length = end - start
-          .then(DUP2(), { as: "b" })
-          // Stack: [start, end, start, ...]
-          .then(SWAP1(), { as: "a" })
-          // Stack: [end, start, start, ...]
-          .then(SUB(), { as: "b" })
-          // Stack: [count, start, ...]
+        // Calculate length = end - start
+        .then(DUP2(), { as: "b" })
+        // Stack: [start, end, start, ...]
+        .then(SWAP1(), { as: "a" })
+        // Stack: [end, start, start, ...]
+        .then(SUB(), { as: "b" })
+        // Stack: [count, start, ...]
 
-          // Calculate byte size = length * element_size
-          .then(PUSHn(elementSize), { as: "a" })
-          // Stack: [itemSize, count, start, ...]
-          .then(MUL(), { as: "size" })
-          // Stack: [bytesSize, start, ...]
+        // Calculate byte size = length * element_size
+        .then(PUSHn(elementSize), { as: "a" })
+        // Stack: [itemSize, count, start, ...]
+        .then(MUL(), { as: "size" })
+        // Stack: [bytesSize, start, ...]
 
-          // save total bytes size because it's needed for MCOPY
-          .then(DUP1())
-          // Stack: [bytesSize, bytesSize, start, ...]
+        // save total bytes size because it's needed for copy
+        .then(DUP1())
+        // Stack: [bytesSize, bytesSize, start, ...]
 
-          // Allocate memory dynamically
-          .then(allocateMemoryDynamic(), { as: "destOffset" })
-          // Stack: [destOffset, bytesSize, start, ...]
+        // Allocate memory dynamically
+        .then(allocateMemoryDynamic(), { as: "destOffset" })
+        // Stack: [destOffset, bytesSize, start, ...]
 
-          // Save destOffset for return value
-          .then(DUP1())
-          // Stack: [destOffset, destOffset, bytesSize, start, ...]
+        // Save destOffset for return value
+        .then(DUP1())
+        // Stack: [destOffset, destOffset, bytesSize, start, ...];
 
-          // and grab start now since we won't need this new destOffset for awhile
-          // this will be multiplied by the element size
-          .then(SWAP3(), { as: "b" })
-          // Stack: [start, destOffset, bytesSize, destOffset, ...]
+      if (isCalldata) {
+        // Calldata array implementation using CALLDATACOPY
+        return (
+          sliceBuilder
+            // Stack: [destOffset, destOffset, bytesSize, start, ...]
 
-          .then(PUSHn(elementSize), { as: "a" })
-          .then(MUL(), { as: "b" })
+            // and grab start now to calculate calldata offset
+            .then(SWAP3(), { as: "b" })
+            // Stack: [start, destOffset, bytesSize, destOffset, ...]
 
-          // load the pointer to the start of the sliced object
-          .then(loadValue(inst.object), { as: "a" })
-          // add the computed size before the slice to get
-          // the starting offset in memory
-          .then(ADD(), { as: "offset" })
+            .then(PUSHn(elementSize), { as: "a" })
+            .then(MUL(), { as: "b" })
 
-          // re-order for MCOPY
-          .then(SWAP1())
-          .then(MCOPY())
+            // load the calldata offset of the array
+            .then(loadValue(inst.object), { as: "a" })
+            // add the computed size before the slice to get
+            // the starting offset in calldata
+            .then(ADD(), { as: "offset" })
 
-          // only relevant item left on stack is the offset of the newly
-          // allocated memory.
-          .then(rebrandTop("value"))
-          .then(storeValueIfNeeded(inst.dest))
-      );
+            // Stack needs to be [destOffset, offset, size] for CALLDATACOPY
+            .then(SWAP1())
+            // Stack: [destOffset, offset, bytesSize, destOffset, ...]
+            .then(CALLDATACOPY())
+
+            // only relevant item left on stack is the offset of the newly
+            // allocated memory.
+            .then(rebrandTop("value"))
+            .then(storeValueIfNeeded(inst.dest))
+        );
+      } else {
+        // Memory array implementation using MCOPY
+        return (
+          sliceBuilder
+            // and grab start now since we won't need this new destOffset for awhile
+            // this will be multiplied by the element size
+            .then(SWAP3(), { as: "b" })
+            // Stack: [start, destOffset, bytesSize, destOffset, ...]
+
+            .then(PUSHn(elementSize), { as: "a" })
+            .then(MUL(), { as: "b" })
+
+            // load the pointer to the start of the sliced object
+            .then(loadValue(inst.object), { as: "a" })
+            // add the computed size before the slice to get
+            // the starting offset in memory
+            .then(ADD(), { as: "offset" })
+
+            // re-order for MCOPY
+            .then(SWAP1())
+            .then(MCOPY())
+
+            // only relevant item left on stack is the offset of the newly
+            // allocated memory.
+            .then(rebrandTop("value"))
+            .then(storeValueIfNeeded(inst.dest))
+        );
+      }
     })
     .done();
 }

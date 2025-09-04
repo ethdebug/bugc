@@ -1333,5 +1333,348 @@ describe("EVM Code Generator", () => {
       const mnemonics = instructions.map((inst) => inst.mnemonic);
       expect(mnemonics).toContain("MCOPY");
     });
+
+    it("should handle slice operation on calldata (msg.data)", () => {
+      const func: IrFunction = {
+        name: "test",
+        locals: [],
+        entry: "entry",
+        blocks: new Map([
+          [
+            "entry",
+            {
+              id: "entry",
+              phis: [],
+              predecessors: new Set<string>(),
+              instructions: [
+                {
+                  kind: "env",
+                  op: "msg_data",
+                  dest: "%msg_data_ptr",
+                },
+                {
+                  kind: "slice",
+                  object: {
+                    kind: "temp",
+                    id: "%msg_data_ptr",
+                    type: {
+                      kind: "array",
+                      element: { kind: "uint", bits: 256 },
+                      size: undefined, // dynamic array
+                    },
+                  },
+                  start: { 
+                    kind: "const", 
+                    value: 1n, 
+                    type: { kind: "uint", bits: 256 } 
+                  },
+                  end: { 
+                    kind: "const", 
+                    value: 3n, 
+                    type: { kind: "uint", bits: 256 } 
+                  },
+                  dest: "%calldata_slice",
+                },
+              ],
+              terminator: {
+                kind: "return",
+                value: {
+                  kind: "temp",
+                  id: "%calldata_slice",
+                  type: {
+                    kind: "array",
+                    element: { kind: "uint", bits: 256 },
+                    size: undefined,
+                  },
+                },
+              },
+            },
+          ],
+        ]),
+      };
+
+      const liveness = analyzeLiveness(func);
+      const memoryResult = planFunctionMemory(func, liveness);
+      if (!memoryResult.success) throw new Error("Memory planning failed");
+      const memory = memoryResult.value;
+      const layout = layoutBlocks(func);
+
+      const { instructions } = generateFunction(func, memory, layout);
+      const mnemonics = instructions.map((inst) => inst.mnemonic);
+
+      // Should have PUSH0 for msg.data pointer (offset 0)
+      expect(mnemonics).toContain("PUSH0");
+      
+      // Should have CALLDATACOPY instead of MCOPY for calldata slice
+      expect(mnemonics).toContain("CALLDATACOPY");
+      
+      // Should NOT have MCOPY since we're copying from calldata
+      expect(mnemonics).not.toContain("MCOPY");
+    });
+
+    it("should handle msg.data.length using CALLDATASIZE", () => {
+      const func: IrFunction = {
+        name: "test",
+        locals: [],
+        entry: "entry",
+        blocks: new Map([
+          [
+            "entry",
+            {
+              id: "entry",
+              phis: [],
+              predecessors: new Set<string>(),
+              instructions: [
+                {
+                  kind: "env",
+                  op: "msg_data",
+                  dest: "%msg_data",
+                },
+                {
+                  kind: "length",
+                  object: {
+                    kind: "temp",
+                    id: "%msg_data",
+                    type: {
+                      kind: "bytes",
+                      size: undefined, // dynamic bytes (calldata)
+                    },
+                  },
+                  dest: "%data_length",
+                },
+              ],
+              terminator: {
+                kind: "return",
+                value: {
+                  kind: "temp",
+                  id: "%data_length",
+                  type: { kind: "uint", bits: 256 },
+                },
+              },
+            },
+          ],
+        ]),
+      };
+
+      const liveness = analyzeLiveness(func);
+      const memoryResult = planFunctionMemory(func, liveness);
+      if (!memoryResult.success) throw new Error("Memory planning failed");
+      const memory = memoryResult.value;
+      const layout = layoutBlocks(func);
+
+      const { instructions } = generateFunction(func, memory, layout);
+      const mnemonics = instructions.map((inst) => inst.mnemonic);
+
+      // Should have PUSH0 for msg.data
+      expect(mnemonics).toContain("PUSH0");
+      
+      // Should have CALLDATASIZE for getting the length
+      expect(mnemonics).toContain("CALLDATASIZE");
+      
+      // Should NOT have SLOAD (not storage array length)
+      expect(mnemonics).not.toContain("SLOAD");
+    });
+
+    it("should handle slice operation on bytes", () => {
+      const func: IrFunction = {
+        name: "test",
+        locals: [],
+        entry: "entry",
+        blocks: new Map([
+          [
+            "entry",
+            {
+              id: "entry",
+              phis: [],
+              predecessors: new Set<string>(),
+              instructions: [
+                {
+                  kind: "const",
+                  value: "0x1234567890abcdef",
+                  type: { kind: "bytes", size: 8 },
+                  dest: "%data",
+                },
+                {
+                  kind: "slice",
+                  object: {
+                    kind: "temp",
+                    id: "%data",
+                    type: {
+                      kind: "bytes",
+                      size: 8,
+                    },
+                  },
+                  start: { 
+                    kind: "const", 
+                    value: 2n, 
+                    type: { kind: "uint", bits: 256 } 
+                  },
+                  end: { 
+                    kind: "const", 
+                    value: 6n, 
+                    type: { kind: "uint", bits: 256 } 
+                  },
+                  dest: "%sliced_bytes",
+                },
+              ],
+              terminator: {
+                kind: "return",
+                value: {
+                  kind: "temp",
+                  id: "%sliced_bytes",
+                  type: { kind: "bytes", size: 4 },
+                },
+              },
+            },
+          ],
+        ]),
+      };
+
+      const liveness = analyzeLiveness(func);
+      const memoryResult = planFunctionMemory(func, liveness);
+      if (!memoryResult.success) throw new Error("Memory planning failed");
+      const memory = memoryResult.value;
+      const layout = layoutBlocks(func);
+
+      const { instructions } = generateFunction(func, memory, layout);
+      const mnemonics = instructions.map((inst) => inst.mnemonic);
+
+      // Should use MCOPY for memory bytes slicing
+      expect(mnemonics).toContain("MCOPY");
+      
+      // Check that slice arithmetic uses 1-byte elements (no MUL by 32)
+      // We multiply by 1 for bytes, which should be optimized out or use PUSH1 0x01
+      const pushInstructions = instructions.filter(inst => 
+        inst.mnemonic.startsWith("PUSH")
+      );
+      
+      // Should have PUSH instructions for start (2) and end (6)
+      const hasStartValue = pushInstructions.some(inst => 
+        inst.immediates && inst.immediates[0] === 2
+      );
+      const hasEndValue = pushInstructions.some(inst => 
+        inst.immediates && inst.immediates[0] === 6
+      );
+      
+      expect(hasStartValue).toBe(true);
+      expect(hasEndValue).toBe(true);
+    });
+
+    it("should handle string constants with UTF-8 encoding", () => {
+      const func: IrFunction = {
+        name: "test",
+        locals: [],
+        entry: "entry",
+        blocks: new Map([
+          [
+            "entry",
+            {
+              id: "entry",
+              phis: [],
+              predecessors: new Set<string>(),
+              instructions: [
+                {
+                  kind: "const",
+                  value: "Hello, world!",
+                  type: { kind: "string" },
+                  dest: "%greeting",
+                },
+              ],
+              terminator: {
+                kind: "return",
+                value: {
+                  kind: "temp",
+                  id: "%greeting",
+                  type: { kind: "string" },
+                },
+              },
+            },
+          ],
+        ]),
+      };
+
+      const liveness = analyzeLiveness(func);
+      const memoryResult = planFunctionMemory(func, liveness);
+      if (!memoryResult.success) throw new Error("Memory planning failed");
+      const memory = memoryResult.value;
+      const layout = layoutBlocks(func);
+
+      const { instructions } = generateFunction(func, memory, layout);
+      const mnemonics = instructions.map((inst) => inst.mnemonic);
+
+      // Should allocate memory for the string
+      expect(mnemonics).toContain("MLOAD"); // Loading free memory pointer
+      expect(mnemonics).toContain("MSTORE"); // Storing length and data
+      
+      // Should have pushed the string length (13 bytes for "Hello, world!")
+      const pushInstructions = instructions.filter(inst => 
+        inst.mnemonic.startsWith("PUSH")
+      );
+      const hasLengthValue = pushInstructions.some(inst => 
+        inst.immediates && inst.immediates[0] === 13
+      );
+      expect(hasLengthValue).toBe(true);
+    });
+
+    it("should handle UTF-8 multi-byte characters correctly", () => {
+      const func: IrFunction = {
+        name: "test",
+        locals: [],
+        entry: "entry",
+        blocks: new Map([
+          [
+            "entry",
+            {
+              id: "entry",
+              phis: [],
+              predecessors: new Set<string>(),
+              instructions: [
+                {
+                  kind: "const",
+                  value: "Hello 世界! 😊", // Mix of ASCII, Chinese, and emoji
+                  type: { kind: "string" },
+                  dest: "%greeting",
+                },
+              ],
+              terminator: {
+                kind: "return",
+                value: {
+                  kind: "temp",
+                  id: "%greeting",
+                  type: { kind: "string" },
+                },
+              },
+            },
+          ],
+        ]),
+      };
+
+      const liveness = analyzeLiveness(func);
+      const memoryResult = planFunctionMemory(func, liveness);
+      if (!memoryResult.success) throw new Error("Memory planning failed");
+      const memory = memoryResult.value;
+      const layout = layoutBlocks(func);
+
+      const { instructions } = generateFunction(func, memory, layout);
+      const mnemonics = instructions.map((inst) => inst.mnemonic);
+
+      // Should allocate memory for the string
+      expect(mnemonics).toContain("MLOAD"); // Loading free memory pointer
+      expect(mnemonics).toContain("MSTORE"); // Storing length and data
+      
+      // The UTF-8 byte length should be:
+      // "Hello " = 6 bytes
+      // "世界" = 6 bytes (3 bytes each for the Chinese characters)
+      // "! " = 2 bytes  
+      // "😊" = 4 bytes (emoji)
+      // Total = 18 bytes
+      const pushInstructions = instructions.filter(inst => 
+        inst.mnemonic.startsWith("PUSH")
+      );
+      const hasLengthValue = pushInstructions.some(inst => 
+        inst.immediates && inst.immediates[0] === 18
+      );
+      expect(hasLengthValue).toBe(true);
+    });
   });
 });
