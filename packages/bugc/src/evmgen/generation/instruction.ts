@@ -752,31 +752,41 @@ function generateSlice<S extends Stack>(
         );
       } else {
         // Memory array implementation using MCOPY
-        return (
-          sliceBuilder
-            // and grab start now since we won't need this new destOffset for awhile
-            // this will be multiplied by the element size
-            .then(SWAP3(), { as: "b" })
-            // Stack: [start, destOffset, bytesSize, destOffset, ...]
+        // Check if we need to skip the length field for dynamic bytes
+        const isDynamicBytes = inst.object.type.kind === "bytes" &&
+          inst.object.type.size === undefined;
 
-            .then(PUSHn(elementSize), { as: "a" })
-            .then(MUL(), { as: "b" })
+        let memBuilder = sliceBuilder
+          // and grab start now since we won't need this new destOffset for awhile
+          // this will be multiplied by the element size
+          .then(SWAP3(), { as: "b" })
+          // Stack: [start, destOffset, bytesSize, destOffset, ...]
 
-            // load the pointer to the start of the sliced object
-            .then(loadValue(inst.object), { as: "a" })
-            // add the computed size before the slice to get
-            // the starting offset in memory
-            .then(ADD(), { as: "offset" })
-            // re-order for MCOPY
-            .then(SWAP1())
+          .then(PUSHn(elementSize), { as: "a" })
+          .then(MUL(), { as: "b" })
 
-            .then(MCOPY())
+          // load the pointer to the start of the sliced object
+          .then(loadValue(inst.object), { as: "a" })
+          .then(ADD(), { as: "offset" });
 
-            // only relevant item left on stack is the offset of the newly
-            // allocated memory.
-            .then(rebrandTop("value"))
-            .then(storeValueIfNeeded(inst.dest))
-        );
+        // For dynamic bytes/strings, we need to skip the length field (32 bytes)
+        // to get to the actual data
+        if (isDynamicBytes) {
+          memBuilder = memBuilder
+            .then(rebrandTop("b"))
+            .then(PUSHn(32n), { as: "a" })
+            .then(ADD(), { as: "offset" });
+        }
+
+        return memBuilder
+          // re-order for MCOPY
+          .then(SWAP1())
+          .then(MCOPY())
+
+          // only relevant item left on stack is the offset of the newly
+          // allocated memory.
+          .then(rebrandTop("value"))
+          .then(storeValueIfNeeded(inst.dest));
       }
     })
     .done();
