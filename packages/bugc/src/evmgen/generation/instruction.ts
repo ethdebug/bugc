@@ -21,6 +21,39 @@ import {
   valueId,
 } from "./utils";
 
+const {
+  ADD,
+  AND,
+  CALLDATACOPY,
+  CALLDATASIZE,
+  CALLER,
+  CALLVALUE,
+  DIV,
+  DUP1,
+  DUP2,
+  EQ,
+  GT,
+  KECCAK256,
+  LT,
+  MCOPY,
+  MLOAD,
+  MOD,
+  MSTORE,
+  MUL,
+  NOT,
+  NUMBER,
+  OR,
+  PUSH0,
+  PUSHn,
+  SHR,
+  SLOAD,
+  SSTORE,
+  SUB,
+  SWAP1,
+  SWAP3,
+  TIMESTAMP,
+} = operations;
+
 /**
  * Generate code for a single IR instruction
  */
@@ -84,8 +117,6 @@ export function generateInstruction<S extends Stack>(
 export function generateBinary<S extends Stack>(
   inst: Ir.BinaryOpInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { ADD, SUB, MUL, DIV, MOD, EQ, NOT, LT, GT, AND, OR } = operations;
-
   const map: {
     [O in Ir.BinaryOp]: (
       state: GenState<readonly ["a", "b", ...S]>,
@@ -129,8 +160,6 @@ export function generateBinary<S extends Stack>(
 export function generateUnary<S extends Stack>(
   inst: Ir.UnaryOpInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { NOT, PUSHn, SUB } = operations;
-
   const map: {
     [O in Ir.UnaryOp]: (
       state: GenState<readonly ["a", ...S]>,
@@ -157,8 +186,6 @@ export function generateUnary<S extends Stack>(
 export function generateConst<S extends Stack>(
   inst: Ir.ConstInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { PUSHn, MSTORE, DUP2, ADD } = operations;
-
   // Check the type to determine how to handle the constant
   // Fixed-size bytes are stored as values on the stack
   if (inst.type.kind === "bytes" && inst.type.size !== undefined) {
@@ -269,8 +296,6 @@ export function generateConst<S extends Stack>(
 export function generateLoadLocal<S extends Stack>(
   inst: Ir.LoadLocalInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { PUSHn, MLOAD } = operations;
-
   return pipe<S>()
     .peek((state, builder) => {
       const allocation = state.memory.allocations[inst.local];
@@ -295,7 +320,6 @@ export function generateLoadLocal<S extends Stack>(
 export function generateStoreLocal<S extends Stack>(
   inst: Ir.StoreLocalInstruction,
 ): Transition<S, S> {
-  const { PUSHn, MSTORE, DUP2, ADD } = operations;
 
   return pipe<S>()
     .peek((state, builder) => {
@@ -358,7 +382,6 @@ export function generateStoreLocal<S extends Stack>(
 export function generateLoadStorage<S extends Stack>(
   inst: Ir.LoadStorageInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { SLOAD } = operations;
 
   return pipe<S>()
     .then(loadValue(inst.slot), { as: "key" })
@@ -373,7 +396,6 @@ export function generateLoadStorage<S extends Stack>(
 function generateStoreStorage<S extends Stack>(
   inst: Ir.StoreStorageInstruction,
 ): Transition<S, S> {
-  const { SSTORE } = operations;
 
   return pipe<S>()
     .then(loadValue(inst.value), { as: "value" })
@@ -393,11 +415,11 @@ function generateEnvOp<S extends Stack>(
       state: GenState<readonly [...S]>,
     ) => GenState<readonly [StackBrand, ...S]>;
   } = {
-    msg_sender: operations.CALLER(),
-    msg_value: operations.CALLVALUE(),
-    msg_data: operations.PUSH0(), // Returns calldata offset (0)
-    block_timestamp: operations.TIMESTAMP(),
-    block_number: operations.NUMBER(),
+    msg_sender: CALLER(),
+    msg_value: CALLVALUE(),
+    msg_data: PUSH0(), // Returns calldata offset (0)
+    block_timestamp: TIMESTAMP(),
+    block_number: NUMBER(),
   };
 
   return pipe<S>()
@@ -417,8 +439,6 @@ export function generateLength<S extends Stack>(
     objectId.includes("msg.data");
 
   if (isCalldata) {
-    const { CALLDATASIZE } = operations;
-
     return pipe<S>()
       .then(CALLDATASIZE(), { as: "value" })
       .then(storeValueIfNeeded(inst.dest))
@@ -431,16 +451,12 @@ export function generateLength<S extends Stack>(
   if (objectType.kind === "array") {
     if (objectType.size !== undefined) {
       // Fixed-size array - return the size
-      const { PUSHn } = operations;
-
       return pipe<S>()
         .then(PUSHn(BigInt(objectType.size)))
         .then(storeValueIfNeeded(inst.dest))
         .done();
     } else {
       // Dynamic array - length is stored at the slot
-      const { SLOAD } = operations;
-
       return pipe<S>()
         .then(loadValue(inst.object), { as: "key" })
         .then(SLOAD())
@@ -452,16 +468,12 @@ export function generateLength<S extends Stack>(
   if (objectType.kind === "bytes") {
     if (objectType.size !== undefined) {
       // Fixed-size bytes - return the size
-      const { PUSHn } = operations;
-
       return pipe<S>()
         .then(PUSHn(BigInt(objectType.size)))
         .then(storeValueIfNeeded(inst.dest))
         .done();
     } else {
       // Dynamic bytes - need to check if in memory or storage
-      const { MLOAD, SLOAD, SHR, SUB, PUSHn } = operations;
-
       return pipe<S>()
         .peek((state, builder) => {
           // Check if value is in memory
@@ -500,8 +512,6 @@ export function generateLength<S extends Stack>(
 
   if (objectType.kind === "string") {
     // Strings work the same as dynamic bytes
-    const { MLOAD, SLOAD, SHR, SUB, PUSHn } = operations;
-
     return pipe<S>()
       .peek((state, builder) => {
         // Check if value is in memory
@@ -542,8 +552,6 @@ export function generateLength<S extends Stack>(
 function generateHashOp<S extends Stack>(
   inst: Ir.HashInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { PUSHn, MSTORE, KECCAK256 } = operations;
-
   return pipe<S>()
     .then(loadValue(inst.value))
     .then(PUSHn(0n), { as: "offset" })
@@ -558,8 +566,6 @@ function generateHashOp<S extends Stack>(
 function generateComputeSlot<S extends Stack>(
   inst: Ir.ComputeSlotInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { PUSHn, MSTORE, KECCAK256 } = operations;
-
   return (
     pipe<S>()
       // store key then baseSlot in memory as 32 bytes each
@@ -581,8 +587,6 @@ function generateComputeSlot<S extends Stack>(
 function generateComputeArraySlot<S extends Stack>(
   inst: Ir.ComputeArraySlotInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { PUSHn, MSTORE, KECCAK256 } = operations;
-
   // For arrays: keccak256(baseSlot)
   return (
     pipe<readonly [...S]>()
@@ -621,19 +625,6 @@ function generateCast<S extends Stack>(
 function generateSlice<S extends Stack>(
   inst: Ir.SliceInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const {
-    PUSHn,
-    DUP1,
-    DUP2,
-    SUB,
-    MUL,
-    ADD,
-    SWAP1,
-    SWAP3,
-    MCOPY,
-    CALLDATACOPY,
-  } = operations;
-
   // For bytes/strings, each element is 1 byte. For arrays, use the element size.
   const elementSize =
     inst.object.type.kind === "bytes" || inst.object.type.kind === "string"
@@ -799,8 +790,6 @@ function generateSlice<S extends Stack>(
 function generateLoadMapping<S extends Stack>(
   inst: Ir.LoadMappingInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { PUSHn, MSTORE, KECCAK256, SLOAD } = operations;
-
   return (
     pipe<S>()
       // Store key at scratch space offset 0
@@ -832,8 +821,6 @@ function generateLoadMapping<S extends Stack>(
 function generateStoreMapping<S extends Stack>(
   inst: Ir.StoreMappingInstruction,
 ): Transition<S, S> {
-  const { PUSHn, MSTORE, KECCAK256, SSTORE } = operations;
-
   return (
     pipe<S>()
       // Store key at scratch space offset 0
