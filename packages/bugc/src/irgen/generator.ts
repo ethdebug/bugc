@@ -704,9 +704,25 @@ export class IrGenerator extends BaseAstVisitor<void> {
     let value: bigint | string | boolean;
     switch (node.kind) {
       case "number":
-      case "hex":
         value = BigInt(node.value);
         break;
+      case "hex": {
+        // For hex literals, check if they fit in a BigInt (up to 32 bytes / 256 bits)
+        // Remove 0x prefix if present for counting
+        const hexValue = node.value.startsWith("0x")
+          ? node.value.slice(2)
+          : node.value;
+
+        // If the hex value is longer than 64 characters (32 bytes),
+        // store it as a string with 0x prefix
+        if (hexValue.length > 64) {
+          // Ensure it has 0x prefix for consistency
+          value = node.value.startsWith("0x") ? node.value : `0x${node.value}`;
+        } else {
+          value = BigInt(node.value);
+        }
+        break;
+      }
       case "address":
       case "string":
         value = node.value;

@@ -174,54 +174,55 @@ export function generateConst<S extends Stack>(
     const totalBytes = 32n + dataWords * 32n;
 
     // String/bytes constants need to be stored in memory
-    return pipe<S>()
-      // Allocate memory dynamically
-      .then(PUSHn(totalBytes), { as: "size" })
-      .then(allocateMemoryDynamic(), { as: "offset" })
+    return (
+      pipe<S>()
+        // Allocate memory dynamically
+        .then(PUSHn(totalBytes), { as: "size" })
+        .then(allocateMemoryDynamic(), { as: "offset" })
 
-      // Store the length at the allocated offset
-      .then(PUSHn(BigInt(byteLength)), { as: "value" })
-      .then(DUP2(), { as: "offset" })
-      .then(MSTORE())
-      .peek((_, builder) => {
-        let result = builder;
+        // Store the length at the allocated offset
+        .then(PUSHn(BigInt(byteLength)), { as: "value" })
+        .then(DUP2(), { as: "offset" })
+        .then(MSTORE())
+        .peek((_, builder) => {
+          let result = builder;
 
-        // Store the actual bytes
-        // For simplicity, we'll pack bytes into 32-byte words
-        for (let wordIdx = 0n; wordIdx < dataWords; wordIdx++) {
-          const wordStart = wordIdx * 32n;
-          const wordEnd = byteLength < wordStart + 32n
-            ? byteLength
-            : wordStart + 32n;
+          // Store the actual bytes
+          // For simplicity, we'll pack bytes into 32-byte words
+          for (let wordIdx = 0n; wordIdx < dataWords; wordIdx++) {
+            const wordStart = wordIdx * 32n;
+            const wordEnd =
+              byteLength < wordStart + 32n ? byteLength : wordStart + 32n;
 
-          // Pack up to 32 bytes into a single word
-          let wordValue = 0n;
-          for (let i = wordStart; i < wordEnd; i++) {
-            // Shift left and add the byte (big-endian)
-            wordValue = (wordValue << 8n) | BigInt(utf8Bytes[Number(i)]);
+            // Pack up to 32 bytes into a single word
+            let wordValue = 0n;
+            for (let i = wordStart; i < wordEnd; i++) {
+              // Shift left and add the byte (big-endian)
+              wordValue = (wordValue << 8n) | BigInt(utf8Bytes[Number(i)]);
+            }
+
+            // Pad remaining bytes with zeros (already done by shifting)
+            const remainingBytes = 32n - (wordEnd - wordStart);
+            wordValue = wordValue << (remainingBytes * 8n);
+
+            // Store the word at offset + 32 + (wordIdx * 32)
+            const storeOffset = 32n + wordIdx * 32n;
+            result = result
+              .then(PUSHn(wordValue), { as: "value" })
+              .then(DUP2(), { as: "b" })
+              .then(PUSHn(storeOffset), { as: "a" })
+              .then(ADD(), { as: "offset" })
+              .then(MSTORE());
           }
 
-          // Pad remaining bytes with zeros (already done by shifting)
-          const remainingBytes = 32n - (wordEnd - wordStart);
-          wordValue = wordValue << remainingBytes * 8n;
-
-          // Store the word at offset + 32 + (wordIdx * 32)
-          const storeOffset = 32n + wordIdx * 32n;
-          result = result
-            .then(PUSHn(wordValue), { as: "value" })
-            .then(DUP2(), { as: "b" })
-            .then(PUSHn(storeOffset), { as: "a" })
-            .then(ADD(), { as: "offset" })
-            .then(MSTORE());
-        }
-
-        // The original offset is still on the stack (from DUP2 operations)
-        // Rebrand it as value for return
-        return result
-          .then(rebrandTop("value"))
-          .then(storeValueIfNeeded(inst.dest));
-      })
-      .done();
+          // The original offset is still on the stack (from DUP2 operations)
+          // Rebrand it as value for return
+          return result
+            .then(rebrandTop("value"))
+            .then(storeValueIfNeeded(inst.dest));
+        })
+        .done()
+    );
   }
 
   // For numeric and boolean constants, use existing behavior
@@ -342,7 +343,10 @@ export function generateLength<S extends Stack>(
 ): Transition<S, readonly ["value", ...S]> {
   // Check if this is msg.data (calldata) - use CALLDATASIZE
   const objectId = valueId(inst.object);
-  const isCalldata = objectId.includes("calldata") || objectId.includes("msg_data") || objectId.includes("msg.data");
+  const isCalldata =
+    objectId.includes("calldata") ||
+    objectId.includes("msg_data") ||
+    objectId.includes("msg.data");
 
   if (isCalldata) {
     const { CALLDATASIZE } = operations;
@@ -393,7 +397,8 @@ export function generateLength<S extends Stack>(
       return pipe<S>()
         .peek((state, builder) => {
           // Check if value is in memory
-          const isInMemory = objectId in state.memory.allocations ||
+          const isInMemory =
+            objectId in state.memory.allocations ||
             state.stack.findIndex(({ irValue }) => irValue === objectId) > -1;
 
           if (isInMemory) {
@@ -407,16 +412,18 @@ export function generateLength<S extends Stack>(
             // Storage bytes: length is packed with data if short, or in slot if long
             // For simplicity, assume it's stored at the slot (long string/bytes)
             // The length is stored as 2 * length + 1 in the slot for long strings
-            return builder
-              .then(loadValue(inst.object), { as: "key" })
-              .then(SLOAD(), { as: "b" })
-              // Extract length from storage format
-              // For long strings: (value - 1) / 2
-              .then(PUSHn(1n), { as: "a" })
-              .then(SUB(), { as: "value" })
-              .then(PUSHn(1n), { as: "shift" })
-              .then(SHR(), { as: "value" })
-              .then(storeValueIfNeeded(inst.dest));
+            return (
+              builder
+                .then(loadValue(inst.object), { as: "key" })
+                .then(SLOAD(), { as: "b" })
+                // Extract length from storage format
+                // For long strings: (value - 1) / 2
+                .then(PUSHn(1n), { as: "a" })
+                .then(SUB(), { as: "value" })
+                .then(PUSHn(1n), { as: "shift" })
+                .then(SHR(), { as: "value" })
+                .then(storeValueIfNeeded(inst.dest))
+            );
           }
         })
         .done();
@@ -430,7 +437,8 @@ export function generateLength<S extends Stack>(
     return pipe<S>()
       .peek((state, builder) => {
         // Check if value is in memory
-        const isInMemory = objectId in state.memory.allocations ||
+        const isInMemory =
+          objectId in state.memory.allocations ||
           state.stack.findIndex(({ irValue }) => irValue === objectId) > -1;
 
         if (isInMemory) {
@@ -441,15 +449,17 @@ export function generateLength<S extends Stack>(
             .then(storeValueIfNeeded(inst.dest));
         } else {
           // Storage string: same as storage bytes
-          return builder
-            .then(loadValue(inst.object), { as: "key" })
-            .then(SLOAD(), { as: "b" })
-            // Extract length from storage format
-            .then(PUSHn(1n), { as: "a" })
-            .then(SUB(), { as: "value" })
-            .then(PUSHn(1n), { as: "shift" })
-            .then(SHR(), { as: "value" })
-            .then(storeValueIfNeeded(inst.dest));
+          return (
+            builder
+              .then(loadValue(inst.object), { as: "key" })
+              .then(SLOAD(), { as: "b" })
+              // Extract length from storage format
+              .then(PUSHn(1n), { as: "a" })
+              .then(SUB(), { as: "value" })
+              .then(PUSHn(1n), { as: "shift" })
+              .then(SHR(), { as: "value" })
+              .then(storeValueIfNeeded(inst.dest))
+          );
         }
       })
       .done();
@@ -543,7 +553,18 @@ function generateCast<S extends Stack>(
 function generateSlice<S extends Stack>(
   inst: Ir.SliceInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const { PUSHn, DUP1, DUP2, SUB, MUL, ADD, SWAP1, SWAP3, MCOPY, CALLDATACOPY } = operations;
+  const {
+    PUSHn,
+    DUP1,
+    DUP2,
+    SUB,
+    MUL,
+    ADD,
+    SWAP1,
+    SWAP3,
+    MCOPY,
+    CALLDATACOPY,
+  } = operations;
 
   // For bytes/strings, each element is 1 byte. For arrays, use the element size.
   const elementSize =
@@ -574,7 +595,10 @@ function generateSlice<S extends Stack>(
 
       // Check if it's calldata by looking at the value id pattern
       // Calldata values typically come from msg_data or function arguments
-      const isCalldata = objectId.includes("calldata") || objectId.includes("msg_data") || objectId.includes("msg.data");
+      const isCalldata =
+        objectId.includes("calldata") ||
+        objectId.includes("msg_data") ||
+        objectId.includes("msg.data");
 
       if (!isInMemory && !isCalldata) {
         // Storage array - need to load each element
@@ -626,8 +650,8 @@ function generateSlice<S extends Stack>(
         // Stack: [destOffset, bytesSize, start, ...]
 
         // Save destOffset for return value
-        .then(DUP1())
-        // Stack: [destOffset, destOffset, bytesSize, start, ...];
+        .then(DUP1());
+      // Stack: [destOffset, destOffset, bytesSize, start, ...];
 
       if (isCalldata) {
         // Calldata array implementation using CALLDATACOPY

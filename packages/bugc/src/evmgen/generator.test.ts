@@ -1363,15 +1363,15 @@ describe("EVM Code Generator", () => {
                       size: undefined, // dynamic array
                     },
                   },
-                  start: { 
-                    kind: "const", 
-                    value: 1n, 
-                    type: { kind: "uint", bits: 256 } 
+                  start: {
+                    kind: "const",
+                    value: 1n,
+                    type: { kind: "uint", bits: 256 },
                   },
-                  end: { 
-                    kind: "const", 
-                    value: 3n, 
-                    type: { kind: "uint", bits: 256 } 
+                  end: {
+                    kind: "const",
+                    value: 3n,
+                    type: { kind: "uint", bits: 256 },
                   },
                   dest: "%calldata_slice",
                 },
@@ -1404,10 +1404,10 @@ describe("EVM Code Generator", () => {
 
       // Should have PUSH0 for msg.data pointer (offset 0)
       expect(mnemonics).toContain("PUSH0");
-      
+
       // Should have CALLDATACOPY instead of MCOPY for calldata slice
       expect(mnemonics).toContain("CALLDATACOPY");
-      
+
       // Should NOT have MCOPY since we're copying from calldata
       expect(mnemonics).not.toContain("MCOPY");
     });
@@ -1467,10 +1467,10 @@ describe("EVM Code Generator", () => {
 
       // Should have PUSH0 for msg.data
       expect(mnemonics).toContain("PUSH0");
-      
+
       // Should have CALLDATASIZE for getting the length
       expect(mnemonics).toContain("CALLDATASIZE");
-      
+
       // Should NOT have SLOAD (not storage array length)
       expect(mnemonics).not.toContain("SLOAD");
     });
@@ -1504,15 +1504,15 @@ describe("EVM Code Generator", () => {
                       size: 8,
                     },
                   },
-                  start: { 
-                    kind: "const", 
-                    value: 2n, 
-                    type: { kind: "uint", bits: 256 } 
+                  start: {
+                    kind: "const",
+                    value: 2n,
+                    type: { kind: "uint", bits: 256 },
                   },
-                  end: { 
-                    kind: "const", 
-                    value: 6n, 
-                    type: { kind: "uint", bits: 256 } 
+                  end: {
+                    kind: "const",
+                    value: 6n,
+                    type: { kind: "uint", bits: 256 },
                   },
                   dest: "%sliced_bytes",
                 },
@@ -1541,21 +1541,21 @@ describe("EVM Code Generator", () => {
 
       // Should use MCOPY for memory bytes slicing
       expect(mnemonics).toContain("MCOPY");
-      
+
       // Check that slice arithmetic uses 1-byte elements (no MUL by 32)
       // We multiply by 1 for bytes, which should be optimized out or use PUSH1 0x01
-      const pushInstructions = instructions.filter(inst => 
-        inst.mnemonic.startsWith("PUSH")
+      const pushInstructions = instructions.filter((inst) =>
+        inst.mnemonic.startsWith("PUSH"),
       );
-      
+
       // Should have PUSH instructions for start (2) and end (6)
-      const hasStartValue = pushInstructions.some(inst => 
-        inst.immediates && inst.immediates[0] === 2
+      const hasStartValue = pushInstructions.some(
+        (inst) => inst.immediates && inst.immediates[0] === 2,
       );
-      const hasEndValue = pushInstructions.some(inst => 
-        inst.immediates && inst.immediates[0] === 6
+      const hasEndValue = pushInstructions.some(
+        (inst) => inst.immediates && inst.immediates[0] === 6,
       );
-      
+
       expect(hasStartValue).toBe(true);
       expect(hasEndValue).toBe(true);
     });
@@ -1605,13 +1605,13 @@ describe("EVM Code Generator", () => {
       // Should allocate memory for the string
       expect(mnemonics).toContain("MLOAD"); // Loading free memory pointer
       expect(mnemonics).toContain("MSTORE"); // Storing length and data
-      
+
       // Should have pushed the string length (13 bytes for "Hello, world!")
-      const pushInstructions = instructions.filter(inst => 
-        inst.mnemonic.startsWith("PUSH")
+      const pushInstructions = instructions.filter((inst) =>
+        inst.mnemonic.startsWith("PUSH"),
       );
-      const hasLengthValue = pushInstructions.some(inst => 
-        inst.immediates && inst.immediates[0] === 13
+      const hasLengthValue = pushInstructions.some(
+        (inst) => inst.immediates && inst.immediates[0] === 13,
       );
       expect(hasLengthValue).toBe(true);
     });
@@ -1661,18 +1661,18 @@ describe("EVM Code Generator", () => {
       // Should allocate memory for the string
       expect(mnemonics).toContain("MLOAD"); // Loading free memory pointer
       expect(mnemonics).toContain("MSTORE"); // Storing length and data
-      
+
       // The UTF-8 byte length should be:
       // "Hello " = 6 bytes
       // "世界" = 6 bytes (3 bytes each for the Chinese characters)
-      // "! " = 2 bytes  
+      // "! " = 2 bytes
       // "😊" = 4 bytes (emoji)
       // Total = 18 bytes
-      const pushInstructions = instructions.filter(inst => 
-        inst.mnemonic.startsWith("PUSH")
+      const pushInstructions = instructions.filter((inst) =>
+        inst.mnemonic.startsWith("PUSH"),
       );
-      const hasLengthValue = pushInstructions.some(inst => 
-        inst.immediates && inst.immediates[0] === 18
+      const hasLengthValue = pushInstructions.some(
+        (inst) => inst.immediates && inst.immediates[0] === 18,
       );
       expect(hasLengthValue).toBe(true);
     });

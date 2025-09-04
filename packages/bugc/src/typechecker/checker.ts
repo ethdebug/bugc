@@ -212,20 +212,30 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
             node.loc,
             TypeErrorCode.MISSING_INITIALIZER,
           );
-          return null;
-        }
-        const initType = this.visit(node.initializer);
-        if (initType) {
+          // Still define the variable with error type
+          const errorType = new TypeErrorType("missing initializer");
           const symbol: BugSymbol = {
             name: node.name,
-            type: initType,
+            type: errorType,
             mutable: true,
             location: "memory",
           };
           this.symbolTable.define(symbol);
-          this.setType(node, initType);
+          this.setType(node, errorType);
+          return errorType;
         }
-        return initType;
+        const initType = this.visit(node.initializer);
+        // Always define the variable, even if the initializer has a type error
+        const type = initType || new TypeErrorType("invalid initializer");
+        const symbol: BugSymbol = {
+          name: node.name,
+          type,
+          mutable: true,
+          location: "memory",
+        };
+        this.symbolTable.define(symbol);
+        this.setType(node, type);
+        return type;
       }
 
       case "field":
@@ -405,9 +415,25 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
       case "address":
         type = TypesUtil.address;
         break;
-      case "hex":
-        type = TypesUtil.bytes32;
+      case "hex": {
+        // Determine bytes type based on hex literal length
+        // Remove 0x prefix if present
+        const hexValue = node.value.startsWith("0x")
+          ? node.value.slice(2)
+          : node.value;
+
+        // Each byte is 2 hex characters
+        const byteCount = Math.ceil(hexValue.length / 2);
+
+        // For fixed-size bytes types (bytes1 to bytes32)
+        if (byteCount > 0 && byteCount <= 32) {
+          type = new TypeElementaryType("bytes", byteCount * 8);
+        } else {
+          // For larger hex literals, use dynamic bytes
+          type = TypesUtil.bytes;
+        }
         break;
+      }
     }
     if (type) {
       this.setType(node, type);

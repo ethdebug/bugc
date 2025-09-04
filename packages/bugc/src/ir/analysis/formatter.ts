@@ -121,7 +121,7 @@ export class IrFormatter {
   private formatInstruction(inst: IrInstruction): string {
     switch (inst.kind) {
       case "const":
-        return `${inst.dest} = ${this.formatConstValue(inst.value)}`;
+        return `${inst.dest} = ${this.formatConstValue(inst.value, inst.type)}`;
 
       case "load_storage":
         return `${inst.dest} = load storage[${this.formatValue(inst.slot)}]`;
@@ -222,29 +222,56 @@ export class IrFormatter {
       return value.toString();
     }
     if (typeof value === "string") {
+      // If it's a hex string (starts with 0x), return without quotes
+      if (value.startsWith("0x")) {
+        return value;
+      }
       return JSON.stringify(value);
     }
     if (typeof value === "boolean") {
       return value.toString();
     }
 
-    switch (value.kind) {
-      case "const":
-        return this.formatConstValue(value.value);
-      case "temp":
-        return value.id;
-      case "local":
-        return value.name;
-      default:
-        return "?";
-    }
+    const baseFormat = (() => {
+      switch (value.kind) {
+        case "const":
+          // Pass type information to formatConstValue for proper hex formatting
+          return this.formatConstValue(value.value, value.type);
+        case "temp":
+          return value.id;
+        case "local":
+          return value.name;
+        default:
+          return "?";
+      }
+    })();
+
+    // Add type information
+    const typeStr = this.formatType(value.type);
+    return `${baseFormat}:${typeStr}`;
   }
 
-  private formatConstValue(value: bigint | string | boolean): string {
+  private formatConstValue(
+    value: bigint | string | boolean,
+    type?: TypeRef,
+  ): string {
     if (typeof value === "bigint") {
+      // If we have type information and it's a bytes type, format as hex
+      if (type && type.kind === "bytes") {
+        // Convert to hex string with 0x prefix
+        const hex = value.toString(16);
+        // Pad to even number of characters (2 per byte)
+        const padded = hex.length % 2 === 0 ? hex : "0" + hex;
+        return `0x${padded}`;
+      }
       return value.toString();
     }
     if (typeof value === "string") {
+      // If it's already a hex string (starts with 0x), return without quotes
+      if (value.startsWith("0x")) {
+        return value;
+      }
+      // Otherwise, use JSON.stringify for proper escaping
       return JSON.stringify(value);
     }
     return value.toString();
