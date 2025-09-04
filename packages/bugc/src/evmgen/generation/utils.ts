@@ -130,12 +130,10 @@ export function allocateMemory<S extends Stack>(
 ): Transition<S, readonly ["offset", ...S]> {
   const { PUSHn } = operations;
 
-  return (
-    pipe<S>()
-      .then(PUSHn(sizeBytes), { as: "size" })
-      .then(allocateMemoryDynamic())
-      .done()
-  );
+  return pipe<S>()
+    .then(PUSHn(sizeBytes), { as: "size" })
+    .then(allocateMemoryDynamic())
+    .done();
 }
 
 /**
@@ -147,26 +145,26 @@ export function getTypeSize(type: TypeRef): bigint {
     case "int":
       return BigInt(type.bits / 8);
     case "address":
-      return 20n;  // addresses are 20 bytes but padded to 32 in storage/memory
+      return 20n; // addresses are 20 bytes but padded to 32 in storage/memory
     case "bool":
-      return 1n;   // bools are 1 byte but padded to 32 in storage/memory
+      return 1n; // bools are 1 byte but padded to 32 in storage/memory
     case "bytes":
       if (type.size) {
-        return BigInt(type.size);  // fixed-size bytes
+        return BigInt(type.size); // fixed-size bytes
       }
-      return 32n;  // dynamic bytes use a pointer
+      return 32n; // dynamic bytes use a pointer
     case "string":
-      return 32n;  // strings use a pointer
+      return 32n; // strings use a pointer
     case "array":
-      return 32n;  // arrays use a pointer to the data
+      return 32n; // arrays use a pointer to the data
     case "mapping":
-      return 32n;  // mappings are storage-only, represented as slot
+      return 32n; // mappings are storage-only, represented as slot
     case "struct":
       // For now, assume structs are word-aligned
       // A proper implementation would sum field sizes
       return 32n;
     default:
-      return 32n;  // default to word size
+      return 32n; // default to word size
   }
 }
 
@@ -195,23 +193,23 @@ export function allocateMemoryDynamic<S extends Stack>(): Transition<
 > {
   const { PUSHn, SWAP1, DUP2, MLOAD, ADD, MSTORE } = operations;
 
-  return pipe<readonly ["size", ...S]>()
-    // Load current free memory pointer from 0x40
-    .then(PUSHn(BigInt(MEMORY_REGIONS.FREE_MEMORY_POINTER)), { as: "offset" })
-    .then(MLOAD(), { as: "offset" })
-    .then(SWAP1(), { as: "b" })
-    // Stack: [size, current_fmp, ...]
-    // Save current for return, calculate new = current + size
-    .then(DUP2(), { as: "a" })
-    // Stack: [current_fmp, size, current_fmp, ...]
-    .then(ADD(), { as: "value" })
-    // Stack: [new_fmp, current_fmp, ...]
+  return (
+    pipe<readonly ["size", ...S]>()
+      // Load current free memory pointer from 0x40
+      .then(PUSHn(BigInt(MEMORY_REGIONS.FREE_MEMORY_POINTER)), { as: "offset" })
+      .then(MLOAD(), { as: "offset" })
+      .then(SWAP1(), { as: "b" })
+      // Stack: [size, current_fmp, ...]
+      // Save current for return, calculate new = current + size
+      .then(DUP2(), { as: "a" })
+      // Stack: [current_fmp, size, current_fmp, ...]
+      .then(ADD(), { as: "value" })
+      // Stack: [new_fmp, current_fmp, ...]
 
-    // Store new free pointer
-    .then(PUSHn(BigInt(MEMORY_REGIONS.FREE_MEMORY_POINTER)), { as: "offset" })
-    .then(MSTORE())
-    // Stack: [current_fmp(allocated), ...]
-    .done();
+      // Store new free pointer
+      .then(PUSHn(BigInt(MEMORY_REGIONS.FREE_MEMORY_POINTER)), { as: "offset" })
+      .then(MSTORE())
+      // Stack: [current_fmp(allocated), ...]
+      .done()
+  );
 }
-
-

@@ -18,6 +18,7 @@ import {
   storeValueIfNeeded,
   allocateMemoryDynamic,
   getArrayElementSize,
+  valueId,
 } from "./utils";
 
 /**
@@ -394,66 +395,107 @@ function generateCast<S extends Stack>(
 function generateSlice<S extends Stack>(
   inst: Ir.SliceInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-  const {
-    PUSHn, DUP1, DUP2, SUB, MUL, ADD, SWAP1, SWAP3, MCOPY
-  } = operations;
+  const { PUSHn, DUP1, DUP2, SUB, MUL, ADD, SWAP1, SWAP3, MCOPY } = operations;
 
   const elementSize = getArrayElementSize(inst.object.type);
 
+  // For storage arrays, we need to:
+  // 1. Compute the base storage slot (compute_array_slot gives us keccak256(slot))
+  // 2. For each element from start to end:
+  //    - Add the index to the base slot
+  //    - Load from storage
+  //    - Store to memory
+
+  // For memory arrays, we can use MCOPY directly
+
+  // We'll check if the value came from a compute_array_slot by checking
+  // if it's already in memory allocations. If not, assume it's a storage slot.
+
   return pipe<S>()
-    .then(loadValue(inst.start), { as: "start" })
-    .then(loadValue(inst.end), { as: "end" })
-    // Stack: [end, start, ...]
+    .peek((state, builder) => {
+      const objectId = valueId(inst.object);
+      const isInMemory =
+        objectId in state.memory.allocations ||
+        state.stack.findIndex(({ irValue }) => irValue === objectId) > -1;
 
-    // Calculate length = end - start
-    .then(DUP2(), { as: "b" })
-    // Stack: [start, end, start, ...]
-    .then(SWAP1(), { as: "a" })
-    // Stack: [end, start, start, ...]
-    .then(SUB(), { as: "b" })
-    // Stack: [count, start, ...]
+      if (!isInMemory) {
+        // Storage array - need to load each element
+        // This is more complex, so for now we'll implement the memory case
+        // and add a warning for storage arrays
+        return builder
+          .then((s) => {
+            const warning = new EvmError(
+              EvmErrorCode.UNSUPPORTED_INSTRUCTION,
+              "Slice of storage arrays not yet implemented",
+              inst.loc,
+              Severity.Warning,
+            );
+            return {
+              ...s,
+              warnings: [...s.warnings, warning],
+            };
+          })
+          .then(PUSHn(0n), { as: "value" }) // Placeholder
+          .then(storeValueIfNeeded(inst.dest));
+      }
 
-    // Calculate byte size = length * element_size
-    // Get element size from the array type
-    .then(PUSHn(elementSize), { as: "a" })
-    // Stack: [itemSize, count, start, ...]
-    .then(MUL(), { as: "size" })
-    // Stack: [bytesSize, start, ...]
+      // Memory array implementation (existing code)
+      return (
+        builder
+          .then(loadValue(inst.start), { as: "start" })
+          .then(loadValue(inst.end), { as: "end" })
+          // Stack: [end, start, ...]
 
-    // save total bytes size because it's needed for MCOPY
-    .then(DUP1())
-    // Stack: [bytesSize, bytesSize, start, ...]
+          // Calculate length = end - start
+          .then(DUP2(), { as: "b" })
+          // Stack: [start, end, start, ...]
+          .then(SWAP1(), { as: "a" })
+          // Stack: [end, start, start, ...]
+          .then(SUB(), { as: "b" })
+          // Stack: [count, start, ...]
 
-    // Allocate memory dynamically
-    .then(allocateMemoryDynamic(), { as: "destOffset" })
-    // Stack: [destOffset, bytesSize, start, ...]
+          // Calculate byte size = length * element_size
+          .then(PUSHn(elementSize), { as: "a" })
+          // Stack: [itemSize, count, start, ...]
+          .then(MUL(), { as: "size" })
+          // Stack: [bytesSize, start, ...]
 
-    // Save destOffset for return value
-    .then(DUP1())
-    // Stack: [destOffset, destOffset, bytesSize, start, ...]
+          // save total bytes size because it's needed for MCOPY
+          .then(DUP1())
+          // Stack: [bytesSize, bytesSize, start, ...]
 
-    // and grab start now since we won't need this new destOffset for awhile
-    // this will be multiplied by the length
-    .then(SWAP3(), { as: "b" })
-    // Stack: [start, destOffset, bytesSize, destOffset, ...]
+          // Allocate memory dynamically
+          .then(allocateMemoryDynamic(), { as: "destOffset" })
+          // Stack: [destOffset, bytesSize, start, ...]
 
-    .then(PUSHn(elementSize), { as: "a" })
-    .then(MUL(), { as: "b" })
+          // Save destOffset for return value
+          .then(DUP1())
+          // Stack: [destOffset, destOffset, bytesSize, start, ...]
 
-    // load the pointer to the start of the sliced object
-    .then(loadValue(inst.object), { as: "a" })
-    // add the computed size before the slize to get
-    // the starting offset in memory
-    .then(ADD(), { as: "offset" })
+          // and grab start now since we won't need this new destOffset for awhile
+          // this will be multiplied by the element size
+          .then(SWAP3(), { as: "b" })
+          // Stack: [start, destOffset, bytesSize, destOffset, ...]
 
-    // re-order for MCOPY
-    .then(SWAP1())
-    .then(MCOPY())
+          .then(PUSHn(elementSize), { as: "a" })
+          .then(MUL(), { as: "b" })
 
-    // only relevant item left on stack is the offset of the newly
-    // allocated memory.
-    .then(rebrandTop("value"))
-    .then(storeValueIfNeeded(inst.dest))
+          // load the pointer to the start of the sliced object
+          .then(loadValue(inst.object), { as: "a" })
+          // add the computed size before the slice to get
+          // the starting offset in memory
+          .then(ADD(), { as: "offset" })
+
+          // re-order for MCOPY
+          .then(SWAP1())
+          .then(MCOPY())
+
+          // only relevant item left on stack is the offset of the newly
+          // allocated memory.
+          .then(rebrandTop("value"))
+          .then(storeValueIfNeeded(inst.dest))
+      );
+    })
     .done();
 }
 
