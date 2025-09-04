@@ -372,6 +372,7 @@ export class IrGenerator extends BaseAstVisitor<void> {
         this.emit({
           kind: "store_local",
           local: localVar.id,
+          localType: localVar.type,
           value: valueTemp,
           loc: node.loc ?? undefined,
         });
@@ -1264,6 +1265,7 @@ export class IrGenerator extends BaseAstVisitor<void> {
         this.emit({
           kind: "store_local",
           local: local.id,
+          localType: local.type,
           value,
           loc: node.loc ?? undefined,
         });

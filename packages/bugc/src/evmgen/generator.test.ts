@@ -1080,6 +1080,7 @@ describe("EVM Code Generator", () => {
                 {
                   kind: "store_local",
                   local: "local_i",
+                  localType: { kind: "uint", bits: 256 },
                   value: {
                     kind: "temp",
                     id: "%1",
@@ -1115,6 +1116,7 @@ describe("EVM Code Generator", () => {
                 {
                   kind: "store_local",
                   local: "local_i",
+                  localType: { kind: "uint", bits: 256 },
                   value: {
                     kind: "temp",
                     id: "%4",

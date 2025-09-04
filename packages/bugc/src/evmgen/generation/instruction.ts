@@ -160,14 +160,45 @@ export function generateConst<S extends Stack>(
   const { PUSHn, MSTORE, DUP2, ADD } = operations;
 
   // Check the type to determine how to handle the constant
-  if (inst.type.kind === "string" || inst.type.kind === "bytes") {
-    const strValue = String(inst.value);
+  // Fixed-size bytes are stored as values on the stack
+  if (inst.type.kind === "bytes" && inst.type.size !== undefined) {
+    // Fixed-size bytes - just push the value
+    let value: bigint;
+    if (typeof inst.value === "string" && inst.value.startsWith("0x")) {
+      // It's a hex string, convert to bigint
+      value = BigInt(inst.value);
+    } else if (typeof inst.value === "bigint") {
+      value = inst.value;
+    } else {
+      value = BigInt(inst.value);
+    }
+    return pipe<S>()
+      .then(PUSHn(value))
+      .then(storeValueIfNeeded(inst.dest))
+      .done();
+  }
 
-    // Convert string to UTF-8 bytes
-    // Using TextEncoder for proper UTF-8 encoding
-    const encoder = new TextEncoder();
-    const utf8Bytes = encoder.encode(strValue);
-    const byteLength = BigInt(utf8Bytes.length);
+  // Dynamic bytes and strings need memory allocation
+  if (inst.type.kind === "string" || (inst.type.kind === "bytes" && inst.type.size === undefined)) {
+    let bytes: Uint8Array;
+    let byteLength: bigint;
+
+    if (inst.type.kind === "bytes" && typeof inst.value === "string" && inst.value.startsWith("0x")) {
+      // Dynamic bytes from hex string - decode the hex
+      const hexStr = inst.value.slice(2); // Remove 0x prefix
+      const hexBytes = [];
+      for (let i = 0; i < hexStr.length; i += 2) {
+        hexBytes.push(parseInt(hexStr.substr(i, 2), 16));
+      }
+      bytes = new Uint8Array(hexBytes);
+      byteLength = BigInt(bytes.length);
+    } else {
+      // String or non-hex bytes - use UTF-8 encoding
+      const strValue = String(inst.value);
+      const encoder = new TextEncoder();
+      bytes = encoder.encode(strValue);
+      byteLength = BigInt(bytes.length);
+    }
 
     // Calculate memory needed: 32 bytes for length + actual data (padded to 32-byte words)
     const dataWords = (byteLength + 31n) / 32n;
@@ -198,7 +229,7 @@ export function generateConst<S extends Stack>(
             let wordValue = 0n;
             for (let i = wordStart; i < wordEnd; i++) {
               // Shift left and add the byte (big-endian)
-              wordValue = (wordValue << 8n) | BigInt(utf8Bytes[Number(i)]);
+              wordValue = (wordValue << 8n) | BigInt(bytes[Number(i)]);
             }
 
             // Pad remaining bytes with zeros (already done by shifting)
@@ -264,7 +295,7 @@ export function generateLoadLocal<S extends Stack>(
 export function generateStoreLocal<S extends Stack>(
   inst: Ir.StoreLocalInstruction,
 ): Transition<S, S> {
-  const { PUSHn, MSTORE } = operations;
+  const { PUSHn, MSTORE, DUP2, ADD } = operations;
 
   return pipe<S>()
     .peek((state, builder) => {
@@ -276,6 +307,43 @@ export function generateStoreLocal<S extends Stack>(
         );
       }
 
+      // Check if we need type conversion from fixed bytes to dynamic bytes
+      const isDynamicLocal = inst.localType.kind === "bytes" &&
+        inst.localType.size === undefined;
+      const isFixedValue = inst.value.type.kind === "bytes" &&
+        inst.value.type.size !== undefined;
+
+      if (isDynamicLocal && isFixedValue && inst.value.type.kind === "bytes") {
+        // Need to convert fixed bytes to dynamic bytes format
+        // Dynamic bytes format: [ptr] -> [length][data...]
+        const fixedSize = inst.value.type.size!;
+
+        return builder
+          // Allocate memory for dynamic bytes (32 bytes for length + actual data)
+          .then(PUSHn(32n + BigInt(fixedSize)), { as: "size" })
+          .then(allocateMemoryDynamic(), { as: "value" })  // Will be the pointer we store
+
+          // Store the length at the allocated offset
+          .then(PUSHn(BigInt(fixedSize)), { as: "value" })
+          .then(DUP2(), { as: "offset" })  // Duplicate the allocated pointer
+          .then(MSTORE())
+          // Stack: [pointer, ...]
+
+          // Store the actual bytes data after the length
+          .then(loadValue(inst.value), { as: "value" })
+          .then(DUP2(), { as: "b" })  // Duplicate pointer again
+          .then(PUSHn(32n), { as: "a" })
+          .then(ADD(), { as: "offset" })
+          .then(MSTORE())
+          // Stack: [pointer, ...]
+
+          // Store the pointer to the dynamic bytes at the local's allocation
+          .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
+          // Stack: [offset, pointer, ...]
+          .then(MSTORE());
+      }
+
+      // Normal store without conversion
       return builder
         .then(loadValue(inst.value))
         .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
@@ -699,9 +767,9 @@ function generateSlice<S extends Stack>(
             // add the computed size before the slice to get
             // the starting offset in memory
             .then(ADD(), { as: "offset" })
-
             // re-order for MCOPY
             .then(SWAP1())
+
             .then(MCOPY())
 
             // only relevant item left on stack is the offset of the newly
