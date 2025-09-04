@@ -1161,23 +1161,23 @@ describe("EVM Code Generator", () => {
               instructions: [
                 {
                   kind: "const",
-                  value: 0x100n,  // Array pointer in memory
-                  type: { 
-                    kind: "array", 
+                  value: 0x100n, // Array pointer in memory
+                  type: {
+                    kind: "array",
                     element: { kind: "uint", bits: 256 },
-                    size: undefined  // dynamic array
+                    size: undefined, // dynamic array
                   },
                   dest: "%1",
                 },
                 {
                   kind: "const",
-                  value: 2n,  // Start index
+                  value: 2n, // Start index
                   type: { kind: "uint", bits: 256 },
                   dest: "%2",
                 },
                 {
                   kind: "const",
-                  value: 5n,  // End index
+                  value: 5n, // End index
                   type: { kind: "uint", bits: 256 },
                   dest: "%3",
                 },
@@ -1186,10 +1186,10 @@ describe("EVM Code Generator", () => {
                   object: {
                     kind: "temp",
                     id: "%1",
-                    type: { 
-                      kind: "array", 
+                    type: {
+                      kind: "array",
                       element: { kind: "uint", bits: 256 },
-                      size: undefined
+                      size: undefined,
                     },
                   },
                   start: {
@@ -1237,7 +1237,7 @@ describe("EVM Code Generator", () => {
       // 7. Return sequence
 
       // Check for key instructions
-      const mnemonics = instructions.map(inst => inst.mnemonic);
+      const mnemonics = instructions.map((inst) => inst.mnemonic);
 
       // Should have SUB for length calculation
       expect(mnemonics).toContain("SUB");
@@ -1269,23 +1269,23 @@ describe("EVM Code Generator", () => {
               instructions: [
                 {
                   kind: "const",
-                  value: 0x100n,  // Array pointer
-                  type: { 
-                    kind: "array", 
+                  value: 0x100n, // Array pointer
+                  type: {
+                    kind: "array",
                     element: { kind: "uint", bits: 256 },
-                    size: undefined  // dynamic array
+                    size: undefined, // dynamic array
                   },
                   dest: "%1",
                 },
                 {
                   kind: "const",
-                  value: 3n,  // Start index
+                  value: 3n, // Start index
                   type: { kind: "uint", bits: 256 },
                   dest: "%2",
                 },
                 {
                   kind: "const",
-                  value: 3n,  // End index (same as start = empty slice)
+                  value: 3n, // End index (same as start = empty slice)
                   type: { kind: "uint", bits: 256 },
                   dest: "%3",
                 },
@@ -1294,10 +1294,10 @@ describe("EVM Code Generator", () => {
                   object: {
                     kind: "temp",
                     id: "%1",
-                    type: { 
-                      kind: "array", 
+                    type: {
+                      kind: "array",
                       element: { kind: "uint", bits: 256 },
-                      size: undefined
+                      size: undefined,
                     },
                   },
                   start: {
@@ -1330,7 +1330,7 @@ describe("EVM Code Generator", () => {
 
       // Should still have MCOPY even for zero-length copy
       // (though it will copy 0 bytes)
-      const mnemonics = instructions.map(inst => inst.mnemonic);
+      const mnemonics = instructions.map((inst) => inst.mnemonic);
       expect(mnemonics).toContain("MCOPY");
     });
   });
