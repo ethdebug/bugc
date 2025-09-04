@@ -882,6 +882,16 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
       return true;
     }
 
+    // Allow casting from string to bytes (for slicing without UTF-8 concerns)
+    if (TypesUtil.isStringType(fromType) && TypesUtil.isBytesType(toType)) {
+      return true;
+    }
+
+    // Allow casting from bytes to string (reverse operation)
+    if (TypesUtil.isBytesType(fromType) && TypesUtil.isStringType(toType)) {
+      return true;
+    }
+
     // Allow casting from bytes (including dynamic bytes) to address
     if (
       (TypesUtil.isBytesType(fromType) ||
