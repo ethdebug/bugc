@@ -209,11 +209,18 @@ export function generateConst<S extends Stack>(
   }
 
   // Dynamic bytes and strings need memory allocation
-  if (inst.type.kind === "string" || (inst.type.kind === "bytes" && inst.type.size === undefined)) {
+  if (
+    inst.type.kind === "string" ||
+    (inst.type.kind === "bytes" && inst.type.size === undefined)
+  ) {
     let bytes: Uint8Array;
     let byteLength: bigint;
 
-    if (inst.type.kind === "bytes" && typeof inst.value === "string" && inst.value.startsWith("0x")) {
+    if (
+      inst.type.kind === "bytes" &&
+      typeof inst.value === "string" &&
+      inst.value.startsWith("0x")
+    ) {
       // Dynamic bytes from hex string - decode the hex
       const hexStr = inst.value.slice(2); // Remove 0x prefix
       const hexBytes = [];
@@ -322,7 +329,6 @@ export function generateLoadLocal<S extends Stack>(
 export function generateStoreLocal<S extends Stack>(
   inst: Ir.StoreLocalInstruction,
 ): Transition<S, S> {
-
   return pipe<S>()
     .peek((state, builder) => {
       const allocation = state.memory.allocations[inst.local];
@@ -334,39 +340,41 @@ export function generateStoreLocal<S extends Stack>(
       }
 
       // Check if we need type conversion from fixed bytes to dynamic bytes
-      const isDynamicLocal = inst.localType.kind === "bytes" &&
-        inst.localType.size === undefined;
-      const isFixedValue = inst.value.type.kind === "bytes" &&
-        inst.value.type.size !== undefined;
+      const isDynamicLocal =
+        inst.localType.kind === "bytes" && inst.localType.size === undefined;
+      const isFixedValue =
+        inst.value.type.kind === "bytes" && inst.value.type.size !== undefined;
 
       if (isDynamicLocal && isFixedValue && inst.value.type.kind === "bytes") {
         // Need to convert fixed bytes to dynamic bytes format
         // Dynamic bytes format: [ptr] -> [length][data...]
         const fixedSize = inst.value.type.size!;
 
-        return builder
-          // Allocate memory for dynamic bytes (32 bytes for length + actual data)
-          .then(PUSHn(32n + BigInt(fixedSize)), { as: "size" })
-          .then(allocateMemoryDynamic(), { as: "value" })  // Will be the pointer we store
+        return (
+          builder
+            // Allocate memory for dynamic bytes (32 bytes for length + actual data)
+            .then(PUSHn(32n + BigInt(fixedSize)), { as: "size" })
+            .then(allocateMemoryDynamic(), { as: "value" }) // Will be the pointer we store
 
-          // Store the length at the allocated offset
-          .then(PUSHn(BigInt(fixedSize)), { as: "value" })
-          .then(DUP2(), { as: "offset" })  // Duplicate the allocated pointer
-          .then(MSTORE())
-          // Stack: [pointer, ...]
+            // Store the length at the allocated offset
+            .then(PUSHn(BigInt(fixedSize)), { as: "value" })
+            .then(DUP2(), { as: "offset" }) // Duplicate the allocated pointer
+            .then(MSTORE())
+            // Stack: [pointer, ...]
 
-          // Store the actual bytes data after the length
-          .then(loadValue(inst.value), { as: "value" })
-          .then(DUP2(), { as: "b" })  // Duplicate pointer again
-          .then(PUSHn(32n), { as: "a" })
-          .then(ADD(), { as: "offset" })
-          .then(MSTORE())
-          // Stack: [pointer, ...]
+            // Store the actual bytes data after the length
+            .then(loadValue(inst.value), { as: "value" })
+            .then(DUP2(), { as: "b" }) // Duplicate pointer again
+            .then(PUSHn(32n), { as: "a" })
+            .then(ADD(), { as: "offset" })
+            .then(MSTORE())
+            // Stack: [pointer, ...]
 
-          // Store the pointer to the dynamic bytes at the local's allocation
-          .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
-          // Stack: [offset, pointer, ...]
-          .then(MSTORE());
+            // Store the pointer to the dynamic bytes at the local's allocation
+            .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
+            // Stack: [offset, pointer, ...]
+            .then(MSTORE())
+        );
       }
 
       // Normal store without conversion
@@ -384,7 +392,6 @@ export function generateStoreLocal<S extends Stack>(
 export function generateLoadStorage<S extends Stack>(
   inst: Ir.LoadStorageInstruction,
 ): Transition<S, readonly ["value", ...S]> {
-
   return pipe<S>()
     .then(loadValue(inst.slot), { as: "key" })
     .then(SLOAD(), { as: "value" })
@@ -398,7 +405,6 @@ export function generateLoadStorage<S extends Stack>(
 function generateStoreStorage<S extends Stack>(
   inst: Ir.StoreStorageInstruction,
 ): Transition<S, S> {
-
   return pipe<S>()
     .then(loadValue(inst.value), { as: "value" })
     .then(loadValue(inst.slot), { as: "key" })
@@ -636,9 +642,7 @@ function generateSlice<S extends Stack>(
     objectId.includes("msg_data") ||
     objectId.includes("msg.data");
 
-  const source: "calldata" | "memory" = isCalldata
-    ? "calldata"
-    : "memory";
+  const source: "calldata" | "memory" = isCalldata ? "calldata" : "memory";
 
   return pipe<S>()
     .peek((state, builder) => {
@@ -651,12 +655,12 @@ function generateSlice<S extends Stack>(
         // This is more complex, so for now we'll implement the memory case
         // and add a warning for storage arrays
         return builder.err(
-            new EvmError(
-              EvmErrorCode.UNSUPPORTED_INSTRUCTION,
-              "Slice of storage arrays not yet implemented",
-              inst.loc,
-              Severity.Error,
-            )
+          new EvmError(
+            EvmErrorCode.UNSUPPORTED_INSTRUCTION,
+            "Slice of storage arrays not yet implemented",
+            inst.loc,
+            Severity.Error,
+          ),
         );
       }
       return builder;
@@ -677,11 +681,8 @@ function generateSlice<S extends Stack>(
 }
 
 function computeSliceStartOffset<S extends Stack>(
-  object: Ir.Value
-): Transition<
-  readonly ["startIndex", ...S],
-  readonly ["startOffset", ...S]
-> {
+  object: Ir.Value,
+): Transition<readonly ["startIndex", ...S], readonly ["startOffset", ...S]> {
   const { PUSHn, MUL, ADD } = operations;
 
   // Get element size for the object type
@@ -690,74 +691,75 @@ function computeSliceStartOffset<S extends Stack>(
   // Get the offset where data starts (after length field for dynamic bytes/strings)
   const dataOffset = getSliceDataOffset(object.type);
 
-  return pipe<readonly ["startIndex", ...S]>()
-    .then(rebrandTop("b"))
-    // Multiply start index by element size
-    .then(PUSHn(elementSize), { as: "a" })
-    .then(MUL(), { as: "b" })
+  return (
+    pipe<readonly ["startIndex", ...S]>()
+      .then(rebrandTop("b"))
+      // Multiply start index by element size
+      .then(PUSHn(elementSize), { as: "a" })
+      .then(MUL(), { as: "b" })
 
-    // Load the base pointer to the object
-    .then(loadValue(object), { as: "a" })
-    .then(ADD(), { as: "offset" })
+      // Load the base pointer to the object
+      .then(loadValue(object), { as: "a" })
+      .then(ADD(), { as: "offset" })
 
-    // Add data offset if needed (for dynamic bytes/strings)
-    .then(
-      dataOffset > 0n
-        ? pipe<readonly ["offset", ...S]>()
-          .then(rebrandTop("b"))
-          .then(PUSHn(dataOffset), { as: "a" })
-          .then(ADD(), { as: "startOffset" })
-          .done()
-        : pipe<readonly ["offset", ...S]>()
-          .then(rebrandTop("startOffset"))
-          .done()
-    )
-    .done();
+      // Add data offset if needed (for dynamic bytes/strings)
+      .then(
+        dataOffset > 0n
+          ? pipe<readonly ["offset", ...S]>()
+              .then(rebrandTop("b"))
+              .then(PUSHn(dataOffset), { as: "a" })
+              .then(ADD(), { as: "startOffset" })
+              .done()
+          : pipe<readonly ["offset", ...S]>()
+              .then(rebrandTop("startOffset"))
+              .done(),
+      )
+      .done()
+  );
 }
 
-
 function allocateSlice<S extends Stack>(
-  object: Ir.Value
+  object: Ir.Value,
 ): Transition<
   readonly ["endIndex", "startIndex", ...S],
   readonly ["allocatedOffset", "totalSize", ...S]
 > {
   const elementSize = getSliceElementSize(object.type);
 
-  return pipe<readonly ["endIndex", "startIndex", ...S]>()
-    // Calculate length = end - start
-    .then(rebrand({
-      1: "a",
-      2: "b"
-    } as const))
-    .then(state => state)
-    .then(SUB(), { as: "b" })
+  return (
+    pipe<readonly ["endIndex", "startIndex", ...S]>()
+      // Calculate length = end - start
+      .then(
+        rebrand({
+          1: "a",
+          2: "b",
+        } as const),
+      )
+      .then((state) => state)
+      .then(SUB(), { as: "b" })
 
-    // Calculate byte size = length * element_size
-    .then(PUSHn(elementSize), { as: "a" })
-    .then(MUL(), { as: "totalSize" })
+      // Calculate byte size = length * element_size
+      .then(PUSHn(elementSize), { as: "a" })
+      .then(MUL(), { as: "totalSize" })
 
-    // preserve total bytes size
-    .then(DUP1(), { as: "size" })
+      // preserve total bytes size
+      .then(DUP1(), { as: "size" })
 
-    // Allocate memory dynamically
-    .then(allocateMemoryDynamic(), { as: "allocatedOffset" })
-    .then(state => state)
-    .done();
+      // Allocate memory dynamically
+      .then(allocateMemoryDynamic(), { as: "allocatedOffset" })
+      .then((state) => state)
+      .done()
+  );
 }
 
 function performCopyFrom<S extends Stack>(
-  source: "memory" | "calldata"
+  source: "memory" | "calldata",
 ): Transition<
   readonly ["destOffset", "offset", "size", ...S],
   readonly [...S]
 > {
-  const COPY = source === "memory"
-    ? MCOPY
-    : CALLDATACOPY;
-  return pipe<["destOffset", "offset", "size", ...S]>()
-    .then(COPY())
-    .done();
+  const COPY = source === "memory" ? MCOPY : CALLDATACOPY;
+  return pipe<["destOffset", "offset", "size", ...S]>().then(COPY()).done();
 }
 
 /**

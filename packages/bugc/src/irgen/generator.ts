@@ -261,7 +261,7 @@ export class IrGenerator extends BaseAstVisitor<void> {
         this.context.locals.set(param.name, localVar);
       }
     }
-    
+
     // Set parameter count if there are parameters
     if (paramCount > 0) {
       func.paramCount = paramCount;
@@ -1418,7 +1418,7 @@ export class IrGenerator extends BaseAstVisitor<void> {
     // Check if this name has been used before
     const count = this.context.usedLocalNames.get(name) || 0;
     this.context.usedLocalNames.set(name, count + 1);
-    
+
     // Return the name with suffix only if needed
     return count === 0 ? name : `${name}_${count}`;
   }
@@ -2010,4 +2010,3 @@ interface StorageAccessChain {
     fieldIndex?: number; // For member access
   }>;
 }
-

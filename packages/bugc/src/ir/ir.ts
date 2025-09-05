@@ -224,7 +224,7 @@ export interface LoadLocalInstruction {
 export interface StoreLocalInstruction {
   kind: "store_local";
   local: string;
-  localType: TypeRef;  // The declared type of the local variable
+  localType: TypeRef; // The declared type of the local variable
   value: Value;
   loc?: SourceLocation;
 }

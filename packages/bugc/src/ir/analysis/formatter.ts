@@ -30,9 +30,7 @@ export class IrFormatter {
       this.line("storage {");
       this.indent++;
       for (const slot of module.storage.slots) {
-        this.line(
-          `[${slot.slot}] ${slot.name}: ${this.formatType(slot.type)}`,
-        );
+        this.line(`[${slot.slot}] ${slot.name}: ${this.formatType(slot.type)}`);
       }
       this.indent--;
       this.line("}");
@@ -49,7 +47,7 @@ export class IrFormatter {
     // Format main function next
     this.line("@main");
     this.formatFunction(module.main);
-    
+
     // Format user-defined functions last
     if (module.functions && module.functions.size > 0) {
       this.line("");
@@ -102,10 +100,12 @@ export class IrFormatter {
   private formatBlock(id: string, block: BasicBlock): void {
     // Block header - only show predecessors for merge points (multiple preds)
     // or if block has phi nodes (which indicates it's a merge point)
-    const showPreds = block.predecessors.size > 1 || (block.phis && block.phis.length > 0);
-    const predsStr = showPreds && block.predecessors.size > 0 
-      ? ` preds=[${Array.from(block.predecessors).sort().join(", ")}]`
-      : "";
+    const showPreds =
+      block.predecessors.size > 1 || (block.phis && block.phis.length > 0);
+    const predsStr =
+      showPreds && block.predecessors.size > 0
+        ? ` preds=[${Array.from(block.predecessors).sort().join(", ")}]`
+        : "";
     this.line(`${id}${predsStr}:`);
     this.indent++;
 
@@ -143,7 +143,9 @@ export class IrFormatter {
     const destWithType = (dest: string, type?: TypeRef): string => {
       // Add appropriate prefix for destinations
       const formattedDest = dest.startsWith("t") ? `%${dest}` : `^${dest}`;
-      return type ? `${formattedDest}: ${this.formatType(type)}` : formattedDest;
+      return type
+        ? `${formattedDest}: ${this.formatType(type)}`
+        : formattedDest;
     };
 
     switch (inst.kind) {
@@ -167,7 +169,7 @@ export class IrFormatter {
         return `${destWithType(inst.dest)} = load_local ^${inst.local}`;
 
       case "store_local":
-        // Use the local ID with ^ prefix  
+        // Use the local ID with ^ prefix
         return `store_local ^${inst.local}, ${this.formatValue(inst.value)}`;
 
       case "load_field":
@@ -247,7 +249,10 @@ export class IrFormatter {
     }
   }
 
-  private formatValue(value: Value | bigint | string | boolean, includeType: boolean = false): string {
+  private formatValue(
+    value: Value | bigint | string | boolean,
+    includeType: boolean = false,
+  ): string {
     if (typeof value === "bigint") {
       return value.toString();
     }
@@ -268,7 +273,7 @@ export class IrFormatter {
           // Pass type information to formatConstValue for proper hex formatting
           return this.formatConstValue(value.value, value.type);
         case "temp":
-          return `%${value.id}`;  // Add % prefix for temps for clarity
+          return `%${value.id}`; // Add % prefix for temps for clarity
         case "local":
           // Use the local's name directly
           return value.name;
@@ -337,7 +342,6 @@ export class IrFormatter {
         return "unknown";
     }
   }
-
 
   private line(text: string): void {
     const indentStr = "  ".repeat(this.indent);

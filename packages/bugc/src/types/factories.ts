@@ -37,10 +37,7 @@ export const Types = {
   },
 
   isBytesType(type: Type): boolean {
-    return (
-      type instanceof ElementaryType &&
-      type.kind === "bytes"
-    );
+    return type instanceof ElementaryType && type.kind === "bytes";
   },
 
   isDynamicBytesType(type: Type): boolean {

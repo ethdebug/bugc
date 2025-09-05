@@ -20,7 +20,9 @@ export class PipeBuilder<U, I, X extends Stack, Y extends Stack> {
   ) {}
 
   err(error: Error): PipeBuilder<U, I, X, Y> {
-    return this.then(() => { throw error });
+    return this.then(() => {
+      throw error;
+    });
   }
 
   peek<Z extends Stack>(
