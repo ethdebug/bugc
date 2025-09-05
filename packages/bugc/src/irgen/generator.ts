@@ -57,9 +57,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
       },
       tempCounter: 0,
       blockCounter: 1,
+      localCounter: 0,
       types,
       storage: { slots: [] },
       locals: new Map(),
+      usedLocalNames: new Map(),
       loopStack: [],
     };
 
@@ -225,6 +227,7 @@ export class IrGenerator extends BaseAstVisitor<void> {
     };
     this.context.currentFunction = func;
     this.context.locals = new Map();
+    this.context.usedLocalNames = new Map();
 
     // Create entry block
     const entryBlock: Ir.BasicBlock = {
@@ -239,22 +242,29 @@ export class IrGenerator extends BaseAstVisitor<void> {
     func.blocks.set("entry", entryBlock);
 
     // Process function parameters
+    let paramCount = 0;
     const funcType = this.context.types.get(decl);
     if (funcType && funcType instanceof FunctionType) {
       const ft = funcType as FunctionType;
-      for (let i = 0; i < (decl.metadata.parameters || []).length; i++) {
+      paramCount = (decl.metadata.parameters || []).length;
+      for (let i = 0; i < paramCount; i++) {
         const param = decl.metadata.parameters![i];
         const paramType = ft.parameterTypes[i];
 
         const localVar: Ir.LocalVariable = {
           name: param.name,
           type: this.bugTypeToIrType(paramType),
-          id: `local_${param.name}`,
+          id: this.genLocalId(param.name),
           loc: decl.loc ?? undefined,
         };
         func.locals.push(localVar);
         this.context.locals.set(param.name, localVar);
       }
+    }
+    
+    // Set parameter count if there are parameters
+    if (paramCount > 0) {
+      func.paramCount = paramCount;
     }
 
     // Process function body
@@ -319,7 +329,7 @@ export class IrGenerator extends BaseAstVisitor<void> {
         const localVar: Ir.LocalVariable = {
           name: decl.name,
           type: this.bugTypeToIrType(declType),
-          id: `local_${decl.name}`,
+          id: this.genLocalId(decl.name),
           loc: decl.loc ?? undefined,
         };
 
@@ -1404,6 +1414,15 @@ export class IrGenerator extends BaseAstVisitor<void> {
     return { id, type };
   }
 
+  private genLocalId(name: string): string {
+    // Check if this name has been used before
+    const count = this.context.usedLocalNames.get(name) || 0;
+    this.context.usedLocalNames.set(name, count + 1);
+    
+    // Return the name with suffix only if needed
+    return count === 0 ? name : `${name}_${count}`;
+  }
+
   private createBlock(label: string): Ir.BasicBlock {
     const id = `${label}_${this.context.blockCounter++}`;
     const block: Ir.BasicBlock = {
@@ -1958,12 +1977,16 @@ export interface IrContext {
   tempCounter: number;
   /** Counter for generating unique block IDs */
   blockCounter: number;
+  /** Counter for generating unique local IDs */
+  localCounter: number;
   /** Types mapping for type information */
   types: TypeMap;
   /** Storage layout being built */
   storage: Ir.StorageLayout;
   /** Mapping from AST variable names to IR local IDs */
   locals: Map<string, Ir.LocalVariable>;
+  /** Track used local names to handle shadowing */
+  usedLocalNames: Map<string, number>;
   /** Stack of loop contexts for break/continue */
   loopStack: LoopContext[];
 }

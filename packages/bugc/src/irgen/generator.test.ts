@@ -125,7 +125,7 @@ describe("IrGenerator", () => {
       // Check local variable storage
       expect(entry.instructions[5]).toMatchObject({
         kind: "store_local",
-        local: "local_x",
+        local: "x",
       });
     });
 

@@ -54,8 +54,10 @@ export interface StorageSlot {
 export interface IrFunction {
   /** Function name (for debugging) */
   name: string;
-  /** Local variables */
+  /** Local variables (parameters first, then local vars) */
   locals: LocalVariable[];
+  /** Number of parameters (first N locals are parameters) */
+  paramCount?: number;
   /** Entry block ID */
   entry: string;
   /** All basic blocks in the function */

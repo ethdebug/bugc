@@ -5,7 +5,7 @@ define {
   function add(a: uint256, b: uint256) -> uint256 {
     return a + b;
   };
-  
+
   // Function that calls another function
   function addThree(x: uint256, y: uint256, z: uint256) -> uint256 {
     let sum1 = add(x, y);
@@ -23,13 +23,13 @@ code {
   let a = 10;
   let b = 20;
   let c = 30;
-  
+
   // Call add function
   let sum = add(a, b);
-  
+
   // Call addThree function
   let total = addThree(a, b, c);
-  
+
   // Store result
   result = total;
 }

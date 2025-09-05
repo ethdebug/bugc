@@ -17,6 +17,7 @@ import {
 import {
   loadValue,
   storeValueIfNeeded,
+  allocateMemory,
   allocateMemoryDynamic,
   getSliceElementSize,
   getSliceDataOffset,
@@ -237,8 +238,7 @@ export function generateConst<S extends Stack>(
     return (
       pipe<S>()
         // Allocate memory dynamically
-        .then(PUSHn(totalBytes), { as: "size" })
-        .then(allocateMemoryDynamic(), { as: "offset" })
+        .then(allocateMemory(totalBytes), { as: "offset" })
 
         // Store the length at the allocated offset
         .then(PUSHn(BigInt(byteLength)), { as: "value" })
