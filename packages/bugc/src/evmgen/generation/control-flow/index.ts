@@ -1,0 +1,1 @@
+export { generateTerminator } from "./terminator";
