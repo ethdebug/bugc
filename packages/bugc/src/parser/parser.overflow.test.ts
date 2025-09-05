@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parse } from ".";
-import type { ReferenceType } from "../ast";
-import { Result, Severity } from "../result";
-import "../../test/matchers";
+import { parse } from "./parser.js";
+import type { ReferenceType } from "#ast";
+import { Result, Severity } from "#result";
+import "#test/matchers";
 
 describe("Parser overflow validation", () => {
   describe("Array size validation", () => {

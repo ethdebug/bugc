@@ -1,6 +1,8 @@
-import { IrModule, IrInstruction, Value, TypeRef } from "../../ir";
-import { BaseOptimizationStep, OptimizationContext } from "../optimizer";
 import { keccak256 } from "ethereum-cryptography/keccak";
+
+import { IrModule, IrInstruction, Value, TypeRef } from "#ir";
+
+import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class ConstantFoldingStep extends BaseOptimizationStep {
   name = "constant-folding";

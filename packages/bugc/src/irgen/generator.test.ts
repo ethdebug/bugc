@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { parse } from "../parser";
-import { TypeChecker } from "../typechecker";
-import { IrGenerator } from "./generator";
-import * as Ir from "../ir";
-import { Result, Severity } from "../result";
-import "../../test/matchers";
+import { parse } from "#parser";
+import { TypeChecker } from "#typechecker";
+import { IrBuilder } from "./generator.js";
+import * as Ir from "#ir";
+import { Result, Severity } from "#result";
+import "#test/matchers";
 
-describe("IrGenerator", () => {
+describe("IrBuilder", () => {
   function buildIR(source: string): Ir.IrModule {
     const parseResult = parse(source);
     if (!parseResult.success) {
@@ -25,7 +25,7 @@ describe("IrGenerator", () => {
       );
     }
 
-    const generator = new IrGenerator();
+    const generator = new IrBuilder();
     const buildResult = generator.build(ast, typeCheckResult.value.types);
 
     if (!buildResult.success) {
@@ -480,7 +480,7 @@ describe("IrGenerator", () => {
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
 
-      const generator = new IrGenerator();
+      const generator = new IrBuilder();
       const buildResult = generator.build(ast, typeCheckResult.value.types);
 
       expect(buildResult.success).toBe(true);
@@ -587,7 +587,7 @@ describe("IrGenerator", () => {
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
 
-      const generator = new IrGenerator();
+      const generator = new IrBuilder();
       const buildResult = generator.build(ast, typeCheckResult.value.types);
 
       expect(buildResult.success).toBe(true);
@@ -641,7 +641,7 @@ describe("IrGenerator", () => {
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
 
-      const generator = new IrGenerator();
+      const generator = new IrBuilder();
       const buildResult = generator.build(ast, typeCheckResult.value.types);
       expect(buildResult.success).toBe(true);
       if (!buildResult.success) return;

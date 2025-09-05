@@ -1,5 +1,5 @@
-import { IrModule } from "../../ir";
-import { BaseOptimizationStep, OptimizationContext } from "../optimizer";
+import { IrModule } from "#ir";
+import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class BlockMergingStep extends BaseOptimizationStep {
   name = "block-merging";

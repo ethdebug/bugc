@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { compile } from "../compiler";
-import type { IrModule } from "../ir";
-import { Result, Severity } from "../result";
-import type { BugError } from "../errors";
-import "../../test/matchers";
+import { compile } from "#compiler";
+import type { IrModule } from "#ir";
+import { Result, Severity } from "#result";
+import type { BugError } from "#errors";
+import "#test/matchers";
 
-describe("IrGenerator error handling", () => {
+describe("IrBuilder error handling", () => {
   const compileTest = async (
     source: string,
   ): Promise<Result<IrModule, BugError>> => {

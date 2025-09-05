@@ -1,9 +1,9 @@
-import type * as Ir from "../../../ir";
-import type { Stack } from "../../../evm";
-import type { Transition } from "../../operations";
-import { pipe, operations, rebrandTop } from "../../operations";
-import { storeValueIfNeeded } from "../values";
-import { allocateMemory } from "../memory";
+import type * as Ir from "#ir";
+import type { Stack } from "#evm";
+import type { Transition } from "../../operations/index.js";
+import { pipe, operations, rebrandTop } from "../../operations/index.js";
+import { storeValueIfNeeded } from "../values/index.js";
+import { allocateMemory } from "../memory/index.js";
 
 const { PUSHn, DUP2, MSTORE, ADD } = operations;
 

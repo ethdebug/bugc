@@ -1,11 +1,10 @@
 /**
  * Custom Vitest matchers for Result type assertions
  */
-
-import type { Result } from "../src/result";
-import type { BugError } from "../src/errors";
-import { Result as ResultHelpers, Severity } from "../src/result";
 import { expect } from "vitest";
+
+import { Result, Severity } from "#result";
+import type { BugError } from "#errors";
 
 interface CustomMatchers<R = unknown> {
   toHaveMessage(match: {
@@ -35,10 +34,10 @@ expect.extend({
       location?: { offset: number; length?: number };
     }
   ) {
-    const found = ResultHelpers.findMessage(result, match);
+    const found = Result.findMessage(result, match);
 
     if (!found) {
-      const allMessages = ResultHelpers.allMessages(result);
+      const allMessages = Result.allMessages(result);
       let details = "";
 
       if (allMessages.length === 0) {
@@ -72,7 +71,7 @@ expect.extend({
   },
 
   toHaveNoErrors<T, E extends BugError>(result: Result<T, E>) {
-    const errors = ResultHelpers.getMessages(result, Severity.Error);
+    const errors = Result.getMessages(result, Severity.Error);
 
     if (errors.length > 0) {
       const summary = errors
@@ -92,8 +91,9 @@ expect.extend({
   },
 
   toHaveOnlyWarnings<T, E extends BugError>(result: Result<T, E>) {
-    const errors = ResultHelpers.getMessages(result, Severity.Error);
-    const warnings = ResultHelpers.getMessages(result, Severity.Warning);
+    const errors = Result.getMessages(result, Severity.Error);
+
+    const warnings = Result.getMessages(result, Severity.Warning);
 
     if (errors.length > 0) {
       return {
@@ -123,7 +123,7 @@ expect.extend({
       };
     }
 
-    const messageCount = ResultHelpers.countMessages(result);
+    const messageCount = Result.countMessages(result);
     if (messageCount > 0) {
       return {
         pass: false,

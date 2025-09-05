@@ -1,10 +1,10 @@
-import type * as Ir from "../../../ir";
-import type { Stack } from "../../../evm";
-import type { Transition } from "../../operations";
-import { pipe, operations } from "../../operations";
-import { loadValue, storeValueIfNeeded } from "../values";
-import { allocateMemoryDynamic } from "../memory";
-import { EvmError, EvmErrorCode } from "../../errors";
+import type * as Ir from "#ir";
+import type { Stack } from "#evm";
+import type { Transition } from "../../operations/index.js";
+import { pipe, operations } from "../../operations/index.js";
+import { loadValue, storeValueIfNeeded } from "../values/index.js";
+import { allocateMemoryDynamic } from "../memory/index.js";
+import { EvmError, EvmErrorCode } from "../../errors.js";
 
 const { PUSHn, MLOAD, MSTORE, DUP2, ADD } = operations;
 

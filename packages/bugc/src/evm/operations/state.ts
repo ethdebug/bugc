@@ -1,5 +1,12 @@
-import { $ } from "./hkts";
-import type { Stack, StackBrand, StackItems, TopN, PopN, Push } from "./stack";
+import { $ } from "./hkts.js";
+import type {
+  Stack,
+  StackBrand,
+  StackItems,
+  TopN,
+  PopN,
+  Push,
+} from "./stack.js";
 
 /**
  * Type-unsafe representation of EVM execution state containing a stack.

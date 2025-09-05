@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parse } from "./parser";
+
+import { parse } from "./parser.js";
 
 describe("Optional Storage Block", () => {
   it("should parse program without storage block", () => {

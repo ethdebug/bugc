@@ -1,5 +1,5 @@
-import type { SourceLocation } from "../ast";
-import { Severity } from "../result";
+import type { SourceLocation } from "#ast";
+import { Severity } from "#result";
 
 /**
  * Base class for all BUG compiler errors

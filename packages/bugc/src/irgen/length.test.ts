@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { parse } from "../parser";
-import { TypeChecker } from "../typechecker";
-import { IrBuilder } from "../irgen";
+import { parse } from "#parser";
+import { TypeChecker } from "#typechecker";
+import { IrBuilder } from "./generator.js";
 
 describe("IR Builder - Length Instructions", () => {
   it("should generate length instruction for array", () => {

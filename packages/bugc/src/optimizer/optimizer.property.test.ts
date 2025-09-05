@@ -7,8 +7,11 @@
 
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
-import { optimizeIr as optimize } from "./simple-optimizer";
-import { IrModule, IrInstruction, BasicBlock } from "../ir";
+
+import { IrModule, IrInstruction, BasicBlock } from "#ir";
+
+import { optimizeIr as optimize } from "./simple-optimizer.js";
+
 // Simple IR validator for testing
 function validateIr(module: IrModule): { isValid: boolean } {
   // Basic validation - check that module has required fields

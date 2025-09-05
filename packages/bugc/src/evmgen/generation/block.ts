@@ -2,14 +2,14 @@
  * Block-level code generation
  */
 
-import * as Ir from "../../ir";
-import type { Stack } from "../../evm";
-import { EvmError, EvmErrorCode } from "../errors";
-import { type Transition, pipe, operations } from "../operations";
-import { generateInstruction } from "./instruction";
-import { loadValue } from "./values";
-import { generateTerminator } from "./control-flow";
-import { MEMORY_REGIONS } from "../analysis/memory";
+import * as Ir from "#ir";
+import type { Stack } from "#evm";
+import { EvmError, EvmErrorCode } from "../errors.js";
+import { type Transition, pipe, operations } from "../operations/index.js";
+import { generateInstruction } from "./instruction.js";
+import { loadValue } from "./values/index.js";
+import { generateTerminator } from "./control-flow/index.js";
+import { MEMORY_REGIONS } from "../analysis/memory.js";
 
 /**
  * Generate code for a basic block
@@ -113,12 +113,6 @@ function generatePhi<S extends Stack>(
       .done()
   );
 }
-
-/**
- * Generate a terminator (control flow)
- */
-// generateTerminator has been moved to control-flow/terminator.ts
-export { generateTerminator } from "./control-flow";
 
 /**
  * Initialize the free memory pointer at runtime

@@ -1,2 +1,6 @@
-export { allocateMemory, allocateMemoryDynamic } from "./allocate";
-export { getTypeSize, getSliceElementSize, getSliceDataOffset } from "./slice";
+export { allocateMemory, allocateMemoryDynamic } from "./allocate.js";
+export {
+  getTypeSize,
+  getSliceElementSize,
+  getSliceDataOffset,
+} from "./slice.js";

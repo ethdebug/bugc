@@ -10,17 +10,16 @@ import {
   commonOptions,
   optimizationOption,
   parseOptimizationLevel,
-} from "./options";
-import { displayErrors, displayWarnings } from "./output";
-import { formatJson, formatIrText } from "./formatters";
-import { IrValidator, IrStats, IrFormatter } from "../ir/analysis";
-import { EvmFormatter } from "../evm/analysis";
-import type { IrModule } from "../ir";
-import type { Program } from "../ast";
-import type { EvmGenerationOutput } from "../evmgen/pass";
-import { compile } from "../compiler";
-import { Result } from "../result";
-import type { BugError } from "../errors";
+} from "./options.js";
+import { displayErrors, displayWarnings } from "./output.js";
+import { formatJson, formatIrText } from "./formatters.js";
+import { type IrModule, IrValidator, IrStats, IrFormatter } from "#ir";
+import { EvmFormatter } from "#evm";
+import type { Program } from "#ast";
+import type { EvmGenerationOutput } from "#evmgen/pass";
+import { compile } from "#compiler";
+import { Result } from "#result";
+import type { BugError } from "#errors";
 
 type Phase = "ast" | "ir" | "bytecode";
 

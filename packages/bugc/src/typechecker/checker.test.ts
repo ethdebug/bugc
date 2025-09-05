@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { parse } from "../parser";
-import { TypeChecker } from "./checker";
-import { Result, Severity } from "../result";
-import type { SymbolTable, TypeMap } from "../types";
-import type { TypeError as BugTypeError } from "./errors";
-import "../../test/matchers";
+
+import { parse } from "#parser";
+import { Result, Severity } from "#result";
+import type { SymbolTable, TypeMap } from "#types";
+
+import { TypeChecker } from "./checker.js";
+import type { TypeError as BugTypeError } from "./errors.js";
+
+import "#test/matchers";
 
 describe("TypeChecker", () => {
   function check(

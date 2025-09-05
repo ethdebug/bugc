@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { parse } from "./parser";
-import { Severity } from "../result";
-import "../../test/matchers";
+import { Severity } from "#result";
+import { parse } from "./parser.js";
+import "#test/matchers";
 
 describe("Define Block Parser", () => {
   describe("Basic define block parsing", () => {

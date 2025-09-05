@@ -6,10 +6,10 @@
  * Useful for refining types when more specific information becomes available.
  */
 
-import { $ } from "./hkts";
+import { $ } from "./hkts.js";
 
-import type { Stack, PopN, StackBrand } from "./stack";
-import type { StateControls } from "./state";
+import type { Stack, PopN, StackBrand } from "./stack.js";
+import type { StateControls } from "./state.js";
 
 /**
  * Rebrand stack items at specified positions.

@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { parse } from ".";
-import * as Ast from "../ast";
-import { Severity } from "../result";
-import "../../test/matchers";
+import "#test/matchers";
+import * as Ast from "#ast";
+import { Severity } from "#result";
+import { parse } from "./parser.js";
 
 describe("Normalized Parser", () => {
   describe("Basic Parsing", () => {

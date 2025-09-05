@@ -1,4 +1,4 @@
-import { $ } from "./hkts";
+import { $ } from "./hkts.js";
 
 /**
  * Semantic labels for EVM stack items representing different types of values.

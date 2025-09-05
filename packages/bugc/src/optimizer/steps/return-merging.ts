@@ -1,5 +1,5 @@
-import { IrModule, Value } from "../../ir";
-import { BaseOptimizationStep, OptimizationContext } from "../optimizer";
+import { IrModule, Value } from "#ir";
+import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class ReturnMergingStep extends BaseOptimizationStep {
   name = "return-merging";

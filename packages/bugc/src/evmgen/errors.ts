@@ -1,6 +1,6 @@
-import { BugError } from "../errors";
-import type { SourceLocation } from "../ast";
-import { Severity } from "../result";
+import { BugError } from "#errors";
+import type { SourceLocation } from "#ast";
+import { Severity } from "#result";
 
 export enum EvmErrorCode {
   STACK_OVERFLOW = "EVM001",

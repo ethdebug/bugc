@@ -7,9 +7,9 @@ import {
   makeOperations,
   makeRebrands,
   makePipe,
-} from "../../evm";
+} from "#evm";
 
-import { type GenState, type StackItem, controls } from "./state";
+import { type GenState, type StackItem, controls } from "./state.js";
 
 export const { rebrand, rebrandTop } = makeRebrands(controls);
 

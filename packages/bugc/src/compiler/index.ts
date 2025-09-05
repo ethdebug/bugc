@@ -3,9 +3,9 @@
  */
 
 // Re-export everything from submodules
-export * from "./pass";
-export * from "./sequence";
-export * from "./sequences";
+export * from "./pass.js";
+export * from "./sequence.js";
+export * from "./sequences/index.js";
 
 // Export new compile interface
-export { compile, type CompileOptions } from "./compile";
+export { compile, type CompileOptions } from "./compile.js";

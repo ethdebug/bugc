@@ -1,3 +1,3 @@
-export * from "./provider";
-export * from "./client";
-export * from "./cli-base";
+export * from "./provider.js";
+export * from "./client.js";
+export * from "./cli-base.js";

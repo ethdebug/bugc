@@ -4,9 +4,9 @@
 /* eslint-disable no-console */
 
 import { writeFileSync } from "fs";
-import type { BugError } from "..";
-import { Severity, type MessagesBySeverity } from "../result";
-import { formatError } from "./error-formatter";
+import type { BugError } from "#errors";
+import { Severity, type MessagesBySeverity } from "#result";
+import { formatError } from "./error-formatter.js";
 
 /**
  * Display compilation errors to stderr

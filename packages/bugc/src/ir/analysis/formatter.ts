@@ -11,7 +11,7 @@ import {
   Value,
   TypeRef,
   Terminator,
-} from "../ir";
+} from "../ir.js";
 
 export class IrFormatter {
   private indent = 0;

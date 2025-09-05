@@ -14,7 +14,7 @@ import {
   isStatement,
   isTypeNode,
   isAssignable,
-} from "./ast";
+} from "./ast.js";
 
 describe("Ast", () => {
   describe("Factory Functions", () => {

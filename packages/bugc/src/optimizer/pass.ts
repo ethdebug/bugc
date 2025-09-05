@@ -1,7 +1,8 @@
-import type { IrModule } from "../ir";
-import { optimizeIr, type OptimizationLevel } from "./index";
-import { Result } from "../result";
-import type { Pass } from "../compiler/pass";
+import type { IrModule } from "#ir";
+import { optimizeIr } from "./simple-optimizer.js";
+import { type OptimizationLevel } from "./optimizer.js";
+import { Result } from "#result";
+import type { Pass } from "#compiler";
 
 /**
  * Optimization pass - optimizes intermediate representation

@@ -1,6 +1,6 @@
 import { parseArgs, ParseArgsConfig } from "util";
-import { createProvider } from "./provider";
-import { RpcClient } from "./client";
+import { createProvider } from "./provider.js";
+import { RpcClient } from "./client.js";
 
 export interface BaseCliOptions {
   "rpc-url"?: string;

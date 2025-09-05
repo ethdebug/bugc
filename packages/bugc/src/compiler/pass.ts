@@ -1,5 +1,5 @@
-import { Result } from "../result";
-import type { BugError } from "../errors";
+import { Result } from "#result";
+import type { BugError } from "#errors";
 
 export type PassConfig = {
   needs: unknown;

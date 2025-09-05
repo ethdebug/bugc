@@ -9,7 +9,7 @@
  * - Be easily translatable to EVM bytecode
  */
 
-import { SourceLocation } from "../ast";
+import { SourceLocation } from "#ast";
 
 /**
  * Top-level Ir module representing a complete BUG program

@@ -2,5 +2,5 @@
  * Type checker module for BUG language
  */
 
-export { TypeChecker, createTypeChecker } from "./checker";
-export * from "./errors";
+export { TypeChecker, createTypeChecker } from "./checker.js";
+export * from "./errors.js";

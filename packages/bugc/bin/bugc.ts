@@ -5,7 +5,7 @@
  * BUG compiler CLI
  */
 
-import { handleCompileCommand } from "../src/cli";
+import { handleCompileCommand } from "#cli";
 
 // Parse command line arguments
 const args = process.argv.slice(2);

@@ -2,9 +2,9 @@
  * IR generation errors and error codes
  */
 
-import { BugError } from "../errors";
-import { Severity } from "../result";
-import type { SourceLocation } from "../ast";
+import { BugError } from "#errors";
+import { Severity } from "#result";
+import type { SourceLocation } from "#ast";
 
 /**
  * Error codes for IR errors

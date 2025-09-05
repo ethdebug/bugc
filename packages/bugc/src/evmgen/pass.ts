@@ -1,12 +1,12 @@
-import { Result } from "../result";
-import type { Pass } from "../compiler/pass";
-import type { IrModule } from "../ir";
-import { generateModule } from "./generator";
-import { EvmError, EvmErrorCode } from "./errors";
-import type { Instruction } from "../evm";
-import { analyzeModuleLiveness } from "./analysis/liveness";
-import { analyzeModuleMemory } from "./analysis/memory";
-import { analyzeModuleBlockLayout } from "./analysis/layout";
+import { Result } from "#result";
+import type { Pass } from "#compiler";
+import type { IrModule } from "#ir";
+import { generateModule } from "./generator.js";
+import { EvmError, EvmErrorCode } from "./errors.js";
+import type { Instruction } from "#evm";
+import { analyzeModuleLiveness } from "./analysis/liveness.js";
+import { analyzeModuleMemory } from "./analysis/memory.js";
+import { analyzeModuleBlockLayout } from "./analysis/layout.js";
 
 /**
  * Output produced by the EVM generation pass

@@ -18,11 +18,11 @@
  * using semantic stack brands for type safety.
  */
 
-import { $ } from "./hkts";
+import { $ } from "./hkts.js";
 
-import { type Stack, type StackBrand } from "./stack";
+import { type Stack, type StackBrand } from "./stack.js";
 
-import { type StateControls, makeSpecifiers, mapInstruction } from "./state";
+import { type StateControls, makeSpecifiers, mapInstruction } from "./state.js";
 
 export type Operations<U, I> = ReturnType<typeof makeOperations<U, I>>;
 

@@ -5,9 +5,8 @@
  * into BUG-IR (intermediate representation).
  */
 
-import { BaseAstVisitor } from "../ast";
-import * as Ast from "../ast";
-import * as Ir from "../ir";
+import * as Ast from "#ast";
+import * as Ir from "#ir";
 import {
   Type,
   ElementaryType,
@@ -17,25 +16,20 @@ import {
   FunctionType,
   ErrorType,
   TypeMap,
-} from "../types";
-import { Result, Severity, type MessagesBySeverity } from "../result";
-import {
-  IrError,
-  IrErrorCode,
-  IrErrorMessages as ErrorMessages,
-} from "../ir/errors";
+} from "#types";
+import { Result, Severity, type MessagesBySeverity } from "#result";
 
 /**
  * Main IR generator - transforms AST to IR
  */
-export class IrGenerator extends BaseAstVisitor<void> {
+export class IrBuilder extends Ast.BaseAstVisitor<void> {
   private context!: IrContext;
-  private errors: IrError[] = [];
+  private errors: Ir.IrError[] = [];
 
   /**
    * Build IR module from AST
    */
-  build(program: Ast.Program, types: TypeMap): Result<Ir.IrModule, IrError> {
+  build(program: Ast.Program, types: TypeMap): Result<Ir.IrModule, Ir.IrError> {
     // Reset errors
     this.errors = [];
     // Initialize context
@@ -97,7 +91,7 @@ export class IrGenerator extends BaseAstVisitor<void> {
     }
 
     // Build messages by severity
-    const messages: MessagesBySeverity<IrError> = {};
+    const messages: MessagesBySeverity<Ir.IrError> = {};
     for (const error of this.errors) {
       const severity = error.severity;
       if (!messages[severity]) {
@@ -276,11 +270,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
       if (declType instanceof FunctionType && declType.returnType) {
         // Function should return a value but doesn't - add error
         this.errors.push(
-          new IrError(
+          new Ir.IrError(
             `Function ${decl.name} must return a value`,
             decl.loc ?? undefined,
             Severity.Error,
-            IrErrorCode.MISSING_RETURN,
+            Ir.IrErrorCode.MISSING_RETURN,
           ),
         );
       }
@@ -316,11 +310,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
         const declType = this.context.types.get(decl);
         if (!declType) {
           this.errors.push(
-            new IrError(
+            new Ir.IrError(
               `Cannot determine type for variable: ${decl.name}`,
               decl.loc ?? undefined,
               Severity.Error,
-              IrErrorCode.UNKNOWN_TYPE,
+              Ir.IrErrorCode.UNKNOWN_TYPE,
             ),
           );
           return;
@@ -584,11 +578,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
         const _exhaustiveCheck: never = node;
         void _exhaustiveCheck;
         this.errors.push(
-          new IrError(
+          new Ir.IrError(
             `Unexpected expression type`,
             undefined,
             Severity.Error,
-            IrErrorCode.INVALID_NODE,
+            Ir.IrErrorCode.INVALID_NODE,
           ),
         );
         return {
@@ -634,11 +628,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
     }
 
     this.errors.push(
-      new IrError(
-        ErrorMessages.UNKNOWN_IDENTIFIER(name),
+      new Ir.IrError(
+        Ir.IrErrorMessages.UNKNOWN_IDENTIFIER(name),
         node.loc || undefined,
         Severity.Error,
-        IrErrorCode.UNKNOWN_IDENTIFIER,
+        Ir.IrErrorCode.UNKNOWN_IDENTIFIER,
       ),
     );
     return {
@@ -652,11 +646,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
     const nodeType = this.context.types.get(node);
     if (!nodeType) {
       this.errors.push(
-        new IrError(
+        new Ir.IrError(
           `Cannot determine type for literal: ${node.value}`,
           node.loc ?? undefined,
           Severity.Error,
-          IrErrorCode.UNKNOWN_TYPE,
+          Ir.IrErrorCode.UNKNOWN_TYPE,
         ),
       );
       // Return a default value to allow compilation to continue
@@ -701,11 +695,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
         break;
       default:
         this.errors.push(
-          new IrError(
+          new Ir.IrError(
             `Unknown literal kind: ${node.kind}`,
             node.loc || undefined,
             Severity.Error,
-            IrErrorCode.INVALID_NODE,
+            Ir.IrErrorCode.INVALID_NODE,
           ),
         );
         return {
@@ -730,11 +724,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
     const nodeType = this.context.types.get(node);
     if (!nodeType) {
       this.errors.push(
-        new IrError(
+        new Ir.IrError(
           `Cannot determine type for operator expression: ${node.operator}`,
           node.loc ?? undefined,
           Severity.Error,
-          IrErrorCode.UNKNOWN_TYPE,
+          Ir.IrErrorCode.UNKNOWN_TYPE,
         ),
       );
       // Return a default value to allow compilation to continue
@@ -774,11 +768,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
       });
     } else {
       this.errors.push(
-        new IrError(
+        new Ir.IrError(
           `Invalid operator arity: ${node.operands.length}`,
           node.loc || undefined,
           Severity.Error,
-          IrErrorCode.INVALID_NODE,
+          Ir.IrErrorCode.INVALID_NODE,
         ),
       );
       return {
@@ -887,11 +881,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
       }
 
       this.errors.push(
-        new IrError(
+        new Ir.IrError(
           "Only bytes types can be sliced",
           node.loc || undefined,
           Severity.Error,
-          IrErrorCode.INVALID_NODE,
+          Ir.IrErrorCode.INVALID_NODE,
         ),
       );
       return {
@@ -978,11 +972,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
     }
 
     this.errors.push(
-      new IrError(
+      new Ir.IrError(
         "Invalid access expression",
         node.loc || undefined,
         Severity.Error,
-        IrErrorCode.INVALID_NODE,
+        Ir.IrErrorCode.INVALID_NODE,
       ),
     );
     return {
@@ -1000,11 +994,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
     const targetType = this.context.types.get(node);
     if (!targetType) {
       this.errors.push(
-        new IrError(
+        new Ir.IrError(
           "Cannot determine target type for cast expression",
           node.loc ?? undefined,
           Severity.Error,
-          IrErrorCode.UNKNOWN_TYPE,
+          Ir.IrErrorCode.UNKNOWN_TYPE,
         ),
       );
       return exprValue; // Return the original value
@@ -1036,11 +1030,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
       // keccak256 built-in function
       if (node.arguments.length !== 1) {
         this.errors.push(
-          new IrError(
+          new Ir.IrError(
             "keccak256 expects exactly 1 argument",
             node.loc || undefined,
             Severity.Error,
-            IrErrorCode.INVALID_ARGUMENT_COUNT,
+            Ir.IrErrorCode.INVALID_ARGUMENT_COUNT,
           ),
         );
         return {
@@ -1075,11 +1069,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
       const callType = this.context.types.get(node);
       if (!callType) {
         this.errors.push(
-          new IrError(
+          new Ir.IrError(
             `Unknown function: ${functionName}`,
             node.loc || undefined,
             Severity.Error,
-            IrErrorCode.UNKNOWN_TYPE,
+            Ir.IrErrorCode.UNKNOWN_TYPE,
           ),
         );
         return {
@@ -1128,11 +1122,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
 
     // Other forms of function calls not supported
     this.errors.push(
-      new IrError(
+      new Ir.IrError(
         "Complex function call expressions not yet supported",
         node.loc || undefined,
         Severity.Error,
-        IrErrorCode.UNSUPPORTED_FEATURE,
+        Ir.IrErrorCode.UNSUPPORTED_FEATURE,
       ),
     );
     return {
@@ -1146,11 +1140,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
     const nodeType = this.context.types.get(node);
     if (!nodeType) {
       this.errors.push(
-        new IrError(
+        new Ir.IrError(
           `Cannot determine type for special expression: ${node.kind}`,
           node.loc ?? undefined,
           Severity.Error,
-          IrErrorCode.UNKNOWN_TYPE,
+          Ir.IrErrorCode.UNKNOWN_TYPE,
         ),
       );
       // Return a default value to allow compilation to continue
@@ -1183,11 +1177,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
         break;
       default:
         this.errors.push(
-          new IrError(
+          new Ir.IrError(
             `Unknown special expression: ${node.kind}`,
             node.loc || undefined,
             Severity.Error,
-            IrErrorCode.INVALID_NODE,
+            Ir.IrErrorCode.INVALID_NODE,
           ),
         );
         return {
@@ -1258,11 +1252,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
       }
 
       this.errors.push(
-        new IrError(
-          ErrorMessages.UNKNOWN_IDENTIFIER(name),
+        new Ir.IrError(
+          Ir.IrErrorMessages.UNKNOWN_IDENTIFIER(name),
           node.loc || undefined,
           Severity.Error,
-          IrErrorCode.UNKNOWN_IDENTIFIER,
+          Ir.IrErrorCode.UNKNOWN_IDENTIFIER,
         ),
       );
       return;
@@ -1394,11 +1388,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
     }
 
     this.errors.push(
-      new IrError(
+      new Ir.IrError(
         "Invalid lvalue",
         node.loc || undefined,
         Severity.Error,
-        IrErrorCode.INVALID_LVALUE,
+        Ir.IrErrorCode.INVALID_LVALUE,
       ),
     );
   }
@@ -1500,11 +1494,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
         return "or";
       default:
         this.errors.push(
-          new IrError(
+          new Ir.IrError(
             `Unknown operator: ${op}. This is likely a bug in the compiler.`,
             undefined,
             Severity.Error,
-            IrErrorCode.INTERNAL_ERROR,
+            Ir.IrErrorCode.INTERNAL_ERROR,
           ),
         );
         return "add"; // Default fallback for error case
@@ -1530,11 +1524,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
           return { kind: "string" };
         default:
           this.errors.push(
-            new IrError(
+            new Ir.IrError(
               `Unknown elementary type: ${type.kind}`,
               undefined,
               Severity.Error,
-              IrErrorCode.UNKNOWN_TYPE,
+              Ir.IrErrorCode.UNKNOWN_TYPE,
             ),
           );
           return { kind: "uint", bits: 256 }; // Default fallback for error case
@@ -1574,21 +1568,21 @@ export class IrGenerator extends BaseAstVisitor<void> {
       // Function types are not directly convertible to IR types
       // This shouldn't happen in normal code generation
       this.errors.push(
-        new IrError(
+        new Ir.IrError(
           `Cannot convert function type to IR type`,
           undefined,
           Severity.Error,
-          IrErrorCode.UNKNOWN_TYPE,
+          Ir.IrErrorCode.UNKNOWN_TYPE,
         ),
       );
       return { kind: "uint", bits: 256 }; // Default fallback
     } else {
       this.errors.push(
-        new IrError(
+        new Ir.IrError(
           `Cannot convert type to IR: ${(type as { kind?: string }).kind || "unknown"}`,
           undefined,
           Severity.Error,
-          IrErrorCode.UNKNOWN_TYPE,
+          Ir.IrErrorCode.UNKNOWN_TYPE,
         ),
       );
       return { kind: "uint", bits: 256 }; // Default fallback for error case
@@ -1649,33 +1643,35 @@ export class IrGenerator extends BaseAstVisitor<void> {
           : "unknown";
 
         this.errors.push(
-          new IrError(
-            ErrorMessages.STORAGE_MODIFICATION_ERROR(name, typeDesc),
+          new Ir.IrError(
+            Ir.IrErrorMessages.STORAGE_MODIFICATION_ERROR(name, typeDesc),
             expr.loc ?? undefined,
             Severity.Error,
-            IrErrorCode.STORAGE_ACCESS_ERROR,
+            Ir.IrErrorCode.STORAGE_ACCESS_ERROR,
           ),
         );
       }
     } else if (current.type === "CallExpression") {
       // Provide specific error for function calls
       this.errors.push(
-        new IrError(
-          ErrorMessages.UNSUPPORTED_STORAGE_PATTERN("function return values"),
+        new Ir.IrError(
+          Ir.IrErrorMessages.UNSUPPORTED_STORAGE_PATTERN(
+            "function return values",
+          ),
           expr.loc || undefined,
           Severity.Error,
-          IrErrorCode.UNSUPPORTED_FEATURE,
+          Ir.IrErrorCode.UNSUPPORTED_FEATURE,
         ),
       );
     } else if (accesses.length > 0) {
       // Other unsupported base expressions when we have an access chain
       this.errors.push(
-        new IrError(
+        new Ir.IrError(
           `Storage access chain must start with a storage variable identifier. ` +
             `Found ${current.type} at the base of the access chain.`,
           current.loc ?? undefined,
           Severity.Error,
-          IrErrorCode.STORAGE_ACCESS_ERROR,
+          Ir.IrErrorCode.STORAGE_ACCESS_ERROR,
         ),
       );
     }
@@ -1761,11 +1757,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
             .element;
         } else {
           this.errors.push(
-            new IrError(
+            new Ir.IrError(
               `Cannot index into non-mapping/array type: ${currentType.kind}`,
               loc,
               Severity.Error,
-              IrErrorCode.UNKNOWN_TYPE,
+              Ir.IrErrorCode.UNKNOWN_TYPE,
             ),
           );
         }
@@ -1794,21 +1790,21 @@ export class IrGenerator extends BaseAstVisitor<void> {
             currentType = structType.fields[fieldIndex].type;
           } else {
             this.errors.push(
-              new IrError(
+              new Ir.IrError(
                 `Field ${access.fieldName} not found in struct ${structType.name}`,
                 loc,
                 Severity.Error,
-                IrErrorCode.UNKNOWN_TYPE,
+                Ir.IrErrorCode.UNKNOWN_TYPE,
               ),
             );
           }
         } else {
           this.errors.push(
-            new IrError(
+            new Ir.IrError(
               `Cannot access member of non-struct type: ${currentType.kind}`,
               loc,
               Severity.Error,
-              IrErrorCode.UNKNOWN_TYPE,
+              Ir.IrErrorCode.UNKNOWN_TYPE,
             ),
           );
         }
@@ -1897,11 +1893,11 @@ export class IrGenerator extends BaseAstVisitor<void> {
             .element;
         } else {
           this.errors.push(
-            new IrError(
+            new Ir.IrError(
               `Cannot index into non-mapping/array type: ${currentType.kind}`,
               loc,
               Severity.Error,
-              IrErrorCode.UNKNOWN_TYPE,
+              Ir.IrErrorCode.UNKNOWN_TYPE,
             ),
           );
         }
@@ -1930,21 +1926,21 @@ export class IrGenerator extends BaseAstVisitor<void> {
             currentType = structType.fields[fieldIndex].type;
           } else {
             this.errors.push(
-              new IrError(
+              new Ir.IrError(
                 `Field ${access.fieldName} not found in struct ${structType.name}`,
                 loc,
                 Severity.Error,
-                IrErrorCode.UNKNOWN_TYPE,
+                Ir.IrErrorCode.UNKNOWN_TYPE,
               ),
             );
           }
         } else {
           this.errors.push(
-            new IrError(
+            new Ir.IrError(
               `Cannot access member of non-struct type: ${currentType.kind}`,
               loc,
               Severity.Error,
-              IrErrorCode.UNKNOWN_TYPE,
+              Ir.IrErrorCode.UNKNOWN_TYPE,
             ),
           );
         }

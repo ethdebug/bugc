@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { parse } from ".";
-import type { ControlFlowStatement } from "../ast";
+
+import type { ControlFlowStatement } from "#ast";
+
+import { parse } from "./parser.js";
 
 describe("Parser Integration Tests", () => {
   describe("Complete Example Programs", () => {

@@ -2,4 +2,4 @@
  * EVM analysis utilities exports
  */
 
-export { EvmFormatter } from "./formatter";
+export { EvmFormatter } from "./formatter.js";

@@ -5,7 +5,7 @@
  * CLI tool to call BUG contracts on an RPC node
  */
 
-import { CliBase, BaseCliOptions } from "../src/cli-base";
+import { CliBase, BaseCliOptions } from "../src/cli-base.js";
 
 interface CallOptions extends BaseCliOptions {
   to?: string;

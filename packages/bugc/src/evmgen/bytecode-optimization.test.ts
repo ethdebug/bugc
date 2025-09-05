@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { generateModule } from "./generator";
-import type { IrModule } from "../ir";
+import { generateModule } from "./generator.js";
+import type { IrModule } from "#ir";
 
 describe("Bytecode Optimization", () => {
   it("should use optimal PUSH opcodes based on value size", () => {

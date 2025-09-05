@@ -2,13 +2,13 @@
  * Function-level code generation
  */
 
-import * as Ir from "../../ir";
-import type { Stack } from "../../evm";
-import type { GenState } from "../operations";
-import type { FunctionBlockLayout } from "../analysis/layout";
-import type { FunctionMemoryLayout } from "../analysis/memory";
-import { generateBlock } from "./block";
-import { serialize } from "../serialize";
+import * as Ir from "#ir";
+import type { Stack } from "#evm";
+import type { GenState } from "../operations/index.js";
+import type { FunctionBlockLayout } from "../analysis/layout.js";
+import type { FunctionMemoryLayout } from "../analysis/memory.js";
+import { generateBlock } from "./block.js";
+import { serialize } from "../serialize.js";
 
 /**
  * Generate bytecode for a function

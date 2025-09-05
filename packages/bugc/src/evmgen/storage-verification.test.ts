@@ -1,21 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { compile } from "../compiler";
+import { compile } from "#compiler";
 
 describe.skip("Storage verification (requires local Ethereum node)", () => {
   it("should store array values correctly in constructor", async () => {
     const source = `
       name ConstructorArray;
-      
+
       storage {
         [0] items: array<uint256, 3>;
       }
-      
+
       create {
         items[0] = 1005;
         items[1] = 1006;
         items[2] = 1007;
       }
-      
+
       code {}
     `;
 
@@ -92,19 +92,19 @@ describe.skip("Storage verification (requires local Ethereum node)", () => {
   it("should store direct storage values correctly", async () => {
     const source = `
       name DirectStorage;
-      
+
       storage {
         [0] a: uint256;
         [1] b: uint256;
         [2] c: uint256;
       }
-      
+
       create {
         a = 100;
         b = 200;
         c = 300;
       }
-      
+
       code {}
     `;
 

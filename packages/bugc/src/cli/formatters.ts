@@ -1,5 +1,4 @@
-import type { IrModule } from "../ir/ir";
-import { IrFormatter } from "../ir/analysis";
+import { type IrModule, IrFormatter } from "#ir";
 
 export function formatJson(
   data: unknown,

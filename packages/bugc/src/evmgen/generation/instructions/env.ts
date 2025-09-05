@@ -1,9 +1,9 @@
-import type * as Ir from "../../../ir";
-import type { Stack, StackBrand } from "../../../evm";
-import type { GenState, Transition } from "../../operations";
+import type * as Ir from "#ir";
+import type { Stack, StackBrand } from "#evm";
+import type { GenState, Transition } from "../../operations/index.js";
 
-import { pipe, operations } from "../../operations";
-import { storeValueIfNeeded } from "../values";
+import { pipe, operations } from "../../operations/index.js";
+import { storeValueIfNeeded } from "../values/index.js";
 
 const { CALLER, CALLVALUE, PUSH0, TIMESTAMP, NUMBER } = operations;
 

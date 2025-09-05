@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { parse } from "./index";
-import { AccessExpression } from "../ast";
+
+import { AccessExpression } from "#ast";
+
+import { parse } from "./parser.js";
 
 describe("Slice expressions", () => {
   test("parses simple slice syntax", () => {

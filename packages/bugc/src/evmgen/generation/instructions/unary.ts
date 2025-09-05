@@ -1,9 +1,9 @@
-import type * as Ir from "../../../ir";
-import type { Stack, StackBrand } from "../../../evm";
-import type { GenState, Transition } from "../../operations";
+import type * as Ir from "#ir";
+import type { Stack, StackBrand } from "#evm";
+import type { GenState, Transition } from "../../operations/index.js";
 
-import { pipe, operations, rebrandTop } from "../../operations";
-import { loadValue, storeValueIfNeeded } from "../values";
+import { pipe, operations, rebrandTop } from "../../operations/index.js";
+import { loadValue, storeValueIfNeeded } from "../values/index.js";
 
 const { NOT, PUSHn, SUB } = operations;
 

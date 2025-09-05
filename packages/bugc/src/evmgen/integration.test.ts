@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildSequence } from "../compiler/sequence";
-import { bytecodeSequence } from "../compiler/sequences";
+import { bytecodeSequence, buildSequence } from "#compiler";
 
 describe("EVM Generation Integration", () => {
   it("should compile minimal.bug to bytecode", async () => {

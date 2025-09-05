@@ -13,9 +13,9 @@ import {
   Declaration,
   setParentReferences,
   SourceLocation,
-} from "../ast";
-import { Result } from "../result";
-import { ParseError } from "./errors";
+} from "#ast";
+import { Result } from "#result";
+import { ParseError } from "./errors.js";
 
 /**
  * Parser utilities and base definitions

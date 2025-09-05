@@ -1,5 +1,5 @@
-import { IrModule, PhiInstruction, IrInstruction, Value } from "../../ir";
-import { BaseOptimizationStep, OptimizationContext } from "../optimizer";
+import { IrModule, PhiInstruction, IrInstruction, Value } from "#ir";
+import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class DeadCodeEliminationStep extends BaseOptimizationStep {
   name = "dead-code-elimination";

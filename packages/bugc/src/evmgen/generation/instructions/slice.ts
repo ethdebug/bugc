@@ -1,15 +1,20 @@
-import type * as Ir from "../../../ir";
-import type { Stack } from "../../../evm";
-import type { Transition } from "../../operations";
-import { pipe, operations, rebrand, rebrandTop } from "../../operations";
-import { loadValue, storeValueIfNeeded, valueId } from "../values";
+import type * as Ir from "#ir";
+import type { Stack } from "#evm";
+import type { Transition } from "../../operations/index.js";
+import {
+  pipe,
+  operations,
+  rebrand,
+  rebrandTop,
+} from "../../operations/index.js";
+import { loadValue, storeValueIfNeeded, valueId } from "../values/index.js";
 import {
   allocateMemoryDynamic,
   getSliceElementSize,
   getSliceDataOffset,
-} from "../memory";
-import { EvmError, EvmErrorCode } from "../../errors";
-import { Severity } from "../../../result";
+} from "../memory/index.js";
+import { EvmError, EvmErrorCode } from "../../errors.js";
+import { Severity } from "#result";
 
 const { PUSHn, MUL, ADD, SUB, DUP1, SWAP1, SWAP3, MCOPY, CALLDATACOPY } =
   operations;

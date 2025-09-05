@@ -2,7 +2,48 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "."
+    "rootDir": ".",
+    "paths": {
+      "#ast": ["./src/ast/index"],
+      "#ast/*": ["./src/ast/*"],
+
+      "#cli": ["./src/cli/index"],
+      "#cli/*": ["./src/cli/*"],
+
+      "#compiler": ["./src/compiler/index"],
+      "#compiler/*": ["./src/compiler/*"],
+
+      "#errors": ["./src/errors/index"],
+      "#errors/*": ["./src/errors/*"],
+
+      "#evm": ["./src/evm/index"],
+      "#evm/*": ["./src/evm/*"],
+
+      "#evmgen": ["./src/evmgen/index"],
+      "#evmgen/*": ["./src/evmgen/*"],
+
+      "#ir": ["./src/ir/index"],
+      "#ir/*": ["./src/ir/*"],
+
+      "#irgen": ["./src/irgen/index"],
+      "#irgen/*": ["./src/irgen/*"],
+
+      "#optimizer": ["./src/optimizer/index"],
+      "#optimizer/*": ["./src/optimizer/*"],
+
+      "#result": ["./src/result"],
+
+      "#parser": ["./src/parser/index"],
+      "#parser/*": ["./src/parser/*"],
+
+      "#typechecker": ["./src/typechecker/index"],
+      "#typechecker/*": ["./src/typechecker/*"],
+
+      "#types": ["./src/types/index"],
+      "#types/*": ["./src/types/*"],
+
+      "#test/*": ["./test/*"]
+    }
   },
   "include": ["src/**/*", "bin/**/*", "test/**/*"],
   "exclude": ["../../node_modules", "../../node_modules/hkts/**/*", "node_modules", "dist"]

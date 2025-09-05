@@ -1,5 +1,5 @@
-import { IrModule, IrInstruction, TypeRef, type Value } from "../../ir";
-import { BaseOptimizationStep, OptimizationContext } from "../optimizer";
+import { IrModule, IrInstruction, TypeRef, type Value } from "#ir";
+import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class ConstantPropagationStep extends BaseOptimizationStep {
   name = "constant-propagation";

@@ -2,7 +2,13 @@
  * IR Statistics analyzer
  */
 
-import { IrModule, IrFunction, BasicBlock, Value, IrInstruction } from "../ir";
+import {
+  IrModule,
+  IrFunction,
+  BasicBlock,
+  Value,
+  IrInstruction,
+} from "../ir.js";
 
 export interface IrStatistics {
   blockCount: number;

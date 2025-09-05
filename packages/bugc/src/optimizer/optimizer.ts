@@ -1,5 +1,7 @@
-import { IrModule, IrInstruction, IrFunction, BasicBlock } from "../ir";
-import { SourceLocation } from "../ast";
+import { IrModule, IrInstruction, IrFunction, BasicBlock } from "#ir";
+import { SourceLocation } from "#ast";
+
+export type OptimizationLevel = 0 | 1 | 2 | 3;
 
 export interface OptimizationStep {
   name: string;

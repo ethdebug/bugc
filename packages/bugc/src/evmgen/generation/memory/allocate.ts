@@ -1,8 +1,8 @@
-import type { Stack } from "../../../evm";
-import type { Transition } from "../../operations";
+import type { Stack } from "#evm";
+import type { Transition } from "../../operations/index.js";
 
-import { operations, pipe } from "../../operations";
-import { MEMORY_REGIONS } from "../../analysis/memory";
+import { operations, pipe } from "../../operations/index.js";
+import { MEMORY_REGIONS } from "../../analysis/memory.js";
 
 /**
  * Allocate memory dynamically at runtime

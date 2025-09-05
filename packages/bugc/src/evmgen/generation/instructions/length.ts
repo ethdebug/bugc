@@ -1,9 +1,9 @@
-import type * as Ir from "../../../ir";
-import type { Stack } from "../../../evm";
-import type { Transition } from "../../operations";
-import { pipe, operations } from "../../operations";
-import { loadValue, storeValueIfNeeded, valueId } from "../values";
-import { EvmError, EvmErrorCode } from "../../errors";
+import type * as Ir from "#ir";
+import type { Stack } from "#evm";
+import type { Transition } from "../../operations/index.js";
+import { pipe, operations } from "../../operations/index.js";
+import { loadValue, storeValueIfNeeded, valueId } from "../values/index.js";
+import { EvmError, EvmErrorCode } from "../../errors.js";
 
 const { PUSHn, CALLDATASIZE, SLOAD, MLOAD, SUB, SHR } = operations;
 

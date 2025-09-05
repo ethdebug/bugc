@@ -1,4 +1,4 @@
-export type { GenState } from "./state";
+export type { GenState } from "./state.js";
 
 export {
   type EvmOperations,
@@ -8,4 +8,4 @@ export {
   operations,
   rebrand,
   rebrandTop,
-} from "./operations";
+} from "./operations.js";

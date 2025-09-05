@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { parse } from "../parser";
-import { TypeChecker } from "../typechecker";
-import { IrGenerator } from "../irgen/generator";
-import type { BinaryOpInstruction } from "../ir";
-import { analyzeModuleLiveness, analyzeLiveness } from "./analysis/liveness";
-import { analyzeModuleMemory, planFunctionMemory } from "./analysis/memory";
-import { analyzeModuleBlockLayout, layoutBlocks } from "./analysis/layout";
-import { generateModule } from "./generator";
-import { generateFunction } from "./generation/function";
+import { parse } from "#parser";
+import { TypeChecker } from "#typechecker";
+import { IrBuilder } from "#irgen";
+import type { BinaryOpInstruction } from "#ir";
+import { analyzeModuleLiveness, analyzeLiveness } from "./analysis/liveness.js";
+import { analyzeModuleMemory, planFunctionMemory } from "./analysis/memory.js";
+import { analyzeModuleBlockLayout, layoutBlocks } from "./analysis/layout.js";
+import { generateModule } from "./generator.js";
+import { generateFunction } from "./generation/function.js";
 
 describe("Constructor array storage", () => {
   it("should correctly store values in fixed-size arrays during construction", () => {
@@ -40,7 +40,7 @@ code {}
     if (!typeCheckResult.success) return;
 
     // Generate IR
-    const irGenerator = new IrGenerator();
+    const irGenerator = new IrBuilder();
     const irResult = irGenerator.build(
       parseResult.value,
       typeCheckResult.value.types,
@@ -118,7 +118,7 @@ code {}
     if (!typeCheckResult.success) return;
 
     // Generate IR
-    const irGenerator = new IrGenerator();
+    const irGenerator = new IrBuilder();
     const irResult = irGenerator.build(
       parseResult.value,
       typeCheckResult.value.types,
@@ -191,7 +191,7 @@ code {}
     if (!typeCheckResult.success) return;
 
     // Generate IR
-    const irGenerator = new IrGenerator();
+    const irGenerator = new IrBuilder();
     const irResult = irGenerator.build(
       parseResult.value,
       typeCheckResult.value.types,

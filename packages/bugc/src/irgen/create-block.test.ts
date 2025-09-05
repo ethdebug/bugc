@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { parse } from "../parser";
-import { TypeChecker } from "../typechecker";
-import { IrBuilder } from "../irgen";
+import { parse } from "#parser";
+import { TypeChecker } from "#typechecker";
+import { IrBuilder } from "#irgen";
 
 describe("IR generation for create blocks", () => {
   it("generates separate IR for create and main functions", () => {

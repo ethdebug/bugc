@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { parse } from "../../parser";
-import { TypeChecker } from "../../typechecker";
-import { IrGenerator } from "../../irgen";
-import { ReturnMergingStep } from "./return-merging";
-import { OptimizationContextImpl } from "../optimizer";
-import { Result } from "../../result";
+
+import { IrBuilder } from "#irgen";
+import { parse } from "#parser";
+import { Result } from "#result";
+import { TypeChecker } from "#typechecker";
+
+import { ReturnMergingStep } from "./return-merging.js";
+import { OptimizationContextImpl } from "../optimizer.js";
 
 describe("ReturnMergingStep", () => {
   it("merges multiple return void blocks into one", () => {
@@ -51,7 +53,7 @@ describe("ReturnMergingStep", () => {
     }
 
     // Build IR
-    const builder = new IrGenerator();
+    const builder = new IrBuilder();
     const irResult = builder.build(parseResult.value, typeResult.value.types);
     if (!irResult.success) {
       throw new Error(
@@ -157,7 +159,7 @@ describe("ReturnMergingStep", () => {
     }
 
     // Build IR
-    const builder = new IrGenerator();
+    const builder = new IrBuilder();
     const irResult = builder.build(parseResult.value, typeResult.value.types);
     if (!irResult.success) {
       throw new Error(

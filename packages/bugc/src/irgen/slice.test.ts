@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { parse } from "../parser";
-import { TypeChecker } from "../typechecker";
-import { IrBuilder } from "../irgen";
-import { Severity } from "../result";
-import "../../test/matchers";
+import { parse } from "#parser";
+import { TypeChecker } from "#typechecker";
+import { IrBuilder } from "./generator.js";
+import { Severity } from "#result";
+import "#test/matchers";
 
 describe("IR slice generation", () => {
   test("generates slice IR for msg.data", () => {

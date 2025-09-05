@@ -2,8 +2,8 @@
  * Type checker errors and error codes
  */
 
-import { BugError } from "../errors";
-import type { SourceLocation } from "../ast";
+import { BugError } from "#errors";
+import type { SourceLocation } from "#ast";
 
 /**
  * Error codes for type errors

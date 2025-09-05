@@ -1,8 +1,8 @@
-import type { Stack } from "../../../evm";
-import type { Transition } from "../../operations";
+import type { Stack } from "#evm";
+import type { Transition } from "../../operations/index.js";
 
-import { operations, pipe } from "../../operations";
-import { annotateTop } from "./identify";
+import { operations, pipe } from "../../operations/index.js";
+import { annotateTop } from "./identify.js";
 
 /**
  * Store a value to memory if it needs to be persisted

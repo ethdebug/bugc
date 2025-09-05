@@ -2,14 +2,14 @@
  * EVM Bytecode Generator with strongly-typed state management
  */
 
-import type * as Ir from "../ir";
-import { type GenState, pipe, operations } from "./operations";
-import { serialize, calculateSize } from "./serialize";
-import type { MemoryInfo } from "./analysis/memory";
-import type { BlockInfo } from "./analysis/layout";
-import { generateFunction } from "./generation/function";
-import type { EvmError } from "./errors";
-import type { Instruction } from "../evm";
+import type * as Ir from "#ir";
+import { type GenState, pipe, operations } from "./operations/index.js";
+import { serialize, calculateSize } from "./serialize.js";
+import type { MemoryInfo } from "./analysis/memory.js";
+import type { BlockInfo } from "./analysis/layout.js";
+import { generateFunction } from "./generation/function.js";
+import type { EvmError } from "./errors.js";
+import type { Instruction } from "#evm";
 
 /**
  * Generate bytecode for entire module

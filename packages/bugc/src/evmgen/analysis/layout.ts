@@ -5,9 +5,9 @@
  * for jump target resolution.
  */
 
-import type { IrFunction, IrModule } from "../../ir";
-import { Result } from "../../result";
-import { MemoryError, MemoryErrorCode } from "./errors";
+import type { IrFunction, IrModule } from "#ir";
+import { Result } from "#result";
+import { MemoryError, MemoryErrorCode } from "./errors.js";
 
 export interface FunctionBlockLayout {
   /** Order in which to generate blocks */

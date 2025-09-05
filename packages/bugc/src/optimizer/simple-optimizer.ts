@@ -2,8 +2,8 @@
  * Simplified optimizer implementation that uses the optimization step architecture
  */
 
-import { IrModule } from "../ir";
-import { OptimizationPipeline, OptimizationStep } from "./optimizer";
+import { IrModule } from "#ir";
+import { OptimizationPipeline, OptimizationStep } from "./optimizer.js";
 import {
   ConstantFoldingStep,
   DeadCodeEliminationStep,
@@ -12,12 +12,7 @@ import {
   JumpOptimizationStep,
   BlockMergingStep,
   ReturnMergingStep,
-} from "./steps";
-
-export interface OptimizationResult {
-  module: IrModule;
-  changed: boolean;
-}
+} from "./steps/index.js";
 
 /**
  * Apply all optimizations based on the specified level

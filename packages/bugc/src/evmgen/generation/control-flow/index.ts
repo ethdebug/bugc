@@ -1,1 +1,1 @@
-export { generateTerminator } from "./terminator";
+export { generateTerminator } from "./terminator.js";

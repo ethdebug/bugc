@@ -1,18 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { generateModule } from "./generator";
-import { generateFunction } from "./generation/function";
-import type { IrFunction, IrModule, BasicBlock } from "../ir";
-import type { MemoryAllocation } from "./analysis/memory";
+import { generateModule } from "./generator.js";
+import { generateFunction } from "./generation/function.js";
+import type { IrFunction, IrModule, BasicBlock } from "#ir";
+import type { MemoryAllocation } from "./analysis/memory.js";
 
 // Helper to create memory allocations for tests
 function makeAllocation(offset: number, size: number = 32): MemoryAllocation {
   return { offset, size };
 }
-import type { FunctionMemoryLayout as MemoryLayout } from "./analysis/memory";
-import type { FunctionBlockLayout as BlockLayout } from "./analysis/layout";
-import { analyzeLiveness } from "./analysis/liveness";
-import { planFunctionMemory } from "./analysis/memory";
-import { layoutBlocks } from "./analysis/layout";
+import type { FunctionMemoryLayout as MemoryLayout } from "./analysis/memory.js";
+import type { FunctionBlockLayout as BlockLayout } from "./analysis/layout.js";
+import { analyzeLiveness } from "./analysis/liveness.js";
+import { planFunctionMemory } from "./analysis/memory.js";
+import { layoutBlocks } from "./analysis/layout.js";
 
 describe("EVM Code Generator", () => {
   describe("generateFunction", () => {

@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { ConstantFoldingStep } from "./constant-folding";
-import { IrModule, BasicBlock, IrInstruction } from "../../ir";
-import { OptimizationContext } from "../optimizer";
+
+import { IrModule, BasicBlock, IrInstruction } from "#ir";
+
+import { ConstantFoldingStep } from "./constant-folding.js";
+import { OptimizationContext } from "../optimizer.js";
 
 describe("ConstantFoldingStep", () => {
   const step = new ConstantFoldingStep();

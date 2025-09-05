@@ -1,8 +1,8 @@
-import { $ } from "./hkts";
+import { $ } from "./hkts.js";
 
-import type { Stack, StackBrand } from "./stack";
-import type { StateControls } from "./state";
-import { makeRebrands } from "./rebrand";
+import type { Stack, StackBrand } from "./stack.js";
+import type { StateControls } from "./state.js";
+import { makeRebrands } from "./rebrand.js";
 
 export type Transition<U, X extends Stack, Y extends Stack> = (
   state: $<U, [readonly [...X]]>,

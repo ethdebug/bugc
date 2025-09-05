@@ -2,17 +2,17 @@
  * CLI module exports
  */
 
-export { handleCompileCommand } from "./compile";
-export { formatJson, formatIrText } from "./formatters";
+export { handleCompileCommand } from "./compile.js";
+export { formatJson, formatIrText } from "./formatters.js";
 export {
   commonOptions,
   optimizationOption,
   parseOptimizationLevel,
-} from "./options";
+} from "./options.js";
 export {
   displayErrors,
   displayWarnings,
   writeOutput,
   exitWithError,
-} from "./output";
-export { formatError, formatWarning } from "./error-formatter";
+} from "./output.js";
+export { formatError, formatWarning } from "./error-formatter.js";

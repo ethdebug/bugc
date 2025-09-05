@@ -1,2 +1,2 @@
 // Re-export base error infrastructure
-export * from "./base";
+export * from "./base.js";

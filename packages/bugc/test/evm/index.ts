@@ -1,2 +1,2 @@
-export { EvmExecutor } from "./evm-executor";
-export type { ExecutionOptions, ExecutionResult } from "./evm-executor";
+export { EvmExecutor } from "./evm-executor.js";
+export type { ExecutionOptions, ExecutionResult } from "./evm-executor.js";

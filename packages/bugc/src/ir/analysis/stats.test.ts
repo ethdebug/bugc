@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { IrStats } from "./stats";
-import { compile } from "../../compiler";
-import { IrModule } from "../ir";
+
+import { compile } from "#compiler";
+
+import { IrStats } from "./stats.js";
+import { IrModule } from "../ir.js";
 
 describe("IrStats", () => {
   const compileToIr = async (source: string): Promise<IrModule> => {

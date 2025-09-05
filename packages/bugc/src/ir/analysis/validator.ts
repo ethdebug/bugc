@@ -9,7 +9,7 @@ import {
   IrInstruction,
   Value,
   TypeRef,
-} from "../ir";
+} from "../ir.js";
 
 export interface ValidationResult {
   isValid: boolean;

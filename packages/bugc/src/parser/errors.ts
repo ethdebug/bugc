@@ -2,8 +2,8 @@
  * Parser-specific errors and error codes
  */
 
-import { BugError } from "../errors";
-import type { SourceLocation } from "../ast";
+import { BugError } from "#errors";
+import type { SourceLocation } from "#ast";
 
 /**
  * Parse errors

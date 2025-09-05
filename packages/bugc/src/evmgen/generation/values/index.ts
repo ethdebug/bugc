@@ -1,3 +1,3 @@
-export { valueId, annotateTop } from "./identify";
-export { loadValue } from "./load";
-export { storeValueIfNeeded } from "./store";
+export { valueId, annotateTop } from "./identify.js";
+export { loadValue } from "./load.js";
+export { storeValueIfNeeded } from "./store.js";

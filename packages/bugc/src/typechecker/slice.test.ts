@@ -1,8 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { parse } from "../parser";
-import { TypeChecker } from "./checker";
-import { Severity } from "../result";
-import "../../test/matchers";
+
+import { parse } from "#parser";
+import { Severity } from "#result";
+
+import { TypeChecker } from "./checker.js";
+
+import "#test/matchers";
 
 describe("Slice type checking", () => {
   test("validates slice of msg.data", () => {

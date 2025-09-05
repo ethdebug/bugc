@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { parse } from "./parser";
-import { Result } from "../result";
-import "../../test/matchers";
+import { Result } from "#result";
+import "#test/matchers";
+import { parse } from "./parser.js";
 
 describe("Parser error handling", () => {
   it("should return ParseError for invalid syntax", () => {

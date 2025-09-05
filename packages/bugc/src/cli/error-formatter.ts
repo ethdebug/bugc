@@ -2,9 +2,9 @@
  * Error formatting utilities for CLI display
  */
 
-import type { SourceLocation } from "../ast";
-import type { BugError } from "../errors";
-import { Severity, type MessagesBySeverity } from "../result";
+import type { SourceLocation } from "#ast";
+import type { BugError } from "#errors";
+import { Severity, type MessagesBySeverity } from "#result";
 
 /**
  * Format a source location for display

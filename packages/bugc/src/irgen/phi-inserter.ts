@@ -17,7 +17,7 @@ import {
   TypeRef,
   IrInstruction,
   Terminator,
-} from "../ir";
+} from "#ir";
 
 // Helper function to compare sets
 function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {

@@ -1,5 +1,5 @@
-import { IrModule, IrFunction } from "../../ir";
-import { BaseOptimizationStep, OptimizationContext } from "../optimizer";
+import { IrModule, IrFunction } from "#ir";
+import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class JumpOptimizationStep extends BaseOptimizationStep {
   name = "jump-optimization";

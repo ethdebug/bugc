@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { compile } from "../compiler";
-import { formatError } from "../cli/error-formatter";
-import { Severity, Result } from "../result";
-import "../../test/matchers";
+import { compile } from "#compiler";
+import { formatError } from "#cli";
+import { Severity, Result } from "#result";
+
+import "#test/matchers";
 
 describe("Standardized Error Handling", () => {
   describe("Parse Errors", () => {

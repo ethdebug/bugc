@@ -1,10 +1,10 @@
 import { describe, test, expect } from "vitest";
-import { parse } from ".";
 import {
   LiteralExpression,
   AssignmentStatement,
   DeclarationStatement,
-} from "../ast";
+} from "#ast";
+import { parse } from "./parser.js";
 
 describe("Parser Edge Cases", () => {
   describe("Hex Literals", () => {

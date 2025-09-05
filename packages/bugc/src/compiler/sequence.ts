@@ -2,8 +2,8 @@
  * Pass sequence builder for composing compiler passes
  */
 
-import { Result, type MessagesBySeverity } from "../result";
-import { type Pass, type Needs, type Adds, type PassError } from "./pass";
+import { Result, type MessagesBySeverity } from "#result";
+import { type Pass, type Needs, type Adds, type PassError } from "./pass.js";
 
 // Type helper to merge all needs from a sequence of passes
 export type SequenceNeeds<L extends readonly unknown[]> = Omit<

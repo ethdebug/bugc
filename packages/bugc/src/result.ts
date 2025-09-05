@@ -2,7 +2,7 @@
  * Result type for compiler operations with severity-based message organization
  */
 
-import type { BugError } from "./errors/base";
+import type { BugError } from "#errors";
 
 /**
  * Message severity levels

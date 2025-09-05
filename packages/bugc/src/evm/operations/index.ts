@@ -10,19 +10,19 @@
  * - Higher-kinded types for generic programming
  */
 
-export { type Stack, type StackBrand } from "./stack";
+export { type Stack, type StackBrand } from "./stack.js";
 
 export {
   type Instruction,
   type UnsafeStateControls,
   type StateControls,
   makeStateControls,
-} from "./state";
+} from "./state.js";
 
-export { type Operations, makeOperations } from "./definitions";
+export { type Operations, makeOperations } from "./definitions.js";
 
-export { makeRebrands } from "./rebrand";
+export { makeRebrands } from "./rebrand.js";
 
-export { type Transition, makePipe } from "./builder";
+export { type Transition, makePipe } from "./builder.js";
 
-export type { $, _ } from "./hkts";
+export type { $, _ } from "./hkts.js";

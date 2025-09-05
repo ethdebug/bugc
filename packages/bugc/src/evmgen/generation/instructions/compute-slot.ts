@@ -1,8 +1,7 @@
-import type * as Ir from "../../../ir";
-import type { Stack } from "../../../evm";
-import type { Transition } from "../../operations";
-import { pipe, operations } from "../../operations";
-import { loadValue, storeValueIfNeeded } from "../values";
+import type * as Ir from "#ir";
+import type { Stack } from "#evm";
+import { type Transition, pipe, operations } from "../../operations/index.js";
+import { loadValue, storeValueIfNeeded } from "../values/index.js";
 
 const { PUSHn, MSTORE, KECCAK256 } = operations;
 

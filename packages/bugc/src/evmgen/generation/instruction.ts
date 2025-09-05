@@ -2,12 +2,12 @@
  * IR instruction code generation - dispatcher
  */
 
-import type * as Ir from "../../ir";
-import type { Stack } from "../../evm";
-import type { Transition } from "../operations";
+import type * as Ir from "#ir";
+import type { Stack } from "#evm";
+import type { Transition } from "../operations/index.js";
 
-import { EvmError, EvmErrorCode } from "../errors";
-import { Severity } from "../../result";
+import { EvmError, EvmErrorCode } from "../errors.js";
+import { Severity } from "#result";
 import {
   generateBinary,
   generateUnary,
@@ -25,7 +25,7 @@ import {
   generateStoreMapping,
   generateComputeSlot,
   generateComputeArraySlot,
-} from "./instructions";
+} from "./instructions/index.js";
 
 /**
  * Generate code for an IR instruction

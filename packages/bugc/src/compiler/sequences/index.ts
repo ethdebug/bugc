@@ -2,11 +2,11 @@
  * Concrete compilation sequences for different targets
  */
 
-import { pass as parsingPass } from "../../parser/pass";
-import { pass as typeCheckingPass } from "../../typechecker/pass";
-import { pass as irGenerationPass } from "../../irgen/pass";
-import { pass as optimizationPass } from "../../optimizer/pass";
-import { pass as evmGenerationPass } from "../../evmgen/pass";
+import { pass as parsingPass } from "#parser/pass";
+import { pass as typeCheckingPass } from "#typechecker/pass";
+import { pass as irGenerationPass } from "#irgen/pass";
+import { pass as optimizationPass } from "#optimizer/pass";
+import { pass as evmGenerationPass } from "#evmgen/pass";
 
 // AST-only sequence (just parsing)
 export const astSequence = [parsingPass] as const;

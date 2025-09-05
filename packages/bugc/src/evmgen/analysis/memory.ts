@@ -5,16 +5,10 @@
  * stack operations or block boundaries.
  */
 
-import type {
-  IrFunction,
-  IrInstruction,
-  Value,
-  IrModule,
-  TypeRef,
-} from "../../ir";
-import type { FunctionLivenessInfo } from "./liveness";
-import { Result } from "../../result";
-import { MemoryError, MemoryErrorCode } from "./errors";
+import type { IrFunction, IrInstruction, Value, IrModule, TypeRef } from "#ir";
+import type { FunctionLivenessInfo } from "./liveness.js";
+import { Result } from "#result";
+import { MemoryError, MemoryErrorCode } from "./errors.js";
 
 /**
  * EVM memory layout following Solidity conventions

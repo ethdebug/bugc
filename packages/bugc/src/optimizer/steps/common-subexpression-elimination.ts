@@ -1,5 +1,6 @@
-import { IrModule, IrInstruction, Value } from "../../ir";
-import { BaseOptimizationStep, OptimizationContext } from "../optimizer";
+import { IrModule, IrInstruction, Value } from "#ir";
+
+import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
   name = "common-subexpression-elimination";

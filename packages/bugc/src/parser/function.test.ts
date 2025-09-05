@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { parse } from "./index";
-import type { ElementaryType } from "../ast";
-import { Severity } from "../result";
-import "../../test/matchers";
+import type { ElementaryType } from "#ast";
+import { Severity } from "#result";
+import { parse } from "./parser.js";
+import "#test/matchers";
 
 describe("Function declarations", () => {
   it("parses function with parameters and return type", () => {

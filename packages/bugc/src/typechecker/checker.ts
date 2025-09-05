@@ -27,7 +27,7 @@ import {
   Expression,
   isAssignable,
   SourceLocation,
-} from "../ast";
+} from "#ast";
 
 import {
   Type,
@@ -40,14 +40,16 @@ import {
   Types as TypesUtil,
   SymbolTable,
   BugSymbol,
-} from "../types";
-import type { TypeMap } from "../types";
-import { Result, type MessagesBySeverity, Severity } from "../result";
+  type TypeMap,
+} from "#types";
+
+import { Result, type MessagesBySeverity, Severity } from "#result";
+
 import {
   TypeError,
   TypeErrorCode,
   TypeErrorMessages as ErrorMessages,
-} from "./errors";
+} from "./errors.js";
 
 export class TypeChecker extends BaseAstVisitor<Type | null> {
   private symbolTable = new SymbolTable();

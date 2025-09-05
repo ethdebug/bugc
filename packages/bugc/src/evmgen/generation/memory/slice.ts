@@ -1,4 +1,4 @@
-import type * as Ir from "../../../ir";
+import type * as Ir from "#ir";
 
 /**
  * Get the size of a type in bytes

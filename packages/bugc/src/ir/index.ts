@@ -5,10 +5,7 @@
  * the AST and final code generation phases.
  */
 
-export * from "./ir";
-export * from "./errors";
+export * from "./ir.js";
+export * from "./errors.js";
 // Re-export analysis tools
-export * from "./analysis";
-
-// Re-export main types for convenience
-export type { IrModule, IrFunction, BasicBlock, IrInstruction } from "./ir";
+export * from "./analysis/index.js";

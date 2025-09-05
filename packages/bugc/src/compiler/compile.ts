@@ -6,10 +6,14 @@ import {
   buildSequence,
   type SequenceNeeds,
   type SequenceAdds,
-} from "./sequence";
-import { targetSequences, type Target, type TargetSequence } from "./sequences";
-import type { Result } from "../result";
-import type { BugError } from "../errors";
+} from "./sequence.js";
+import {
+  targetSequences,
+  type Target,
+  type TargetSequence,
+} from "./sequences/index.js";
+import type { Result } from "#result";
+import type { BugError } from "#errors";
 
 export type CompileOptions<T extends Target> = { to: T } & SequenceNeeds<
   TargetSequence<T>

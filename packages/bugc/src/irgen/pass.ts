@@ -1,11 +1,11 @@
-import type { Program } from "../ast";
-import type { TypeMap } from "../types";
-import type { IrModule, IrError } from "../ir";
-import { Result } from "../result";
-import type { Pass } from "../compiler/pass";
+import type { Program } from "#ast";
+import type { TypeMap } from "#types";
+import type { IrModule, IrError } from "#ir";
+import { Result } from "#result";
+import type { Pass } from "#compiler/pass";
 
-import { IrGenerator } from "./generator";
-import { PhiInserter } from "./phi-inserter";
+import { IrBuilder } from "./generator.js";
+import { PhiInserter } from "./phi-inserter.js";
 
 /**
  * IR generation pass - converts typed AST to intermediate representation
@@ -22,7 +22,7 @@ export const pass: Pass<{
   error: IrError;
 }> = {
   async run({ ast, types }) {
-    const generator = new IrGenerator();
+    const generator = new IrBuilder();
     const result = generator.build(ast, types);
 
     // Insert phi nodes after generating the IR

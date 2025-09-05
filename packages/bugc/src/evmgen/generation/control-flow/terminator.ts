@@ -1,9 +1,9 @@
-import type * as Ir from "../../../ir";
-import type { Stack } from "../../../evm";
-import type { Transition } from "../../operations";
+import type * as Ir from "#ir";
+import type { Stack } from "#evm";
+import type { Transition } from "../../operations/index.js";
 
-import { operations, pipe } from "../../operations";
-import { valueId, loadValue } from "../values";
+import { operations, pipe } from "../../operations/index.js";
+import { valueId, loadValue } from "../values/index.js";
 
 /**
  * Generate code for a block terminator

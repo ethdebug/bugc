@@ -1,6 +1,6 @@
-import type * as Ir from "../../../ir";
-import type { Stack } from "../../../evm";
-import type { GenState } from "../../operations";
+import type * as Ir from "#ir";
+import type { Stack } from "#evm";
+import type { GenState } from "../../operations/index.js";
 
 /**
  * Get the ID for a value
