@@ -26,48 +26,6 @@ import {
 } from "../ir/errors";
 
 /**
- * Context for IR building - tracks current state during traversal
- */
-export interface IrContext {
-  /** Current function being built */
-  currentFunction: Ir.IrFunction;
-  /** Current basic block being built */
-  currentBlock: Ir.BasicBlock;
-  /** Counter for generating unique temporary IDs */
-  tempCounter: number;
-  /** Counter for generating unique block IDs */
-  blockCounter: number;
-  /** Types mapping for type information */
-  types: TypeMap;
-  /** Storage layout being built */
-  storage: Ir.StorageLayout;
-  /** Mapping from AST variable names to IR local IDs */
-  locals: Map<string, Ir.LocalVariable>;
-  /** Stack of loop contexts for break/continue */
-  loopStack: LoopContext[];
-}
-
-interface LoopContext {
-  /** Block to jump to for 'continue' */
-  continueTarget: string;
-  /** Block to jump to for 'break' */
-  breakTarget: string;
-}
-
-/**
- * Represents a chain of accesses from a storage variable
- */
-interface StorageAccessChain {
-  slot: Ir.StorageSlot;
-  accesses: Array<{
-    kind: "index" | "member";
-    key?: Ir.Value; // For index access
-    fieldName?: string; // For member access
-    fieldIndex?: number; // For member access
-  }>;
-}
-
-/**
  * Main IR generator - transforms AST to IR
  */
 export class IrGenerator extends BaseAstVisitor<void> {
@@ -1987,3 +1945,46 @@ export class IrGenerator extends BaseAstVisitor<void> {
     return Ir.temp(resultTemp.id, resultType);
   }
 }
+
+/**
+ * Context for IR building - tracks current state during traversal
+ */
+export interface IrContext {
+  /** Current function being built */
+  currentFunction: Ir.IrFunction;
+  /** Current basic block being built */
+  currentBlock: Ir.BasicBlock;
+  /** Counter for generating unique temporary IDs */
+  tempCounter: number;
+  /** Counter for generating unique block IDs */
+  blockCounter: number;
+  /** Types mapping for type information */
+  types: TypeMap;
+  /** Storage layout being built */
+  storage: Ir.StorageLayout;
+  /** Mapping from AST variable names to IR local IDs */
+  locals: Map<string, Ir.LocalVariable>;
+  /** Stack of loop contexts for break/continue */
+  loopStack: LoopContext[];
+}
+
+interface LoopContext {
+  /** Block to jump to for 'continue' */
+  continueTarget: string;
+  /** Block to jump to for 'break' */
+  breakTarget: string;
+}
+
+/**
+ * Represents a chain of accesses from a storage variable
+ */
+interface StorageAccessChain {
+  slot: Ir.StorageSlot;
+  accesses: Array<{
+    kind: "index" | "member";
+    key?: Ir.Value; // For index access
+    fieldName?: string; // For member access
+    fieldIndex?: number; // For member access
+  }>;
+}
+

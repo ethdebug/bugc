@@ -1,9 +1,12 @@
 /**
- * Phi Node Insertion Pass
+ * Phi Node Insertion
  *
  * This module implements the algorithm to insert phi nodes at control flow
  * join points in the IR. Phi nodes are necessary for proper SSA form when
  * values can come from multiple predecessors.
+ *
+ * This is now integrated into the IR generation phase to ensure we always
+ * produce valid SSA form from the start.
  */
 
 import {
@@ -40,7 +43,7 @@ interface LivenessInfo {
   liveOut: Map<string, Set<string>>;
 }
 
-export class PhiInsertion {
+export class PhiInserter {
   /**
    * Insert phi nodes at control flow join points
    */

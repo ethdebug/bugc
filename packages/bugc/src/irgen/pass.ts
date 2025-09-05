@@ -5,9 +5,11 @@ import { Result } from "../result";
 import type { Pass } from "../compiler/pass";
 
 import { IrGenerator } from "./generator";
+import { PhiInserter } from "./phi-inserter";
 
 /**
  * IR generation pass - converts typed AST to intermediate representation
+ * and inserts phi nodes for proper SSA form
  */
 export const pass: Pass<{
   needs: {
@@ -23,6 +25,11 @@ export const pass: Pass<{
     const generator = new IrGenerator();
     const result = generator.build(ast, types);
 
-    return Result.map(result, (ir: IrModule) => ({ ir }));
+    // Insert phi nodes after generating the IR
+    return Result.map(result, (ir: IrModule) => {
+      const phiInserter = new PhiInserter();
+      const irWithPhis = phiInserter.insertPhiNodes(ir);
+      return { ir: irWithPhis };
+    });
   },
 };
