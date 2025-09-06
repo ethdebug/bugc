@@ -1,7 +1,13 @@
 import type * as Ir from "#ir";
 import type { Stack } from "#evm";
-import type { Transition } from "../../operations/index.js";
-import { pipe, operations, rebrandTop } from "../../operations/index.js";
+
+import {
+  type Transition,
+  operations,
+  pipe,
+  rebrandTop,
+} from "#evmgen/operations";
+
 import { storeValueIfNeeded } from "../values/index.js";
 import { allocateMemory } from "../memory/index.js";
 

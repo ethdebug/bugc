@@ -18,11 +18,11 @@
  * using semantic stack brands for type safety.
  */
 
-import { $ } from "./hkts.js";
+import type { $ } from "./hkts.js";
 
-import { type Stack, type StackBrand } from "./stack.js";
+import { type Stack } from "./stack.js";
 
-import { type StateControls, makeSpecifiers, mapInstruction } from "./state.js";
+import { type State, Specifiers } from "./state.js";
 
 export type Operations<U, I> = ReturnType<typeof makeOperations<U, I>>;
 
@@ -30,11 +30,12 @@ export type Operations<U, I> = ReturnType<typeof makeOperations<U, I>>;
  * Creates a complete set of type-safe EVM operations from unsafe state controls.
  * Returns an object mapping instruction mnemonics to their operation functions.
  */
-export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
+export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
   const {
+    mapInstruction,
     makeOperationForInstruction,
     makeOperationWithImmediatesForInstruction,
-  } = makeSpecifiers(controls);
+  } = Specifiers.makeUsing(controls);
 
   return {
     /*
@@ -990,7 +991,7 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       { opcode: 0x80, mnemonic: "DUP1" } as const,
       (instruction) =>
         () =>
-        <A extends StackBrand, S extends Stack>(
+        <A extends Stack.Brand, S extends Stack>(
           initialState: $<U, [readonly [A, ...S]]>,
         ): $<U, [readonly [A, A, ...S]]> => {
           // DUP1 duplicates the top stack item
@@ -1006,7 +1007,7 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       { opcode: 0x81, mnemonic: "DUP2" } as const,
       (instruction) =>
         () =>
-        <A extends StackBrand, B extends StackBrand, S extends Stack>(
+        <A extends Stack.Brand, B extends Stack.Brand, S extends Stack>(
           initialState: $<U, [readonly [A, B, ...S]]>,
         ): $<U, [readonly [B, A, B, ...S]]> => {
           const [_a, b] = controls.topN(initialState, 2);
@@ -1021,9 +1022,9 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, ...S]]>,
@@ -1040,10 +1041,10 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, ...S]]>,
@@ -1060,11 +1061,11 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, ...S]]>,
@@ -1081,12 +1082,12 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, F, ...S]]>,
@@ -1103,13 +1104,13 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, F, G, ...S]]>,
@@ -1126,14 +1127,14 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, F, G, H, ...S]]>,
@@ -1153,15 +1154,15 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, F, G, H, I, ...S]]>,
@@ -1181,16 +1182,16 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, F, G, H, I, J, ...S]]>,
@@ -1210,17 +1211,17 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1243,18 +1244,18 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
-          L extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
+          L extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1277,19 +1278,19 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
-          L extends StackBrand,
-          M extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
+          L extends Stack.Brand,
+          M extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1313,20 +1314,20 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
-          L extends StackBrand,
-          M extends StackBrand,
-          N extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
+          L extends Stack.Brand,
+          M extends Stack.Brand,
+          N extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1350,21 +1351,21 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
-          L extends StackBrand,
-          M extends StackBrand,
-          N extends StackBrand,
-          O extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
+          L extends Stack.Brand,
+          M extends Stack.Brand,
+          N extends Stack.Brand,
+          O extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1388,22 +1389,22 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
-          L extends StackBrand,
-          M extends StackBrand,
-          N extends StackBrand,
-          O extends StackBrand,
-          P extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
+          L extends Stack.Brand,
+          M extends Stack.Brand,
+          N extends Stack.Brand,
+          O extends Stack.Brand,
+          P extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1447,7 +1448,7 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       { opcode: 0x90, mnemonic: "SWAP1" } as const,
       (instruction) =>
         () =>
-        <A extends StackBrand, B extends StackBrand, S extends Stack>(
+        <A extends Stack.Brand, B extends Stack.Brand, S extends Stack>(
           initialState: $<U, [readonly [A, B, ...S]]>,
         ): $<U, [readonly [B, A, ...S]]> => {
           // SWAP1 exchanges 1st and 2nd stack items
@@ -1471,9 +1472,9 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, ...S]]>,
@@ -1496,10 +1497,10 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, ...S]]>,
@@ -1523,11 +1524,11 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, ...S]]>,
@@ -1552,12 +1553,12 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, F, ...S]]>,
@@ -1578,13 +1579,13 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, F, G, ...S]]>,
@@ -1606,14 +1607,14 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, F, G, H, ...S]]>,
@@ -1636,15 +1637,15 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, F, G, H, I, ...S]]>,
@@ -1668,16 +1669,16 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<U, [readonly [A, B, C, D, E, F, G, H, I, J, ...S]]>,
@@ -1705,17 +1706,17 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1747,18 +1748,18 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
-          L extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
+          L extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1791,19 +1792,19 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
-          L extends StackBrand,
-          M extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
+          L extends Stack.Brand,
+          M extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1837,20 +1838,20 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
-          L extends StackBrand,
-          M extends StackBrand,
-          N extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
+          L extends Stack.Brand,
+          M extends Stack.Brand,
+          N extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1888,21 +1889,21 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
-          L extends StackBrand,
-          M extends StackBrand,
-          N extends StackBrand,
-          O extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
+          L extends Stack.Brand,
+          M extends Stack.Brand,
+          N extends Stack.Brand,
+          O extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1941,22 +1942,22 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
-          L extends StackBrand,
-          M extends StackBrand,
-          N extends StackBrand,
-          O extends StackBrand,
-          P extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
+          L extends Stack.Brand,
+          M extends Stack.Brand,
+          N extends Stack.Brand,
+          O extends Stack.Brand,
+          P extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<
@@ -1994,23 +1995,23 @@ export const makeOperations = <U, I>(controls: StateControls<U, I>) => {
       (instruction) =>
         () =>
         <
-          A extends StackBrand,
-          B extends StackBrand,
-          C extends StackBrand,
-          D extends StackBrand,
-          E extends StackBrand,
-          F extends StackBrand,
-          G extends StackBrand,
-          H extends StackBrand,
-          I extends StackBrand,
-          J extends StackBrand,
-          K extends StackBrand,
-          L extends StackBrand,
-          M extends StackBrand,
-          N extends StackBrand,
-          O extends StackBrand,
-          P extends StackBrand,
-          Q extends StackBrand,
+          A extends Stack.Brand,
+          B extends Stack.Brand,
+          C extends Stack.Brand,
+          D extends Stack.Brand,
+          E extends Stack.Brand,
+          F extends Stack.Brand,
+          G extends Stack.Brand,
+          H extends Stack.Brand,
+          I extends Stack.Brand,
+          J extends Stack.Brand,
+          K extends Stack.Brand,
+          L extends Stack.Brand,
+          M extends Stack.Brand,
+          N extends Stack.Brand,
+          O extends Stack.Brand,
+          P extends Stack.Brand,
+          Q extends Stack.Brand,
           S extends Stack,
         >(
           initialState: $<

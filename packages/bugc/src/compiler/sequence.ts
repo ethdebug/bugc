@@ -3,12 +3,12 @@
  */
 
 import { Result, type MessagesBySeverity } from "#result";
-import { type Pass, type Needs, type Adds, type PassError } from "./pass.js";
+import type { Pass } from "./pass.js";
 
 // Type helper to merge all needs from a sequence of passes
 export type SequenceNeeds<L extends readonly unknown[]> = Omit<
   L extends readonly [Pass<infer C>, ...infer R]
-    ? SequenceNeeds<R> & Needs<C>
+    ? SequenceNeeds<R> & Pass.Needs<C>
     : unknown,
   keyof SequenceAdds<L>
 >;
@@ -23,7 +23,7 @@ type _SequenceAdds<L extends readonly unknown[]> = L extends readonly [
   Pass<infer C>,
   ...infer R,
 ]
-  ? SequenceAdds<R> & Adds<C>
+  ? SequenceAdds<R> & Pass.Adds<C>
   : unknown;
 
 // Type helper to union all error types from a sequence of passes
@@ -31,7 +31,7 @@ export type SequenceErrors<L extends readonly unknown[]> = L extends readonly [
   Pass<infer C>,
   ...infer R,
 ]
-  ? SequenceErrors<R> | PassError<C>
+  ? SequenceErrors<R> | Pass.Error<C>
   : never;
 
 // A sequence of passes that acts as a single pass

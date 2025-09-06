@@ -7,24 +7,98 @@
 
 import type { IrFunction, IrModule } from "#ir";
 import { Result } from "#result";
-import { MemoryError, MemoryErrorCode } from "./errors.js";
 
-export interface FunctionBlockLayout {
-  /** Order in which to generate blocks */
-  order: string[];
-  /** Bytecode offset for each block (filled during generation) */
-  offsets: Map<string, number>;
+import * as Memory from "./memory.js";
+
+export namespace Module {
+  /**
+   * Module-level block layout information
+   */
+  export interface Info {
+    create?: Function.Info;
+    main: Function.Info;
+    functions: {
+      [functionName: string]: Function.Info;
+    };
+  }
+
+  /**
+   * Analyze block layout for entire module
+   */
+  export function perform(module: IrModule): Result<Module.Info, Memory.Error> {
+    const result: Module.Info = {
+      main: {} as Function.Info,
+      functions: {},
+    };
+
+    // Process constructor if present
+    if (module.create) {
+      const createLayout = Function.perform(module.create);
+      if (!createLayout.success) {
+        return createLayout;
+      }
+      result.create = createLayout.value;
+    }
+
+    // Process main function
+    const mainLayout = Function.perform(module.main);
+    if (!mainLayout.success) {
+      return mainLayout;
+    }
+    result.main = mainLayout.value;
+
+    // Process user-defined functions
+    for (const [name, func] of module.functions) {
+      const funcLayout = Function.perform(func);
+      if (!funcLayout.success) {
+        return funcLayout;
+      }
+      result.functions[name] = funcLayout.value;
+    }
+
+    return Result.ok(result);
+  }
 }
 
-/**
- * Module-level block layout information
- */
-export interface BlockInfo {
-  create?: FunctionBlockLayout;
-  main: FunctionBlockLayout;
-  functions: {
-    [functionName: string]: FunctionBlockLayout;
-  };
+export namespace Function {
+  export interface Info {
+    /** Order in which to generate blocks */
+    order: string[];
+    /** Bytecode offset for each block (filled during generation) */
+    offsets: Map<string, number>;
+  }
+
+  /**
+   * Layout blocks for a function
+   *
+   * Uses depth-first order to keep related blocks together,
+   * minimizing jump distances.
+   */
+  export function perform(
+    func: IrFunction,
+  ): Result<Function.Info, Memory.Error> {
+    try {
+      const visited = new Set<string>();
+      const order = dfsOrder(func, func.entry, visited);
+
+      // Add any unreachable blocks at the end
+      const unreachable = Array.from(func.blocks.keys()).filter(
+        (id) => !visited.has(id),
+      );
+
+      return Result.ok({
+        order: [...order, ...unreachable],
+        offsets: new Map(),
+      });
+    } catch (error) {
+      return Result.err(
+        new Memory.Error(
+          Memory.ErrorCode.INVALID_LAYOUT,
+          error instanceof Error ? error.message : "Unknown error",
+        ),
+      );
+    }
+  }
 }
 
 /**
@@ -55,81 +129,10 @@ function dfsOrder(
   }
 }
 
-/**
- * Layout blocks for a function
- *
- * Uses depth-first order to keep related blocks together,
- * minimizing jump distances.
- */
-function layoutFunctionBlocks(
-  func: IrFunction,
-): Result<FunctionBlockLayout, MemoryError> {
-  try {
-    const visited = new Set<string>();
-    const order = dfsOrder(func, func.entry, visited);
-
-    // Add any unreachable blocks at the end
-    const unreachable = Array.from(func.blocks.keys()).filter(
-      (id) => !visited.has(id),
-    );
-
-    return Result.ok({
-      order: [...order, ...unreachable],
-      offsets: new Map(),
-    });
-  } catch (error) {
-    return Result.err(
-      new MemoryError(
-        MemoryErrorCode.INVALID_LAYOUT,
-        error instanceof Error ? error.message : "Unknown error",
-      ),
-    );
-  }
-}
-
-/**
- * Analyze block layout for entire module
- */
-export function analyzeModuleBlockLayout(
-  module: IrModule,
-): Result<BlockInfo, MemoryError> {
-  const result: BlockInfo = {
-    main: {} as FunctionBlockLayout,
-    functions: {},
-  };
-
-  // Process constructor if present
-  if (module.create) {
-    const createLayout = layoutFunctionBlocks(module.create);
-    if (!createLayout.success) {
-      return createLayout;
-    }
-    result.create = createLayout.value;
-  }
-
-  // Process main function
-  const mainLayout = layoutFunctionBlocks(module.main);
-  if (!mainLayout.success) {
-    return mainLayout;
-  }
-  result.main = mainLayout.value;
-
-  // Process user-defined functions
-  for (const [name, func] of module.functions) {
-    const funcLayout = layoutFunctionBlocks(func);
-    if (!funcLayout.success) {
-      return funcLayout;
-    }
-    result.functions[name] = funcLayout.value;
-  }
-
-  return Result.ok(result);
-}
-
 // Legacy exports for compatibility
-export type BlockLayout = FunctionBlockLayout;
-export const layoutBlocks = (func: IrFunction): FunctionBlockLayout => {
-  const result = layoutFunctionBlocks(func);
+export type BlockLayout = Function.Info;
+export const layoutBlocks = (func: IrFunction): Function.Info => {
+  const result = Function.perform(func);
   if (!result.success) {
     throw new Error(
       Object.values(result.messages)[0]?.[0]?.message || "Layout failed",

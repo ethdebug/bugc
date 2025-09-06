@@ -1,8 +1,6 @@
 import type { Stack } from "#evm";
-import type { Transition } from "../../operations/index.js";
-
-import { operations, pipe } from "../../operations/index.js";
-import { MEMORY_REGIONS } from "../../analysis/memory.js";
+import { type Transition, operations, pipe } from "#evmgen/operations";
+import { Memory } from "#evmgen/analysis";
 
 /**
  * Allocate memory dynamically at runtime
@@ -37,7 +35,7 @@ export function allocateMemoryDynamic<S extends Stack>(): Transition<
   return (
     pipe<readonly ["size", ...S]>()
       // Load current free memory pointer from 0x40
-      .then(PUSHn(BigInt(MEMORY_REGIONS.FREE_MEMORY_POINTER)), { as: "offset" })
+      .then(PUSHn(BigInt(Memory.regions.FREE_MEMORY_POINTER)), { as: "offset" })
       .then(MLOAD(), { as: "offset" })
       .then(SWAP1(), { as: "b" })
       // Stack: [size, current_fmp, ...]
@@ -48,7 +46,7 @@ export function allocateMemoryDynamic<S extends Stack>(): Transition<
       // Stack: [new_fmp, current_fmp, ...]
 
       // Store new free pointer
-      .then(PUSHn(BigInt(MEMORY_REGIONS.FREE_MEMORY_POINTER)), { as: "offset" })
+      .then(PUSHn(BigInt(Memory.regions.FREE_MEMORY_POINTER)), { as: "offset" })
       .then(MSTORE())
       // Stack: [current_fmp(allocated), ...]
       .done()

@@ -3,39 +3,45 @@
  */
 
 import type * as Ir from "#ir";
-import { type GenState, pipe, operations } from "./operations/index.js";
-import { serialize, calculateSize } from "./serialize.js";
-import type { MemoryInfo } from "./analysis/memory.js";
-import type { BlockInfo } from "./analysis/layout.js";
-import { generateFunction } from "./generation/function.js";
-import type { EvmError } from "./errors.js";
-import type { Instruction } from "#evm";
+import type * as Evm from "#evm";
+
+import type { State } from "#evmgen/state";
+import { pipe, operations } from "#evmgen/operations";
+import { Memory, Layout } from "#evmgen/analysis";
+import { serialize, calculateSize } from "#evmgen/serialize";
+import type { Error } from "#evmgen/errors";
+
+import * as Function from "./function.js";
 
 /**
  * Generate bytecode for entire module
  */
-export function generateModule(
+export function generate(
   module: Ir.IrModule,
-  memory: MemoryInfo,
-  blocks: BlockInfo,
+  memory: Memory.Module.Info,
+  blocks: Layout.Module.Info,
 ): {
   create?: number[];
   runtime: number[];
-  createInstructions?: Instruction[];
-  runtimeInstructions: Instruction[];
-  warnings: EvmError[];
+  createInstructions?: Evm.Instruction[];
+  runtimeInstructions: Evm.Instruction[];
+  warnings: Error[];
 } {
   // Generate runtime function
-  const runtimeResult = generateFunction(module.main, memory.main, blocks.main);
+  const runtimeResult = Function.generate(
+    module.main,
+    memory.main,
+    blocks.main,
+  );
 
   // Collect all warnings
-  let allWarnings: EvmError[] = [...runtimeResult.warnings];
+  let allWarnings: Error[] = [...runtimeResult.warnings];
 
   // Generate constructor function if present
   let createBytes: number[] = [];
-  let allCreateInstructions: Instruction[] = [];
+  let allCreateInstructions: Evm.Instruction[] = [];
   if (module.create && memory.create && blocks.create) {
-    const createResult = generateFunction(
+    const createResult = Function.generate(
       module.create,
       memory.create,
       blocks.create,
@@ -72,7 +78,7 @@ function calculateDeploymentSize(
   runtimeBytesLength: number,
 ): number {
   // Initial state just for calculating push sizes
-  const state: GenState<[]> = {
+  const state: State<[]> = {
     brands: [],
     stack: [],
     instructions: [],
@@ -108,8 +114,8 @@ function calculateDeploymentSize(
 function buildDeploymentInstructions(
   createBytes: number[],
   runtimeBytes: number[],
-): { deployBytes: number[]; deploymentWrapperInstructions: Instruction[] } {
-  const state: GenState<[]> = {
+): { deployBytes: number[]; deploymentWrapperInstructions: Evm.Instruction[] } {
+  const state: State<[]> = {
     brands: [],
     stack: [],
     instructions: [],

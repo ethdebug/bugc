@@ -1,8 +1,9 @@
 import type * as Ir from "#ir";
-import type { Stack, StackBrand } from "#evm";
-import type { GenState, Transition } from "../../operations/index.js";
+import type { Stack } from "#evm";
 
-import { pipe, operations } from "../../operations/index.js";
+import type { State } from "#evmgen/state";
+import { type Transition, operations, pipe } from "#evmgen/operations";
+
 import { loadValue, storeValueIfNeeded } from "../values/index.js";
 
 const { ADD, SUB, MUL, DIV, MOD, EQ, LT, GT, AND, OR, NOT } = operations;
@@ -15,8 +16,8 @@ export function generateBinary<S extends Stack>(
 ): Transition<S, readonly ["value", ...S]> {
   const map: {
     [O in Ir.BinaryOp]: (
-      state: GenState<readonly ["a", "b", ...S]>,
-    ) => GenState<readonly [StackBrand, ...S]>;
+      state: State<readonly ["a", "b", ...S]>,
+    ) => State<readonly [Stack.Brand, ...S]>;
   } = {
     add: ADD(),
     sub: SUB(),

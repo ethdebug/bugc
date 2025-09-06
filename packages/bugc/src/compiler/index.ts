@@ -3,7 +3,7 @@
  */
 
 // Re-export everything from submodules
-export * from "./pass.js";
+export type { Pass } from "./pass.js";
 export * from "./sequence.js";
 export * from "./sequences/index.js";
 

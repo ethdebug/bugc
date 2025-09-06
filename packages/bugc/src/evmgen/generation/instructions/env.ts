@@ -1,8 +1,9 @@
 import type * as Ir from "#ir";
-import type { Stack, StackBrand } from "#evm";
-import type { GenState, Transition } from "../../operations/index.js";
+import type { Stack } from "#evm";
+import type { State } from "#evmgen/state";
 
-import { pipe, operations } from "../../operations/index.js";
+import { type Transition, pipe, operations } from "#evmgen/operations";
+
 import { storeValueIfNeeded } from "../values/index.js";
 
 const { CALLER, CALLVALUE, PUSH0, TIMESTAMP, NUMBER } = operations;
@@ -15,8 +16,8 @@ export function generateEnvOp<S extends Stack>(
 ): Transition<S, readonly ["value", ...S]> {
   const map: {
     [O in Ir.EnvOp]: <S extends Stack>(
-      state: GenState<readonly [...S]>,
-    ) => GenState<readonly [StackBrand, ...S]>;
+      state: State<readonly [...S]>,
+    ) => State<readonly [Stack.Brand, ...S]>;
   } = {
     msg_sender: CALLER(),
     msg_value: CALLVALUE(),

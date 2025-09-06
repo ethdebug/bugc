@@ -9,6 +9,7 @@
     "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-unused-vars": ["error", { "varsIgnorePattern": "^_", "argsIgnorePattern": "^_" }],
     "@typescript-eslint/no-namespace": "off",
+    "@typescript-eslint/no-inner-declarations": "off",
     "no-console": "warn",
     "no-restricted-imports": [
       "error",

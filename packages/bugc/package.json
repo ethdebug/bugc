@@ -14,17 +14,26 @@
   },
   "imports": {
     "#ast": "./dist/src/ast/index.js",
-    "#ast/*": "./dist/src/ast/*.js",
+
     "#cli": "./dist/src/cli/index.js",
-    "#cli/*": "./dist/src/cli/*.js",
+
     "#compiler": "./dist/src/compiler/index.js",
-    "#compiler/*": "./dist/src/compiler/*.js",
+
     "#errors": "./dist/src/errors/index.js",
-    "#errors/*": "./dist/src/errors/*.js",
+
     "#evm": "./dist/src/evm/index.js",
-    "#evm/*": "./dist/src/evm/*.js",
+    "#evm/spec": "./dist/src/evm/spec/index.js",
+    "#evm/analysis": "./dist/src/evm/analysis/index.js",
+
     "#evmgen": "./dist/src/evmgen/index.js",
-    "#evmgen/*": "./dist/src/evmgen/*.js",
+    "#evmgen/analysis": "./dist/src/evmgen/analysis/index.js",
+    "#evmgen/errors": "./dist/src/evmgen/errors.js",
+    "#evmgen/state": "./dist/src/evmgen/state.js",
+    "#evmgen/operations": "./dist/src/evmgen/operations.js",
+    "#evmgen/generation": "./dist/src/evmgen/generation/index.js",
+    "#evmgen/serialize": "./dist/src/evmgen/serialize.js",
+    "#evmgen/pass": "./dist/src/evmgen/pass.js",
+
     "#ir": "./dist/src/ir/index.js",
     "#ir/*": "./dist/src/ir/*.js",
     "#irgen": "./dist/src/irgen/index.js",

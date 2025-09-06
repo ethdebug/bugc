@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { analyzeLiveness } from "./liveness.js";
-import type { IrFunction, BasicBlock } from "#ir";
+
+import type * as Ir from "#ir";
+import * as Liveness from "./liveness.js";
 
 describe("Liveness Analysis", () => {
   it("should identify live-in and live-out sets for a simple function", () => {
-    const func: IrFunction = {
+    const func: Ir.IrFunction = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -45,12 +46,12 @@ describe("Liveness Analysis", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(),
-          } as BasicBlock,
+          } as Ir.BasicBlock,
         ],
       ]),
     };
 
-    const liveness = analyzeLiveness(func);
+    const liveness = Liveness.Function.analyze(func);
 
     // Entry block should have no live-in (it's the entry)
     expect(liveness.liveIn.get("entry")?.size).toBe(0);
@@ -63,7 +64,7 @@ describe("Liveness Analysis", () => {
   });
 
   it("should track values across blocks", () => {
-    const func: IrFunction = {
+    const func: Ir.IrFunction = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -88,7 +89,7 @@ describe("Liveness Analysis", () => {
               falseTarget: "else",
             },
             predecessors: new Set(),
-          } as BasicBlock,
+          } as Ir.BasicBlock,
         ],
         [
           "then",
@@ -108,7 +109,7 @@ describe("Liveness Analysis", () => {
               target: "merge",
             },
             predecessors: new Set(["entry"]),
-          } as BasicBlock,
+          } as Ir.BasicBlock,
         ],
         [
           "else",
@@ -128,7 +129,7 @@ describe("Liveness Analysis", () => {
               target: "merge",
             },
             predecessors: new Set(["entry"]),
-          } as BasicBlock,
+          } as Ir.BasicBlock,
         ],
         [
           "merge",
@@ -138,12 +139,12 @@ describe("Liveness Analysis", () => {
             instructions: [],
             terminator: { kind: "return" },
             predecessors: new Set(["then", "else"]),
-          } as BasicBlock,
+          } as Ir.BasicBlock,
         ],
       ]),
     };
 
-    const liveness = analyzeLiveness(func);
+    const liveness = Liveness.Function.analyze(func);
 
     // %1 is used in the branch, but it's also defined in entry, so it's not live-out
     // (it's consumed within the block)
@@ -154,7 +155,7 @@ describe("Liveness Analysis", () => {
   });
 
   it("should handle phi nodes correctly", () => {
-    const func: IrFunction = {
+    const func: Ir.IrFunction = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -177,7 +178,7 @@ describe("Liveness Analysis", () => {
               target: "loop",
             },
             predecessors: new Set(),
-          } as BasicBlock,
+          } as Ir.BasicBlock,
         ],
         [
           "loop",
@@ -259,7 +260,7 @@ describe("Liveness Analysis", () => {
               falseTarget: "exit",
             },
             predecessors: new Set(["entry", "loop"]),
-          } as BasicBlock,
+          } as Ir.BasicBlock,
         ],
         [
           "exit",
@@ -276,12 +277,12 @@ describe("Liveness Analysis", () => {
               },
             },
             predecessors: new Set(["loop"]),
-          } as BasicBlock,
+          } as Ir.BasicBlock,
         ],
       ]),
     };
 
-    const liveness = analyzeLiveness(func);
+    const liveness = Liveness.Function.analyze(func);
 
     // %1 should be live-out of entry (used by phi in loop)
     expect(liveness.liveOut.get("entry")).toContain("%1");

@@ -1,6 +1,6 @@
 import type { Program } from "#ast";
 import type { SymbolTable, TypeMap } from "#types";
-import type { Pass } from "#compiler/pass";
+import type { Pass } from "#compiler";
 
 import type { TypeError } from "./errors.js";
 import { TypeChecker } from "./checker.js";

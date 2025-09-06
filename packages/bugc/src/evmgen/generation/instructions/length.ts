@@ -1,9 +1,10 @@
 import type * as Ir from "#ir";
 import type { Stack } from "#evm";
-import type { Transition } from "../../operations/index.js";
-import { pipe, operations } from "../../operations/index.js";
+
+import { Error, ErrorCode } from "#evmgen/errors";
+import { type Transition, pipe, operations } from "#evmgen/operations";
+
 import { loadValue, storeValueIfNeeded, valueId } from "../values/index.js";
-import { EvmError, EvmErrorCode } from "../../errors.js";
 
 const { PUSHn, CALLDATASIZE, SLOAD, MLOAD, SUB, SHR } = operations;
 
@@ -125,8 +126,8 @@ export function generateLength<S extends Stack>(
       .done();
   }
 
-  throw new EvmError(
-    EvmErrorCode.UNSUPPORTED_INSTRUCTION,
+  throw new Error(
+    ErrorCode.UNSUPPORTED_INSTRUCTION,
     `length operation not supported for type: ${objectType.kind}`,
   );
 }

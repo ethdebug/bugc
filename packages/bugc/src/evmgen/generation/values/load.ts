@@ -1,8 +1,7 @@
 import type * as Ir from "#ir";
 import type { Stack } from "#evm";
-import type { Transition } from "../../operations/index.js";
+import { type Transition, operations, pipe } from "#evmgen/operations";
 
-import { operations, pipe } from "../../operations/index.js";
 import { valueId, annotateTop } from "./identify.js";
 
 /**

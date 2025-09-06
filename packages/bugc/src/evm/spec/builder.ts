@@ -1,7 +1,7 @@
 import { $ } from "./hkts.js";
 
-import type { Stack, StackBrand } from "./stack.js";
-import type { StateControls } from "./state.js";
+import type { Stack } from "./stack.js";
+import type { State } from "./state.js";
 import { makeRebrands } from "./rebrand.js";
 
 export type Transition<U, X extends Stack, Y extends Stack> = (
@@ -9,13 +9,13 @@ export type Transition<U, X extends Stack, Y extends Stack> = (
 ) => $<U, [readonly [...Y]]>;
 
 export const makePipe =
-  <U, I>(controls: StateControls<U, I>) =>
+  <U, I>(controls: State.Controls<U, I>) =>
   <X extends Stack>() =>
     new PipeBuilder<U, I, X, X>(controls, (state) => state);
 
 export class PipeBuilder<U, I, X extends Stack, Y extends Stack> {
   constructor(
-    private readonly controls: StateControls<U, I>,
+    private readonly controls: State.Controls<U, I>,
     private readonly transition: Transition<U, X, Y>,
   ) {}
 
@@ -45,11 +45,11 @@ export class PipeBuilder<U, I, X extends Stack, Y extends Stack> {
   }
 
   then<Z extends Stack>(func: Transition<U, Y, Z>): PipeBuilder<U, I, X, Z>;
-  then<Z extends Stack, A extends StackBrand, B extends StackBrand>(
+  then<Z extends Stack, A extends Stack.Brand, B extends Stack.Brand>(
     func: Transition<U, Y, readonly [A, ...Z]>,
     options: ThenOptions<B>,
   ): PipeBuilder<U, I, X, readonly [B, ...Z]>;
-  then<Z extends Stack, B extends StackBrand>(
+  then<Z extends Stack, B extends Stack.Brand>(
     func: (state: $<U, [Y]>) => $<U, [Z]>,
     options?: ThenOptions<B>,
   ) {
@@ -74,6 +74,6 @@ export class PipeBuilder<U, I, X extends Stack, Y extends Stack> {
   }
 }
 
-export interface ThenOptions<B extends StackBrand> {
+export interface ThenOptions<B extends Stack.Brand> {
   as: B;
 }

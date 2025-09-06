@@ -1,20 +1,22 @@
 import type * as Ir from "#ir";
 import type { Stack } from "#evm";
-import type { Transition } from "../../operations/index.js";
+import { Severity } from "#result";
+
+import { Error, ErrorCode } from "#evmgen/errors";
 import {
+  type Transition,
   pipe,
   operations,
   rebrand,
   rebrandTop,
-} from "../../operations/index.js";
+} from "#evmgen/operations";
+
 import { loadValue, storeValueIfNeeded, valueId } from "../values/index.js";
 import {
   allocateMemoryDynamic,
   getSliceElementSize,
   getSliceDataOffset,
 } from "../memory/index.js";
-import { EvmError, EvmErrorCode } from "../../errors.js";
-import { Severity } from "#result";
 
 const { PUSHn, MUL, ADD, SUB, DUP1, SWAP1, SWAP3, MCOPY, CALLDATACOPY } =
   operations;
@@ -47,8 +49,8 @@ export function generateSlice<S extends Stack>(
         // This is more complex, so for now we'll implement the memory case
         // and add a warning for storage arrays
         return builder.err(
-          new EvmError(
-            EvmErrorCode.UNSUPPORTED_INSTRUCTION,
+          new Error(
+            ErrorCode.UNSUPPORTED_INSTRUCTION,
             "Slice of storage arrays not yet implemented",
             inst.loc,
             Severity.Error,
@@ -65,6 +67,7 @@ export function generateSlice<S extends Stack>(
     .then(SWAP3(), { as: "startIndex" })
     .then(computeSliceStartOffset(inst.object), { as: "offset" })
     .then(SWAP1(), { as: "destOffset" })
+    .then((state) => state)
     .then(rebrand({ 3: "size" } as const))
     .then(performCopyFrom(source))
     .then(rebrandTop("value"))

@@ -1,7 +1,6 @@
 import type { Stack } from "#evm";
-import type { Transition } from "../../operations/index.js";
+import { type Transition, operations, pipe } from "#evmgen/operations";
 
-import { operations, pipe } from "../../operations/index.js";
 import { annotateTop } from "./identify.js";
 
 /**

@@ -1,6 +1,9 @@
 import type * as Ir from "#ir";
+
 import type { Stack } from "#evm";
-import { type Transition, pipe, operations } from "../../operations/index.js";
+
+import { type Transition, pipe, operations } from "#evmgen/operations";
+
 import { loadValue, storeValueIfNeeded } from "../values/index.js";
 
 const { PUSHn, MSTORE, KECCAK256 } = operations;

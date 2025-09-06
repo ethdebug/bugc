@@ -4,10 +4,11 @@
 
 import type * as Ir from "#ir";
 import type { Stack } from "#evm";
-import type { Transition } from "../operations/index.js";
-
-import { EvmError, EvmErrorCode } from "../errors.js";
 import { Severity } from "#result";
+
+import { Error, ErrorCode } from "#evmgen/errors";
+import type { Transition } from "#evmgen/operations";
+
 import {
   generateBinary,
   generateUnary,
@@ -30,7 +31,7 @@ import {
 /**
  * Generate code for an IR instruction
  */
-export function generateInstruction<S extends Stack>(
+export function generate<S extends Stack>(
   inst: Ir.IrInstruction,
 ): Transition<S, Stack> {
   switch (inst.kind) {
@@ -69,8 +70,8 @@ export function generateInstruction<S extends Stack>(
     default: {
       return (state) => {
         // Add warning for unsupported instructions
-        const warning = new EvmError(
-          EvmErrorCode.UNSUPPORTED_INSTRUCTION,
+        const warning = new Error(
+          ErrorCode.UNSUPPORTED_INSTRUCTION,
           inst.kind,
           inst.loc,
           Severity.Warning,

@@ -14,7 +14,7 @@ import {
 import { displayErrors, displayWarnings } from "./output.js";
 import { formatJson, formatIrText } from "./formatters.js";
 import { type IrModule, IrValidator, IrStats, IrFormatter } from "#ir";
-import { EvmFormatter } from "#evm";
+import { EvmFormatter } from "#evm/analysis";
 import type { Program } from "#ast";
 import type { EvmGenerationOutput } from "#evmgen/pass";
 import { compile } from "#compiler";

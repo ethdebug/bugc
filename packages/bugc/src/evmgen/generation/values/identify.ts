@@ -1,6 +1,6 @@
 import type * as Ir from "#ir";
 import type { Stack } from "#evm";
-import type { GenState } from "../../operations/index.js";
+import type { State } from "#evmgen/state";
 
 /**
  * Get the ID for a value
@@ -21,7 +21,7 @@ export function valueId(val: Ir.Value): string {
  */
 export const annotateTop =
   (irValue: string) =>
-  <S extends Stack>(state: GenState<S>): GenState<S> => {
+  <S extends Stack>(state: State<S>): State<S> => {
     if (state.stack.length === 0) {
       throw new Error("Cannot annotate empty stack");
     }

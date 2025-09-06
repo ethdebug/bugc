@@ -4,17 +4,19 @@
 
 import * as Ir from "#ir";
 import type { Stack } from "#evm";
-import { EvmError, EvmErrorCode } from "../errors.js";
-import { type Transition, pipe, operations } from "../operations/index.js";
-import { generateInstruction } from "./instruction.js";
+
+import { Error, ErrorCode } from "#evmgen/errors";
+import { type Transition, pipe, operations } from "#evmgen/operations";
+import { Memory } from "#evmgen/analysis";
+
+import * as Instruction from "./instruction.js";
 import { loadValue } from "./values/index.js";
 import { generateTerminator } from "./control-flow/index.js";
-import { MEMORY_REGIONS } from "../analysis/memory.js";
 
 /**
  * Generate code for a basic block
  */
-export function generateBlock<S extends Stack>(
+export function generate<S extends Stack>(
   block: Ir.BasicBlock,
   predecessor?: string,
   isLastBlock: boolean = false,
@@ -54,7 +56,7 @@ export function generateBlock<S extends Stack>(
 
       // Process regular instructions
       for (const inst of block.instructions) {
-        result = result.then(generateInstruction(inst));
+        result = result.then(Instruction.generate(inst));
       }
 
       // Process terminator
@@ -88,8 +90,8 @@ function generatePhi<S extends Stack>(
 
   const source = phi.sources.get(predecessor);
   if (!source) {
-    throw new EvmError(
-      EvmErrorCode.PHI_NODE_UNRESOLVED,
+    throw new Error(
+      ErrorCode.PHI_NODE_UNRESOLVED,
       `Phi ${phi.dest} missing source from ${predecessor}`,
     );
   }
@@ -101,8 +103,8 @@ function generatePhi<S extends Stack>(
       .peek((state, builder) => {
         const allocation = state.memory.allocations[phi.dest];
         if (allocation === undefined) {
-          throw new EvmError(
-            EvmErrorCode.MEMORY_ALLOCATION_FAILED,
+          throw new Error(
+            ErrorCode.MEMORY_ALLOCATION_FAILED,
             `Phi destination ${phi.dest} not allocated`,
           );
         }
@@ -128,7 +130,7 @@ function initializeMemory<S extends Stack>(
       // Push the static offset value (the value to store)
       .then(PUSHn(BigInt(nextStaticOffset)), { as: "value" })
       // Push the free memory pointer location (0x40) (the offset)
-      .then(PUSHn(BigInt(MEMORY_REGIONS.FREE_MEMORY_POINTER)), { as: "offset" })
+      .then(PUSHn(BigInt(Memory.regions.FREE_MEMORY_POINTER)), { as: "offset" })
       // Store the initial free pointer (expects [value, offset] on stack)
       .then(MSTORE())
       .done()

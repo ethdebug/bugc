@@ -2,12 +2,12 @@
  * Serialization module for converting Instructions to raw EVM bytecode
  */
 
-import type { Instruction } from "#evm";
+import type * as Evm from "#evm";
 
 /**
  * Convert an array of Instructions to raw bytecode bytes
  */
-export function serialize(instructions: Instruction[]): number[] {
+export function serialize(instructions: Evm.Instruction[]): number[] {
   const bytes: number[] = [];
 
   for (const instruction of instructions) {
@@ -26,7 +26,7 @@ export function serialize(instructions: Instruction[]): number[] {
 /**
  * Calculate the size in bytes that an instruction will occupy
  */
-export function instructionSize(instruction: Instruction): number {
+export function instructionSize(instruction: Evm.Instruction): number {
   let size = 1; // opcode
 
   if (instruction.immediates) {
@@ -39,6 +39,6 @@ export function instructionSize(instruction: Instruction): number {
 /**
  * Calculate total size of multiple instructions
  */
-export function calculateSize(instructions: Instruction[]): number {
+export function calculateSize(instructions: Evm.Instruction[]): number {
   return instructions.reduce((acc, inst) => acc + instructionSize(inst), 0);
 }

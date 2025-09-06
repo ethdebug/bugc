@@ -1,8 +1,13 @@
 import type * as Ir from "#ir";
-import type { Stack, StackBrand } from "#evm";
-import type { GenState, Transition } from "../../operations/index.js";
+import type { Stack } from "#evm";
 
-import { pipe, operations, rebrandTop } from "../../operations/index.js";
+import type { State } from "#evmgen/state";
+import {
+  type Transition,
+  pipe,
+  operations,
+  rebrandTop,
+} from "#evmgen/operations";
 import { loadValue, storeValueIfNeeded } from "../values/index.js";
 
 const { NOT, PUSHn, SUB } = operations;
@@ -15,8 +20,8 @@ export function generateUnary<S extends Stack>(
 ): Transition<S, readonly ["value", ...S]> {
   const map: {
     [O in Ir.UnaryOp]: (
-      state: GenState<readonly ["a", ...S]>,
-    ) => GenState<readonly [StackBrand, ...S]>;
+      state: State<readonly ["a", ...S]>,
+    ) => State<readonly [Stack.Brand, ...S]>;
   } = {
     not: NOT(),
     neg: pipe<readonly ["a", ...S]>()

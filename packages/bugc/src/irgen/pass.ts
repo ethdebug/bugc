@@ -2,7 +2,7 @@ import type { Program } from "#ast";
 import type { TypeMap } from "#types";
 import type { IrModule, IrError } from "#ir";
 import { Result } from "#result";
-import type { Pass } from "#compiler/pass";
+import type { Pass } from "#compiler";
 
 import { IrBuilder } from "./generator.js";
 import { PhiInserter } from "./phi-inserter.js";

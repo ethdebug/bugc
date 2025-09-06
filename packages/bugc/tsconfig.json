@@ -5,22 +5,25 @@
     "rootDir": ".",
     "paths": {
       "#ast": ["./src/ast/index"],
-      "#ast/*": ["./src/ast/*"],
 
       "#cli": ["./src/cli/index"],
-      "#cli/*": ["./src/cli/*"],
 
       "#compiler": ["./src/compiler/index"],
-      "#compiler/*": ["./src/compiler/*"],
 
       "#errors": ["./src/errors/index"],
-      "#errors/*": ["./src/errors/*"],
 
       "#evm": ["./src/evm/index"],
-      "#evm/*": ["./src/evm/*"],
+      "#evm/spec": ["./src/evm/spec"],
+      "#evm/analysis": ["./src/evm/analysis"],
 
       "#evmgen": ["./src/evmgen/index"],
-      "#evmgen/*": ["./src/evmgen/*"],
+      "#evmgen/analysis": ["./src/evmgen/analysis"],
+      "#evmgen/errors": ["./src/evmgen/errors"],
+      "#evmgen/state": ["./src/evmgen/state"],
+      "#evmgen/operations": ["./src/evmgen/operations"],
+      "#evmgen/generation": ["./src/evmgen/generation"],
+      "#evmgen/serialize": ["./src/evmgen/serialize"],
+      "#evmgen/pass": ["./src/evmgen/pass"],
 
       "#ir": ["./src/ir/index"],
       "#ir/*": ["./src/ir/*"],

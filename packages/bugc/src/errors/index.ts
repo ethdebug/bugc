@@ -1,2 +1,1 @@
-// Re-export base error infrastructure
-export * from "./base.js";
+export { BugError } from "./base.js";

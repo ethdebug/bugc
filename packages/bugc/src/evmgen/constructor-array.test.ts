@@ -3,11 +3,9 @@ import { parse } from "#parser";
 import { TypeChecker } from "#typechecker";
 import { IrBuilder } from "#irgen";
 import type { BinaryOpInstruction } from "#ir";
-import { analyzeModuleLiveness, analyzeLiveness } from "./analysis/liveness.js";
-import { analyzeModuleMemory, planFunctionMemory } from "./analysis/memory.js";
-import { analyzeModuleBlockLayout, layoutBlocks } from "./analysis/layout.js";
-import { generateModule } from "./generator.js";
-import { generateFunction } from "./generation/function.js";
+
+import { Layout, Liveness, Memory } from "#evmgen/analysis";
+import { Module, Function } from "#evmgen/generation";
 
 describe("Constructor array storage", () => {
   it("should correctly store values in fixed-size arrays during construction", () => {
@@ -70,13 +68,15 @@ code {}
     expect(storeInstructions.length).toBe(3);
 
     // Generate bytecode
-    const liveness = analyzeLiveness(createFunc);
-    const memoryResult = planFunctionMemory(createFunc, liveness);
+    const liveness = Liveness.Function.analyze(createFunc);
+    const memoryResult = Memory.Function.plan(createFunc, liveness);
     if (!memoryResult.success) throw new Error("Memory planning failed");
     const memory = memoryResult.value;
-    const layout = layoutBlocks(createFunc);
+    const layoutResult = Layout.Function.perform(createFunc);
+    if (!layoutResult.success) throw new Error("Block layout failed");
+    const layout = layoutResult.value;
 
-    const { instructions } = generateFunction(createFunc, memory, layout);
+    const { instructions } = Function.generate(createFunc, memory, layout);
 
     // Check instructions contain SSTORE operations
     const sstoreInstructions = instructions.filter(
@@ -129,14 +129,14 @@ code {}
     // Generate full module bytecode
     const module = irResult.value;
 
-    const liveness = analyzeModuleLiveness(module);
-    const memoryResult = analyzeModuleMemory(module, liveness);
+    const liveness = Liveness.Module.analyze(module);
+    const memoryResult = Memory.Module.plan(module, liveness);
     if (!memoryResult.success) throw new Error("Memory planning failed");
 
-    const blockResult = analyzeModuleBlockLayout(module);
+    const blockResult = Layout.Module.perform(module);
     if (!blockResult.success) throw new Error("Block layout failed");
 
-    const result = generateModule(
+    const result = Module.generate(
       module,
       memoryResult.value,
       blockResult.value,
@@ -203,8 +203,8 @@ code {}
     const createFunc = module.create!;
 
     // Analyze what gets allocated to memory
-    const liveness = analyzeLiveness(createFunc);
-    const memoryResult = planFunctionMemory(createFunc, liveness);
+    const liveness = Liveness.Function.analyze(createFunc);
+    const memoryResult = Memory.Function.plan(createFunc, liveness);
     if (!memoryResult.success) throw new Error("Memory planning failed");
     const memory = memoryResult.value;
 

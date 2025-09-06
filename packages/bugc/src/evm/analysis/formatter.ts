@@ -2,7 +2,7 @@
  * EVM instruction formatting utilities
  */
 
-import type { Instruction } from "../operations/index.js";
+import type { Instruction } from "#evm/spec";
 
 /**
  * Formats EVM instructions for display

@@ -4,21 +4,22 @@
 
 import * as Ir from "#ir";
 import type { Stack } from "#evm";
-import type { GenState } from "../operations/index.js";
-import type { FunctionBlockLayout } from "../analysis/layout.js";
-import type { FunctionMemoryLayout } from "../analysis/memory.js";
-import { generateBlock } from "./block.js";
+
+import type { State } from "#evmgen/state";
+import type { Layout, Memory } from "#evmgen/analysis";
+
+import * as Block from "./block.js";
 import { serialize } from "../serialize.js";
 
 /**
  * Generate bytecode for a function
  */
-export function generateFunction(
+export function generate(
   func: Ir.IrFunction,
-  memory: FunctionMemoryLayout,
-  layout: FunctionBlockLayout,
+  memory: Memory.Function.Info,
+  layout: Layout.Function.Info,
 ) {
-  const initialState: GenState<readonly []> = {
+  const initialState: State<readonly []> = {
     brands: [],
     stack: [],
     instructions: [],
@@ -30,7 +31,7 @@ export function generateFunction(
   };
 
   const finalState = layout.order.reduce(
-    (state: GenState<Stack>, blockId: string, index: number) => {
+    (state: State<Stack>, blockId: string, index: number) => {
       const block = func.blocks.get(blockId);
       if (!block) return state;
 
@@ -42,7 +43,7 @@ export function generateFunction(
       const isFirstBlock = index === 0;
       const isLastBlock = index === layout.order.length - 1;
 
-      return generateBlock(
+      return Block.generate(
         block,
         predecessor,
         isLastBlock,
@@ -68,7 +69,7 @@ export function generateFunction(
 /**
  * Patch jump targets after all blocks have been generated
  */
-export function patchJumps<S extends Stack>(state: GenState<S>): GenState<S> {
+function patchJumps<S extends Stack>(state: State<S>): State<S> {
   const patchedInstructions = [...state.instructions];
 
   for (const patch of state.patches) {

@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { planFunctionMemory } from "./memory.js";
-import { analyzeLiveness } from "./liveness.js";
+
 import type { IrFunction, BasicBlock } from "#ir";
+
+import * as Memory from "./memory.js";
+import * as Liveness from "./liveness.js";
 
 describe("Memory Planning", () => {
   it("should allocate memory for phi destinations", () => {
@@ -67,8 +69,8 @@ describe("Memory Planning", () => {
       ]),
     };
 
-    const liveness = analyzeLiveness(func);
-    const memoryResult = planFunctionMemory(func, liveness);
+    const liveness = Liveness.Function.analyze(func);
+    const memoryResult = Memory.Function.plan(func, liveness);
 
     expect(memoryResult.success).toBe(true);
     if (!memoryResult.success) throw new Error("Memory planning failed");
@@ -140,8 +142,8 @@ describe("Memory Planning", () => {
       ]),
     };
 
-    const liveness = analyzeLiveness(func);
-    const memoryResult = planFunctionMemory(func, liveness);
+    const liveness = Liveness.Function.analyze(func);
+    const memoryResult = Memory.Function.plan(func, liveness);
 
     expect(memoryResult.success).toBe(true);
     if (!memoryResult.success) throw new Error("Memory planning failed");
@@ -179,8 +181,8 @@ describe("Memory Planning", () => {
       ]),
     };
 
-    const liveness = analyzeLiveness(func);
-    const memoryResult = planFunctionMemory(func, liveness);
+    const liveness = Liveness.Function.analyze(func);
+    const memoryResult = Memory.Function.plan(func, liveness);
 
     expect(memoryResult.success).toBe(true);
     if (!memoryResult.success) throw new Error("Memory planning failed");
@@ -255,8 +257,8 @@ describe("Memory Planning", () => {
       ]),
     };
 
-    const liveness = analyzeLiveness(func);
-    const memoryResult = planFunctionMemory(func, liveness);
+    const liveness = Liveness.Function.analyze(func);
+    const memoryResult = Memory.Function.plan(func, liveness);
 
     expect(memoryResult.success).toBe(true);
     if (!memoryResult.success) throw new Error("Memory planning failed");

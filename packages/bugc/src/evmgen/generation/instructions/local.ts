@@ -1,10 +1,11 @@
 import type * as Ir from "#ir";
 import type { Stack } from "#evm";
-import type { Transition } from "../../operations/index.js";
-import { pipe, operations } from "../../operations/index.js";
-import { loadValue, storeValueIfNeeded } from "../values/index.js";
+
+import { type Transition, pipe, operations } from "#evmgen/operations";
+import { Error, ErrorCode } from "#evmgen/errors";
+
 import { allocateMemoryDynamic } from "../memory/index.js";
-import { EvmError, EvmErrorCode } from "../../errors.js";
+import { loadValue, storeValueIfNeeded } from "../values/index.js";
 
 const { PUSHn, MLOAD, MSTORE, DUP2, ADD } = operations;
 
@@ -18,8 +19,8 @@ export function generateLoadLocal<S extends Stack>(
     .peek((state, builder) => {
       const allocation = state.memory.allocations[inst.local];
       if (allocation === undefined) {
-        throw new EvmError(
-          EvmErrorCode.MEMORY_ALLOCATION_FAILED,
+        throw new Error(
+          ErrorCode.MEMORY_ALLOCATION_FAILED,
           `Local ${inst.local} not allocated in memory`,
         );
       }
@@ -42,8 +43,8 @@ export function generateStoreLocal<S extends Stack>(
     .peek((state, builder) => {
       const allocation = state.memory.allocations[inst.local];
       if (allocation === undefined) {
-        throw new EvmError(
-          EvmErrorCode.MEMORY_ALLOCATION_FAILED,
+        throw new Error(
+          ErrorCode.MEMORY_ALLOCATION_FAILED,
           `Local ${inst.local} not allocated in memory`,
         );
       }

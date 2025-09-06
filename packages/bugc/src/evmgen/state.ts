@@ -1,29 +1,22 @@
-import {
-  type Stack,
-  type StackBrand,
-  type Instruction,
-  type UnsafeStateControls,
-  type StateControls,
-  type _,
-  makeStateControls,
-} from "#evm";
+import * as Evm from "#evm";
+import { type _ } from "#evm";
 
-import type { FunctionMemoryLayout } from "../analysis/memory.js";
-import type { EvmError } from "../errors.js";
+import * as Analysis from "#evmgen/analysis";
+import type { Error } from "#evmgen/errors";
 
 // Track stack at type level
-export interface GenState<S extends Stack> {
+export interface State<S extends Evm.Stack> {
   brands: S;
   stack: StackItem[];
   nextId: number; // For generating unique IDs
-  instructions: Instruction[];
-  memory: FunctionMemoryLayout;
+  instructions: Evm.Instruction[];
+  memory: Analysis.Memory.Function.Info;
   blockOffsets: Record<string, number>;
   patches: {
     index: number;
     target: string;
   }[];
-  warnings: EvmError[];
+  warnings: Error[];
 }
 
 export interface StackItem {
@@ -31,9 +24,9 @@ export interface StackItem {
   irValue?: string; // Optional IR value ID (e.g., "t1", "t2")
 }
 
-const unsafe: UnsafeStateControls<
-  GenState<_ & Stack>,
-  StackItem & { brand: _ & StackBrand }
+const unsafe: Evm.Unsafe.StateControls<
+  State<_ & Evm.Stack>,
+  StackItem & { brand: _ & Evm.Stack.Brand }
 > = {
   slice: (state, ...args) => ({
     ...state,
@@ -81,7 +74,7 @@ const unsafe: UnsafeStateControls<
   }),
 };
 
-export const controls: StateControls<
-  GenState<_ & Stack>,
-  StackItem & { brand: _ & StackBrand }
-> = makeStateControls(unsafe);
+export const controls: Evm.State.Controls<
+  State<_ & Evm.Stack>,
+  StackItem & { brand: _ & Evm.Stack.Brand }
+> = Evm.State.makeControls(unsafe);

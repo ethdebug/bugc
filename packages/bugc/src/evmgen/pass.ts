@@ -1,12 +1,12 @@
 import { Result } from "#result";
 import type { Pass } from "#compiler";
 import type { IrModule } from "#ir";
-import { generateModule } from "./generator.js";
-import { EvmError, EvmErrorCode } from "./errors.js";
-import type { Instruction } from "#evm";
-import { analyzeModuleLiveness } from "./analysis/liveness.js";
-import { analyzeModuleMemory } from "./analysis/memory.js";
-import { analyzeModuleBlockLayout } from "./analysis/layout.js";
+import type * as Evm from "#evm";
+
+import { Module } from "#evmgen/generation";
+import { Error, ErrorCode } from "#evmgen/errors";
+
+import { Layout, Liveness, Memory } from "#evmgen/analysis";
 
 /**
  * Output produced by the EVM generation pass
@@ -17,9 +17,9 @@ export interface EvmGenerationOutput {
   /** Constructor bytecode (optional) */
   create?: Uint8Array;
   /** Runtime instructions */
-  runtimeInstructions: Instruction[];
+  runtimeInstructions: Evm.Instruction[];
   /** Constructor instructions (optional) */
-  createInstructions?: Instruction[];
+  createInstructions?: Evm.Instruction[];
 }
 
 /**
@@ -32,19 +32,19 @@ export const pass: Pass<{
   adds: {
     bytecode: EvmGenerationOutput;
   };
-  error: EvmError;
+  error: Error;
 }> = {
   async run({ ir }) {
     try {
       // Analyze liveness
-      const liveness = analyzeModuleLiveness(ir);
+      const liveness = Liveness.Module.analyze(ir);
 
       // Analyze memory requirements
-      const memoryResult = analyzeModuleMemory(ir, liveness);
+      const memoryResult = Memory.Module.plan(ir, liveness);
       if (!memoryResult.success) {
         return Result.err(
-          new EvmError(
-            EvmErrorCode.INTERNAL_ERROR,
+          new Error(
+            ErrorCode.INTERNAL_ERROR,
             memoryResult.messages.error?.[0]?.message ??
               "Memory analysis failed",
           ),
@@ -52,11 +52,11 @@ export const pass: Pass<{
       }
 
       // Analyze block layout
-      const blockResult = analyzeModuleBlockLayout(ir);
+      const blockResult = Layout.Module.perform(ir);
       if (!blockResult.success) {
         return Result.err(
-          new EvmError(
-            EvmErrorCode.INTERNAL_ERROR,
+          new Error(
+            ErrorCode.INTERNAL_ERROR,
             blockResult.messages.error?.[0]?.message ??
               "Block layout analysis failed",
           ),
@@ -64,7 +64,7 @@ export const pass: Pass<{
       }
 
       // Generate bytecode
-      const result = generateModule(ir, memoryResult.value, blockResult.value);
+      const result = Module.generate(ir, memoryResult.value, blockResult.value);
 
       // Convert to Uint8Array
       const runtime = new Uint8Array(result.runtime);
@@ -82,15 +82,15 @@ export const pass: Pass<{
         { warning: result.warnings },
       );
     } catch (error) {
-      if (error instanceof EvmError) {
+      if (error instanceof Error) {
         return Result.err(error);
       }
 
       // Wrap unexpected errors
       return Result.err(
-        new EvmError(
-          EvmErrorCode.INTERNAL_ERROR,
-          error instanceof Error ? error.message : String(error),
+        new Error(
+          ErrorCode.INTERNAL_ERROR,
+          error instanceof global.Error ? error.message : String(error),
         ),
       );
     }

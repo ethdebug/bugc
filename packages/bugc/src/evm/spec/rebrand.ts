@@ -8,8 +8,8 @@
 
 import { $ } from "./hkts.js";
 
-import type { Stack, PopN, StackBrand } from "./stack.js";
-import type { StateControls } from "./state.js";
+import type { Stack, PopN } from "./stack.js";
+import type { State } from "./state.js";
 
 /**
  * Rebrand stack items at specified positions.
@@ -21,18 +21,18 @@ import type { StateControls } from "./state.js";
  * This matches DUP and SWAP opcode numbering where DUP1
  * duplicates the 1st item (top), DUP2 duplicates the 2nd, etc.
  */
-export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
-  function rebrand<A0 extends StackBrand, A1 extends StackBrand>(rebrands: {
+export const makeRebrands = <U, I>(controls: State.Controls<U, I>) => {
+  function rebrand<A0 extends Stack.Brand, A1 extends Stack.Brand>(rebrands: {
     1: A1;
   }): <S extends Stack>(
     state: $<U, [readonly [A0, ...S]]>,
   ) => $<U, [readonly [A1, ...S]]>;
 
   function rebrand<
-    A0 extends StackBrand,
-    A1 extends StackBrand,
-    B0 extends StackBrand,
-    B1 extends StackBrand,
+    A0 extends Stack.Brand,
+    A1 extends Stack.Brand,
+    B0 extends Stack.Brand,
+    B1 extends Stack.Brand,
   >(rebrands: {
     1: A1;
     2: B1;
@@ -41,9 +41,9 @@ export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
   ) => $<U, [readonly [A1, B1, ...S]]>;
 
   function rebrand<
-    A extends StackBrand,
-    B0 extends StackBrand,
-    B1 extends StackBrand,
+    A extends Stack.Brand,
+    B0 extends Stack.Brand,
+    B1 extends Stack.Brand,
   >(rebrands: {
     2: B1;
   }): <S extends Stack>(
@@ -51,12 +51,12 @@ export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
   ) => $<U, [readonly [A, B1, ...S]]>;
 
   function rebrand<
-    A0 extends StackBrand,
-    A1 extends StackBrand,
-    B0 extends StackBrand,
-    B1 extends StackBrand,
-    C0 extends StackBrand,
-    C1 extends StackBrand,
+    A0 extends Stack.Brand,
+    A1 extends Stack.Brand,
+    B0 extends Stack.Brand,
+    B1 extends Stack.Brand,
+    C0 extends Stack.Brand,
+    C1 extends Stack.Brand,
   >(rebrands: {
     1: A1;
     2: B1;
@@ -66,11 +66,11 @@ export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
   ) => $<U, [readonly [A1, B1, C1, ...S]]>;
 
   function rebrand<
-    A extends StackBrand,
-    B0 extends StackBrand,
-    B1 extends StackBrand,
-    C0 extends StackBrand,
-    C1 extends StackBrand,
+    A extends Stack.Brand,
+    B0 extends Stack.Brand,
+    B1 extends Stack.Brand,
+    C0 extends Stack.Brand,
+    C1 extends Stack.Brand,
   >(rebrands: {
     2: B1;
     3: C1;
@@ -79,11 +79,11 @@ export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
   ) => $<U, [readonly [A, B1, C1, ...S]]>;
 
   function rebrand<
-    A0 extends StackBrand,
-    A1 extends StackBrand,
-    B extends StackBrand,
-    C0 extends StackBrand,
-    C1 extends StackBrand,
+    A0 extends Stack.Brand,
+    A1 extends Stack.Brand,
+    B extends Stack.Brand,
+    C0 extends Stack.Brand,
+    C1 extends Stack.Brand,
   >(rebrands: {
     1: A1;
     3: C1;
@@ -92,17 +92,17 @@ export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
   ) => $<U, [readonly [A1, B, C1, ...S]]>;
 
   function rebrand<
-    A extends StackBrand,
-    B extends StackBrand,
-    C0 extends StackBrand,
-    C1 extends StackBrand,
+    A extends Stack.Brand,
+    B extends Stack.Brand,
+    C0 extends Stack.Brand,
+    C1 extends Stack.Brand,
   >(rebrands: {
     3: C1;
   }): <S extends Stack>(
     state: $<U, [readonly [A, B, C0, ...S]]>,
   ) => $<U, [readonly [A, B, C1, ...S]]>;
 
-  function rebrand<Rebrands extends Record<number, StackBrand>>(
+  function rebrand<Rebrands extends Record<number, Stack.Brand>>(
     brands: Rebrands,
   ) {
     return <S extends Stack>(
@@ -139,7 +139,7 @@ export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
   }
 
   const rebrandTop =
-    <A extends StackBrand, B extends StackBrand>(brand: B) =>
+    <A extends Stack.Brand, B extends Stack.Brand>(brand: B) =>
     <S extends Stack>(
       state: $<U, [readonly [A, ...S]]>,
     ): $<U, [readonly [B, ...S]]> =>
@@ -150,11 +150,11 @@ export const makeRebrands = <U, I>(controls: StateControls<U, I>) => {
 
 export type Rebranded<
   S extends Stack,
-  Rebrands extends Record<number, StackBrand>,
+  Rebrands extends Record<number, Stack.Brand>,
 > = ApplyRebrands<S, Rebrands, MaxKey<Rebrands>>;
 
 // Helper to get the highest key in the Rebrands record
-type MaxKey<R extends Record<number, StackBrand>> = 17 extends keyof R
+type MaxKey<R extends Record<number, Stack.Brand>> = 17 extends keyof R
   ? 17
   : 16 extends keyof R
     ? 16
@@ -193,13 +193,13 @@ type MaxKey<R extends Record<number, StackBrand>> = 17 extends keyof R
 // Apply rebranding to the first N elements
 type ApplyRebrands<
   S extends Stack,
-  Rebrands extends Record<number, StackBrand>,
+  Rebrands extends Record<number, Stack.Brand>,
   N extends number,
 > = N extends 0
   ? S
   : N extends 1
     ? S extends readonly [
-        infer E1 extends StackBrand,
+        infer E1 extends Stack.Brand,
         ...infer _Rest extends Stack,
       ]
       ? readonly [
@@ -209,8 +209,8 @@ type ApplyRebrands<
       : S
     : N extends 2
       ? S extends readonly [
-          infer E1 extends StackBrand,
-          infer E2 extends StackBrand,
+          infer E1 extends Stack.Brand,
+          infer E2 extends Stack.Brand,
           ...infer Rest extends Stack,
         ]
         ? readonly [
@@ -221,9 +221,9 @@ type ApplyRebrands<
         : S
       : N extends 3
         ? S extends readonly [
-            infer E1 extends StackBrand,
-            infer E2 extends StackBrand,
-            infer E3 extends StackBrand,
+            infer E1 extends Stack.Brand,
+            infer E2 extends Stack.Brand,
+            infer E3 extends Stack.Brand,
             ...infer Rest extends Stack,
           ]
           ? readonly [
@@ -235,10 +235,10 @@ type ApplyRebrands<
           : S
         : N extends 4
           ? S extends readonly [
-              infer E1 extends StackBrand,
-              infer E2 extends StackBrand,
-              infer E3 extends StackBrand,
-              infer E4 extends StackBrand,
+              infer E1 extends Stack.Brand,
+              infer E2 extends Stack.Brand,
+              infer E3 extends Stack.Brand,
+              infer E4 extends Stack.Brand,
               ...infer Rest extends Stack,
             ]
             ? readonly [
@@ -251,11 +251,11 @@ type ApplyRebrands<
             : S
           : N extends 5
             ? S extends readonly [
-                infer E1 extends StackBrand,
-                infer E2 extends StackBrand,
-                infer E3 extends StackBrand,
-                infer E4 extends StackBrand,
-                infer E5 extends StackBrand,
+                infer E1 extends Stack.Brand,
+                infer E2 extends Stack.Brand,
+                infer E3 extends Stack.Brand,
+                infer E4 extends Stack.Brand,
+                infer E5 extends Stack.Brand,
                 ...infer Rest extends Stack,
               ]
               ? readonly [
@@ -269,12 +269,12 @@ type ApplyRebrands<
               : S
             : N extends 6
               ? S extends readonly [
-                  infer E1 extends StackBrand,
-                  infer E2 extends StackBrand,
-                  infer E3 extends StackBrand,
-                  infer E4 extends StackBrand,
-                  infer E5 extends StackBrand,
-                  infer E6 extends StackBrand,
+                  infer E1 extends Stack.Brand,
+                  infer E2 extends Stack.Brand,
+                  infer E3 extends Stack.Brand,
+                  infer E4 extends Stack.Brand,
+                  infer E5 extends Stack.Brand,
+                  infer E6 extends Stack.Brand,
                   ...infer Rest extends Stack,
                 ]
                 ? readonly [
@@ -289,13 +289,13 @@ type ApplyRebrands<
                 : S
               : N extends 7
                 ? S extends readonly [
-                    infer E1 extends StackBrand,
-                    infer E2 extends StackBrand,
-                    infer E3 extends StackBrand,
-                    infer E4 extends StackBrand,
-                    infer E5 extends StackBrand,
-                    infer E6 extends StackBrand,
-                    infer E7 extends StackBrand,
+                    infer E1 extends Stack.Brand,
+                    infer E2 extends Stack.Brand,
+                    infer E3 extends Stack.Brand,
+                    infer E4 extends Stack.Brand,
+                    infer E5 extends Stack.Brand,
+                    infer E6 extends Stack.Brand,
+                    infer E7 extends Stack.Brand,
                     ...infer Rest extends Stack,
                   ]
                   ? readonly [
@@ -311,14 +311,14 @@ type ApplyRebrands<
                   : S
                 : N extends 8
                   ? S extends readonly [
-                      infer E1 extends StackBrand,
-                      infer E2 extends StackBrand,
-                      infer E3 extends StackBrand,
-                      infer E4 extends StackBrand,
-                      infer E5 extends StackBrand,
-                      infer E6 extends StackBrand,
-                      infer E7 extends StackBrand,
-                      infer E8 extends StackBrand,
+                      infer E1 extends Stack.Brand,
+                      infer E2 extends Stack.Brand,
+                      infer E3 extends Stack.Brand,
+                      infer E4 extends Stack.Brand,
+                      infer E5 extends Stack.Brand,
+                      infer E6 extends Stack.Brand,
+                      infer E7 extends Stack.Brand,
+                      infer E8 extends Stack.Brand,
                       ...infer Rest extends Stack,
                     ]
                     ? readonly [
@@ -335,15 +335,15 @@ type ApplyRebrands<
                     : S
                   : N extends 9
                     ? S extends readonly [
-                        infer E1 extends StackBrand,
-                        infer E2 extends StackBrand,
-                        infer E3 extends StackBrand,
-                        infer E4 extends StackBrand,
-                        infer E5 extends StackBrand,
-                        infer E6 extends StackBrand,
-                        infer E7 extends StackBrand,
-                        infer E8 extends StackBrand,
-                        infer E9 extends StackBrand,
+                        infer E1 extends Stack.Brand,
+                        infer E2 extends Stack.Brand,
+                        infer E3 extends Stack.Brand,
+                        infer E4 extends Stack.Brand,
+                        infer E5 extends Stack.Brand,
+                        infer E6 extends Stack.Brand,
+                        infer E7 extends Stack.Brand,
+                        infer E8 extends Stack.Brand,
+                        infer E9 extends Stack.Brand,
                         ...infer Rest extends Stack,
                       ]
                       ? readonly [
@@ -361,16 +361,16 @@ type ApplyRebrands<
                       : S
                     : N extends 10
                       ? S extends readonly [
-                          infer E1 extends StackBrand,
-                          infer E2 extends StackBrand,
-                          infer E3 extends StackBrand,
-                          infer E4 extends StackBrand,
-                          infer E5 extends StackBrand,
-                          infer E6 extends StackBrand,
-                          infer E7 extends StackBrand,
-                          infer E8 extends StackBrand,
-                          infer E9 extends StackBrand,
-                          infer E10 extends StackBrand,
+                          infer E1 extends Stack.Brand,
+                          infer E2 extends Stack.Brand,
+                          infer E3 extends Stack.Brand,
+                          infer E4 extends Stack.Brand,
+                          infer E5 extends Stack.Brand,
+                          infer E6 extends Stack.Brand,
+                          infer E7 extends Stack.Brand,
+                          infer E8 extends Stack.Brand,
+                          infer E9 extends Stack.Brand,
+                          infer E10 extends Stack.Brand,
                           ...infer Rest extends Stack,
                         ]
                         ? readonly [
@@ -389,17 +389,17 @@ type ApplyRebrands<
                         : S
                       : N extends 11
                         ? S extends readonly [
-                            infer E1 extends StackBrand,
-                            infer E2 extends StackBrand,
-                            infer E3 extends StackBrand,
-                            infer E4 extends StackBrand,
-                            infer E5 extends StackBrand,
-                            infer E6 extends StackBrand,
-                            infer E7 extends StackBrand,
-                            infer E8 extends StackBrand,
-                            infer E9 extends StackBrand,
-                            infer E10 extends StackBrand,
-                            infer E11 extends StackBrand,
+                            infer E1 extends Stack.Brand,
+                            infer E2 extends Stack.Brand,
+                            infer E3 extends Stack.Brand,
+                            infer E4 extends Stack.Brand,
+                            infer E5 extends Stack.Brand,
+                            infer E6 extends Stack.Brand,
+                            infer E7 extends Stack.Brand,
+                            infer E8 extends Stack.Brand,
+                            infer E9 extends Stack.Brand,
+                            infer E10 extends Stack.Brand,
+                            infer E11 extends Stack.Brand,
                             ...infer Rest extends Stack,
                           ]
                           ? readonly [
@@ -419,18 +419,18 @@ type ApplyRebrands<
                           : S
                         : N extends 12
                           ? S extends readonly [
-                              infer E1 extends StackBrand,
-                              infer E2 extends StackBrand,
-                              infer E3 extends StackBrand,
-                              infer E4 extends StackBrand,
-                              infer E5 extends StackBrand,
-                              infer E6 extends StackBrand,
-                              infer E7 extends StackBrand,
-                              infer E8 extends StackBrand,
-                              infer E9 extends StackBrand,
-                              infer E10 extends StackBrand,
-                              infer E11 extends StackBrand,
-                              infer E12 extends StackBrand,
+                              infer E1 extends Stack.Brand,
+                              infer E2 extends Stack.Brand,
+                              infer E3 extends Stack.Brand,
+                              infer E4 extends Stack.Brand,
+                              infer E5 extends Stack.Brand,
+                              infer E6 extends Stack.Brand,
+                              infer E7 extends Stack.Brand,
+                              infer E8 extends Stack.Brand,
+                              infer E9 extends Stack.Brand,
+                              infer E10 extends Stack.Brand,
+                              infer E11 extends Stack.Brand,
+                              infer E12 extends Stack.Brand,
                               ...infer Rest extends Stack,
                             ]
                             ? readonly [
@@ -451,19 +451,19 @@ type ApplyRebrands<
                             : S
                           : N extends 13
                             ? S extends readonly [
-                                infer E1 extends StackBrand,
-                                infer E2 extends StackBrand,
-                                infer E3 extends StackBrand,
-                                infer E4 extends StackBrand,
-                                infer E5 extends StackBrand,
-                                infer E6 extends StackBrand,
-                                infer E7 extends StackBrand,
-                                infer E8 extends StackBrand,
-                                infer E9 extends StackBrand,
-                                infer E10 extends StackBrand,
-                                infer E11 extends StackBrand,
-                                infer E12 extends StackBrand,
-                                infer E13 extends StackBrand,
+                                infer E1 extends Stack.Brand,
+                                infer E2 extends Stack.Brand,
+                                infer E3 extends Stack.Brand,
+                                infer E4 extends Stack.Brand,
+                                infer E5 extends Stack.Brand,
+                                infer E6 extends Stack.Brand,
+                                infer E7 extends Stack.Brand,
+                                infer E8 extends Stack.Brand,
+                                infer E9 extends Stack.Brand,
+                                infer E10 extends Stack.Brand,
+                                infer E11 extends Stack.Brand,
+                                infer E12 extends Stack.Brand,
+                                infer E13 extends Stack.Brand,
                                 ...infer Rest extends Stack,
                               ]
                               ? readonly [
@@ -493,20 +493,20 @@ type ApplyRebrands<
                               : S
                             : N extends 14
                               ? S extends readonly [
-                                  infer E1 extends StackBrand,
-                                  infer E2 extends StackBrand,
-                                  infer E3 extends StackBrand,
-                                  infer E4 extends StackBrand,
-                                  infer E5 extends StackBrand,
-                                  infer E6 extends StackBrand,
-                                  infer E7 extends StackBrand,
-                                  infer E8 extends StackBrand,
-                                  infer E9 extends StackBrand,
-                                  infer E10 extends StackBrand,
-                                  infer E11 extends StackBrand,
-                                  infer E12 extends StackBrand,
-                                  infer E13 extends StackBrand,
-                                  infer E14 extends StackBrand,
+                                  infer E1 extends Stack.Brand,
+                                  infer E2 extends Stack.Brand,
+                                  infer E3 extends Stack.Brand,
+                                  infer E4 extends Stack.Brand,
+                                  infer E5 extends Stack.Brand,
+                                  infer E6 extends Stack.Brand,
+                                  infer E7 extends Stack.Brand,
+                                  infer E8 extends Stack.Brand,
+                                  infer E9 extends Stack.Brand,
+                                  infer E10 extends Stack.Brand,
+                                  infer E11 extends Stack.Brand,
+                                  infer E12 extends Stack.Brand,
+                                  infer E13 extends Stack.Brand,
+                                  infer E14 extends Stack.Brand,
                                   ...infer Rest extends Stack,
                                 ]
                                 ? readonly [
@@ -539,21 +539,21 @@ type ApplyRebrands<
                                 : S
                               : N extends 15
                                 ? S extends readonly [
-                                    infer E1 extends StackBrand,
-                                    infer E2 extends StackBrand,
-                                    infer E3 extends StackBrand,
-                                    infer E4 extends StackBrand,
-                                    infer E5 extends StackBrand,
-                                    infer E6 extends StackBrand,
-                                    infer E7 extends StackBrand,
-                                    infer E8 extends StackBrand,
-                                    infer E9 extends StackBrand,
-                                    infer E10 extends StackBrand,
-                                    infer E11 extends StackBrand,
-                                    infer E12 extends StackBrand,
-                                    infer E13 extends StackBrand,
-                                    infer E14 extends StackBrand,
-                                    infer E15 extends StackBrand,
+                                    infer E1 extends Stack.Brand,
+                                    infer E2 extends Stack.Brand,
+                                    infer E3 extends Stack.Brand,
+                                    infer E4 extends Stack.Brand,
+                                    infer E5 extends Stack.Brand,
+                                    infer E6 extends Stack.Brand,
+                                    infer E7 extends Stack.Brand,
+                                    infer E8 extends Stack.Brand,
+                                    infer E9 extends Stack.Brand,
+                                    infer E10 extends Stack.Brand,
+                                    infer E11 extends Stack.Brand,
+                                    infer E12 extends Stack.Brand,
+                                    infer E13 extends Stack.Brand,
+                                    infer E14 extends Stack.Brand,
+                                    infer E15 extends Stack.Brand,
                                     ...infer Rest extends Stack,
                                   ]
                                   ? readonly [
@@ -607,22 +607,22 @@ type ApplyRebrands<
                                   : S
                                 : N extends 16
                                   ? S extends readonly [
-                                      infer E1 extends StackBrand,
-                                      infer E2 extends StackBrand,
-                                      infer E3 extends StackBrand,
-                                      infer E4 extends StackBrand,
-                                      infer E5 extends StackBrand,
-                                      infer E6 extends StackBrand,
-                                      infer E7 extends StackBrand,
-                                      infer E8 extends StackBrand,
-                                      infer E9 extends StackBrand,
-                                      infer E10 extends StackBrand,
-                                      infer E11 extends StackBrand,
-                                      infer E12 extends StackBrand,
-                                      infer E13 extends StackBrand,
-                                      infer E14 extends StackBrand,
-                                      infer E15 extends StackBrand,
-                                      infer E16 extends StackBrand,
+                                      infer E1 extends Stack.Brand,
+                                      infer E2 extends Stack.Brand,
+                                      infer E3 extends Stack.Brand,
+                                      infer E4 extends Stack.Brand,
+                                      infer E5 extends Stack.Brand,
+                                      infer E6 extends Stack.Brand,
+                                      infer E7 extends Stack.Brand,
+                                      infer E8 extends Stack.Brand,
+                                      infer E9 extends Stack.Brand,
+                                      infer E10 extends Stack.Brand,
+                                      infer E11 extends Stack.Brand,
+                                      infer E12 extends Stack.Brand,
+                                      infer E13 extends Stack.Brand,
+                                      infer E14 extends Stack.Brand,
+                                      infer E15 extends Stack.Brand,
+                                      infer E16 extends Stack.Brand,
                                       ...infer Rest extends Stack,
                                     ]
                                     ? readonly [
@@ -679,23 +679,23 @@ type ApplyRebrands<
                                     : S
                                   : N extends 17
                                     ? S extends readonly [
-                                        infer E1 extends StackBrand,
-                                        infer E2 extends StackBrand,
-                                        infer E3 extends StackBrand,
-                                        infer E4 extends StackBrand,
-                                        infer E5 extends StackBrand,
-                                        infer E6 extends StackBrand,
-                                        infer E7 extends StackBrand,
-                                        infer E8 extends StackBrand,
-                                        infer E9 extends StackBrand,
-                                        infer E10 extends StackBrand,
-                                        infer E11 extends StackBrand,
-                                        infer E12 extends StackBrand,
-                                        infer E13 extends StackBrand,
-                                        infer E14 extends StackBrand,
-                                        infer E15 extends StackBrand,
-                                        infer E16 extends StackBrand,
-                                        infer E17 extends StackBrand,
+                                        infer E1 extends Stack.Brand,
+                                        infer E2 extends Stack.Brand,
+                                        infer E3 extends Stack.Brand,
+                                        infer E4 extends Stack.Brand,
+                                        infer E5 extends Stack.Brand,
+                                        infer E6 extends Stack.Brand,
+                                        infer E7 extends Stack.Brand,
+                                        infer E8 extends Stack.Brand,
+                                        infer E9 extends Stack.Brand,
+                                        infer E10 extends Stack.Brand,
+                                        infer E11 extends Stack.Brand,
+                                        infer E12 extends Stack.Brand,
+                                        infer E13 extends Stack.Brand,
+                                        infer E14 extends Stack.Brand,
+                                        infer E15 extends Stack.Brand,
+                                        infer E16 extends Stack.Brand,
+                                        infer E17 extends Stack.Brand,
                                         ...infer Rest extends Stack,
                                       ]
                                       ? readonly [
