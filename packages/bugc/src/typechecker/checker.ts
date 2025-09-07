@@ -4,30 +4,7 @@
  * Validates types and builds symbol table using visitor pattern
  */
 
-import {
-  BaseAstVisitor,
-  type Program,
-  type Declaration,
-  type Block,
-  type ElementaryType,
-  type ComplexType,
-  type ReferenceType,
-  type DeclarationStatement,
-  type AssignmentStatement,
-  type ControlFlowStatement,
-  type ExpressionStatement,
-  type IdentifierExpression,
-  type LiteralExpression,
-  type OperatorExpression,
-  type AccessExpression,
-  type CallExpression,
-  type CastExpression,
-  type SpecialExpression,
-  type TypeNode,
-  type Expression,
-  isAssignable,
-  type SourceLocation,
-} from "#ast";
+import * as Ast from "#ast";
 
 import {
   type Type,
@@ -51,7 +28,7 @@ import {
   TypeErrorMessages as ErrorMessages,
 } from "./errors.js";
 
-export class TypeChecker extends BaseAstVisitor<Type | null> {
+export class TypeChecker extends Ast.BaseVisitor<Type | null> {
   private symbolTable = new SymbolTable();
   private structTypes = new Map<string, TypeStructType>();
   private currentReturnType: Type | null = null;
@@ -62,7 +39,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
    * Type check a program
    */
   check(
-    program: Program,
+    program: Ast.Program,
   ): Result<{ symbolTable: SymbolTable; types: TypeMap }, TypeError> {
     // Reset state for new check
     this.errors = [];
@@ -113,13 +90,13 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     expectedType?: string,
     actualType?: string,
   ): void {
-    const sourceLocation = location as SourceLocation | undefined;
+    const sourceLocation = location as Ast.SourceLocation | undefined;
     this.errors.push(
       new TypeError(message, sourceLocation, expectedType, actualType, code),
     );
   }
 
-  visitProgram(node: Program): Type | null {
+  visitProgram(node: Ast.Program): Type | null {
     // First pass: collect struct and function declarations
     for (const decl of node.declarations) {
       if (decl.kind === "struct") {
@@ -181,7 +158,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     return null;
   }
 
-  visitDeclaration(node: Declaration): Type | null {
+  visitDeclaration(node: Ast.Declaration): Type | null {
     switch (node.kind) {
       case "struct":
         // Already processed in first pass
@@ -273,7 +250,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     }
   }
 
-  visitBlock(node: Block): Type | null {
+  visitBlock(node: Ast.Block): Type | null {
     if (node.kind === "program" || node.kind === "statements") {
       this.symbolTable.enterScope();
       for (const item of node.items) {
@@ -284,24 +261,24 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     return null;
   }
 
-  visitElementaryType(node: ElementaryType): Type | null {
+  visitElementaryType(node: Ast.Type.Elementary): Type | null {
     return this.resolveType(node);
   }
 
-  visitComplexType(node: ComplexType): Type | null {
+  visitComplexType(node: Ast.Type.Complex): Type | null {
     return this.resolveType(node);
   }
 
-  visitReferenceType(node: ReferenceType): Type | null {
+  visitReferenceType(node: Ast.Type.Reference): Type | null {
     return this.resolveType(node);
   }
 
-  visitDeclarationStatement(node: DeclarationStatement): Type | null {
+  visitDeclarationStatement(node: Ast.Statement.Declare): Type | null {
     return this.visit(node.declaration);
   }
 
-  visitAssignmentStatement(node: AssignmentStatement): Type | null {
-    if (!isAssignable(node.target)) {
+  visitAssignmentStatement(node: Ast.Statement.Assign): Type | null {
+    if (!Ast.Expression.isAssignable(node.target)) {
       this.error(
         "Invalid assignment target",
         node.target.loc,
@@ -329,7 +306,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     return null;
   }
 
-  visitControlFlowStatement(node: ControlFlowStatement): Type | null {
+  visitControlFlowStatement(node: Ast.Statement.ControlFlow): Type | null {
     switch (node.kind) {
       case "if": {
         if (node.condition) {
@@ -407,12 +384,12 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     }
   }
 
-  visitExpressionStatement(node: ExpressionStatement): Type | null {
+  visitExpressionStatement(node: Ast.Statement.Express): Type | null {
     this.visit(node.expression);
     return null;
   }
 
-  visitIdentifierExpression(node: IdentifierExpression): Type | null {
+  visitIdentifierExpression(node: Ast.Expression.Identifier): Type | null {
     const symbol = this.symbolTable.lookup(node.name);
     if (!symbol) {
       this.error(
@@ -426,7 +403,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     return symbol.type;
   }
 
-  visitLiteralExpression(node: LiteralExpression): Type | null {
+  visitLiteralExpression(node: Ast.Expression.Literal): Type | null {
     let type: Type | null = null;
     switch (node.kind) {
       case "number":
@@ -467,7 +444,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     return type;
   }
 
-  visitOperatorExpression(node: OperatorExpression): Type | null {
+  visitOperatorExpression(node: Ast.Expression.Operator): Type | null {
     const operandTypes = node.operands
       .map((op) => this.visit(op))
       .filter((t): t is Type => t !== null);
@@ -594,7 +571,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     return resultType;
   }
 
-  visitAccessExpression(node: AccessExpression): Type | null {
+  visitAccessExpression(node: Ast.Expression.Access): Type | null {
     const objectType = this.visit(node.object);
     if (!objectType) return null;
 
@@ -643,7 +620,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
       }
     } else if (node.kind === "slice") {
       // Slice access - start:end
-      const startExpr = node.property as Expression;
+      const startExpr = node.property as Ast.Expression;
       const endExpr = node.end!; // slice always has end
       const startType = this.visit(startExpr);
       const endType = this.visit(endExpr);
@@ -680,7 +657,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
       }
     } else {
       // Index access
-      const indexExpr = node.property as Expression;
+      const indexExpr = node.property as Ast.Expression;
       const indexType = this.visit(indexExpr);
       if (!indexType) return null;
 
@@ -734,7 +711,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     return resultType;
   }
 
-  visitCallExpression(node: CallExpression): Type | null {
+  visitCallExpression(node: Ast.Expression.Call): Type | null {
     // Check if this is a built-in function call
     if (node.callee.type === "IdentifierExpression") {
       const functionName = node.callee.name;
@@ -837,7 +814,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     return null;
   }
 
-  visitCastExpression(node: CastExpression): Type | null {
+  visitCastExpression(node: Ast.Expression.Cast): Type | null {
     // Get the type of the expression being cast
     const exprType = this.visit(node.expression);
     if (!exprType) return null;
@@ -916,7 +893,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     return false;
   }
 
-  visitSpecialExpression(node: SpecialExpression): Type | null {
+  visitSpecialExpression(node: Ast.Expression.Special): Type | null {
     let type: Type | null = null;
     switch (node.kind) {
       case "msg.sender":
@@ -943,7 +920,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
 
   // Helper methods
 
-  private collectStructType(decl: Declaration): void {
+  private collectStructType(decl: Ast.Declaration): void {
     if (decl.kind !== "struct") return;
 
     const fields = new Map<string, Type>();
@@ -959,7 +936,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     this.structTypes.set(decl.name, structType);
   }
 
-  private collectFunctionType(decl: Declaration): void {
+  private collectFunctionType(decl: Ast.Declaration): void {
     if (decl.kind !== "function") return;
 
     // Resolve parameter types
@@ -994,7 +971,7 @@ export class TypeChecker extends BaseAstVisitor<Type | null> {
     this.symbolTable.define(symbol);
   }
 
-  private resolveType(typeNode: TypeNode): Type {
+  private resolveType(typeNode: Ast.Type): Type {
     switch (typeNode.type) {
       case "ElementaryType": {
         // Map elementary types based on kind and bits

@@ -1,9 +1,5 @@
 import { describe, test, expect } from "vitest";
-import type {
-  LiteralExpression,
-  AssignmentStatement,
-  DeclarationStatement,
-} from "#ast";
+import type * as Ast from "#ast";
 import { parse } from "./parser.js";
 
 describe("Parser Edge Cases", () => {
@@ -37,8 +33,8 @@ describe("Parser Edge Cases", () => {
         expect(parseResult.success).toBe(true);
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
-        const assignment = result.body.items[0] as AssignmentStatement;
-        const literal = assignment.value as LiteralExpression;
+        const assignment = result.body.items[0] as Ast.Statement.Assign;
+        const literal = assignment.value as Ast.Expression.Literal;
         expect(literal.kind).toBe("hex");
         expect(literal.value).toBe(expected);
       }
@@ -60,8 +56,8 @@ describe("Parser Edge Cases", () => {
       const result = parseResult.value;
       const stmt = result.body.items[0];
       expect(stmt.type).toBe("DeclarationStatement");
-      const decl = (stmt as DeclarationStatement).declaration;
-      const literal = decl.initializer as LiteralExpression;
+      const decl = (stmt as Ast.Statement.Declare).declaration;
+      const literal = decl.initializer as Ast.Expression.Literal;
       expect(literal.kind).toBe("hex");
       expect(literal.value).toBe(longHex);
     });
@@ -90,8 +86,8 @@ describe("Parser Edge Cases", () => {
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
         const stmt = result.body.items[0];
-        const decl = (stmt as DeclarationStatement).declaration;
-        const literal = decl.initializer as LiteralExpression;
+        const decl = (stmt as Ast.Statement.Declare).declaration;
+        const literal = decl.initializer as Ast.Expression.Literal;
         expect(literal.kind).toBe("address");
         expect(literal.value).toBe(addr.toLowerCase());
       }
@@ -111,8 +107,8 @@ describe("Parser Edge Cases", () => {
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
       const stmt = result.body.items[0];
-      const decl = (stmt as DeclarationStatement).declaration;
-      const literal = decl.initializer as LiteralExpression;
+      const decl = (stmt as Ast.Statement.Declare).declaration;
+      const literal = decl.initializer as Ast.Expression.Literal;
       expect(literal.value).toBe("0xabcdef1234567890123456789012345678901234");
     });
 
@@ -132,12 +128,12 @@ describe("Parser Edge Cases", () => {
       const result = parseResult.value;
       const [addrStmt, hexStmt] = result.body.items;
 
-      const addrLiteral = (addrStmt as DeclarationStatement).declaration
-        .initializer as LiteralExpression;
+      const addrLiteral = (addrStmt as Ast.Statement.Declare).declaration
+        .initializer as Ast.Expression.Literal;
       expect(addrLiteral.kind).toBe("address");
 
-      const hexLiteral = (hexStmt as DeclarationStatement).declaration
-        .initializer as LiteralExpression;
+      const hexLiteral = (hexStmt as Ast.Statement.Declare).declaration
+        .initializer as Ast.Expression.Literal;
       expect(hexLiteral.kind).toBe("hex");
     });
   });
@@ -166,8 +162,8 @@ describe("Parser Edge Cases", () => {
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
         const stmt = result.body.items[0];
-        const decl = (stmt as DeclarationStatement).declaration;
-        const literal = decl.initializer as LiteralExpression;
+        const decl = (stmt as Ast.Statement.Declare).declaration;
+        const literal = decl.initializer as Ast.Expression.Literal;
         expect(literal.kind).toBe("number");
         expect(literal.value).toBe(expected);
       }
@@ -189,12 +185,12 @@ describe("Parser Edge Cases", () => {
       const result = parseResult.value;
       const [xStmt, yStmt] = result.body.items;
 
-      const xLiteral = (xStmt as DeclarationStatement).declaration
-        .initializer as LiteralExpression;
+      const xLiteral = (xStmt as Ast.Statement.Declare).declaration
+        .initializer as Ast.Expression.Literal;
       expect(xLiteral.value).toBe("007");
 
-      const yLiteral = (yStmt as DeclarationStatement).declaration
-        .initializer as LiteralExpression;
+      const yLiteral = (yStmt as Ast.Statement.Declare).declaration
+        .initializer as Ast.Expression.Literal;
       expect(yLiteral.value).toBe("000123");
     });
   });
@@ -221,8 +217,8 @@ describe("Parser Edge Cases", () => {
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
         const stmt = result.body.items[0];
-        const decl = (stmt as DeclarationStatement).declaration;
-        const literal = decl.initializer as LiteralExpression;
+        const decl = (stmt as Ast.Statement.Declare).declaration;
+        const literal = decl.initializer as Ast.Expression.Literal;
         expect(literal.kind).toBe("number");
         expect(literal.value).toBe(value);
         expect(literal.unit).toBe(unit);
@@ -250,8 +246,8 @@ describe("Parser Edge Cases", () => {
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
         const stmt = result.body.items[0];
-        const decl = (stmt as DeclarationStatement).declaration;
-        const literal = decl.initializer as LiteralExpression;
+        const decl = (stmt as Ast.Statement.Declare).declaration;
+        const literal = decl.initializer as Ast.Expression.Literal;
         expect(literal.kind).toBe("number");
         expect(literal.value).toBe(value);
         expect(literal.unit).toBe(unit);
@@ -279,8 +275,8 @@ describe("Parser Edge Cases", () => {
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
         const stmt = result.body.items[0];
-        const decl = (stmt as DeclarationStatement).declaration;
-        const literal = decl.initializer as LiteralExpression;
+        const decl = (stmt as Ast.Statement.Declare).declaration;
+        const literal = decl.initializer as Ast.Expression.Literal;
         expect(literal.kind).toBe("number");
         expect(literal.value).toBe(value);
         expect(literal.unit).toBe(unit);
@@ -333,8 +329,8 @@ describe("Parser Edge Cases", () => {
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
         const stmt = result.body.items[0];
-        const decl = (stmt as DeclarationStatement).declaration;
-        const literal = decl.initializer as LiteralExpression;
+        const decl = (stmt as Ast.Statement.Declare).declaration;
+        const literal = decl.initializer as Ast.Expression.Literal;
         expect(literal.kind).toBe("string");
         expect(literal.value).toBe(expected);
       }
@@ -364,8 +360,8 @@ describe("Parser Edge Cases", () => {
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
         const stmt = result.body.items[0];
-        const decl = (stmt as DeclarationStatement).declaration;
-        const literal = decl.initializer as LiteralExpression;
+        const decl = (stmt as Ast.Statement.Declare).declaration;
+        const literal = decl.initializer as Ast.Expression.Literal;
         expect(literal.value).toBe(expected);
       }
     });

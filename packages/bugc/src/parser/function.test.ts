@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { ElementaryType } from "#ast";
+import type * as Ast from "#ast";
 import { Severity } from "#result";
 import { parse } from "./parser.js";
 import "#test/matchers";
@@ -38,7 +38,7 @@ describe("Function declarations", () => {
     expect(funcDecl.metadata?.parameters?.[0].name).toBe("a");
     expect(funcDecl.metadata?.parameters?.[1].name).toBe("b");
     expect(funcDecl.declaredType?.type).toBe("ElementaryType");
-    expect((funcDecl.declaredType as ElementaryType).kind).toBe("uint");
+    expect((funcDecl.declaredType as Ast.Type.Elementary).kind).toBe("uint");
   });
 
   it("parses void function without return type", () => {

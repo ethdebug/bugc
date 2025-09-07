@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import type { AccessExpression } from "#ast";
+import type * as Ast from "#ast";
 
 import { parse } from "./parser.js";
 
@@ -22,7 +22,7 @@ describe("Slice expressions", () => {
     expect(exprStmt.type).toBe("ExpressionStatement");
 
     if (exprStmt.type === "ExpressionStatement") {
-      const slice = exprStmt.expression as AccessExpression;
+      const slice = exprStmt.expression as Ast.Expression.Access;
       expect(slice.type).toBe("AccessExpression");
       expect(slice.kind).toBe("slice");
       expect(slice.property).toMatchObject({
@@ -50,7 +50,7 @@ describe("Slice expressions", () => {
     const exprStmt = program.body.items[0];
 
     if (exprStmt.type === "ExpressionStatement") {
-      const slice = exprStmt.expression as AccessExpression;
+      const slice = exprStmt.expression as Ast.Expression.Access;
       expect(slice.kind).toBe("slice");
       expect(slice.object).toMatchObject({
         type: "SpecialExpression",
@@ -79,8 +79,8 @@ describe("Slice expressions", () => {
       indexedStmt.type === "ExpressionStatement" &&
       slicedStmt.type === "ExpressionStatement"
     ) {
-      const indexed = indexedStmt.expression as AccessExpression;
-      const sliced = slicedStmt.expression as AccessExpression;
+      const indexed = indexedStmt.expression as Ast.Expression.Access;
+      const sliced = slicedStmt.expression as Ast.Expression.Access;
 
       expect(indexed.kind).toBe("index");
       expect(indexed.end).toBeUndefined();

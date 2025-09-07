@@ -5,6 +5,8 @@
     "rootDir": ".",
     "paths": {
       "#ast": ["./src/ast/index"],
+      "#ast/spec": ["./src/ast/spec"],
+      "#ast/visitor": ["./src/ast/visitor"],
 
       "#cli": ["./src/cli/index"],
 

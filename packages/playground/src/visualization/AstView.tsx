@@ -1,8 +1,8 @@
-import type { Program } from "@ethdebug/bugc";
+import type { Ast } from "@ethdebug/bugc";
 import "./AstView.css";
 
 interface AstViewProps {
-  ast: Program;
+  ast: Ast.Program;
 }
 
 export function AstView({ ast }: AstViewProps) {

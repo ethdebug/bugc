@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "./parser.js";
-import type { ReferenceType } from "#ast";
+import type * as Ast from "#ast";
 import { Result, Severity } from "#result";
 import "#test/matchers";
 
@@ -168,7 +168,9 @@ code {
             field.declaredType
           ) {
             expect(field.declaredType.type).toBe("ReferenceType");
-            expect((field.declaredType as ReferenceType).name).toBe("uint512");
+            expect((field.declaredType as Ast.Type.Reference).name).toBe(
+              "uint512",
+            );
           }
         }
       }

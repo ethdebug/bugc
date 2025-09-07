@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import type { ControlFlowStatement } from "#ast";
+import type * as Ast from "#ast";
 
 import { parse } from "./parser.js";
 
@@ -32,7 +32,7 @@ code {
       expect(ast.declarations).toHaveLength(2);
       expect(ast.body.items).toHaveLength(2);
 
-      const ifStmt = ast.body.items[0] as ControlFlowStatement;
+      const ifStmt = ast.body.items[0] as Ast.Statement.ControlFlow;
       expect(ifStmt.type).toBe("ControlFlowStatement");
       expect(ifStmt.kind).toBe("if");
     });
@@ -264,7 +264,7 @@ code {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const ast = parseResult.value;
-      const forLoop = ast.body.items[0] as ControlFlowStatement;
+      const forLoop = ast.body.items[0] as Ast.Statement.ControlFlow;
       expect(forLoop.kind).toBe("for");
       expect(forLoop.body?.items).toHaveLength(2);
     });

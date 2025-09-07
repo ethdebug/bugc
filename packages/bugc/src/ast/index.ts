@@ -1,1 +1,2 @@
-export * from "./ast.js";
+export * from "#ast/spec";
+export * from "#ast/visitor";

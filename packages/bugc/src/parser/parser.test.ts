@@ -99,14 +99,14 @@ code {}`;
       const [balance, owner, flag] = result.declarations;
 
       expect(balance.declaredType?.type).toBe("ElementaryType");
-      const balanceType = balance.declaredType as Ast.ElementaryType;
+      const balanceType = balance.declaredType as Ast.Type.Elementary;
       expect(balanceType.kind).toBe("uint");
       expect(balanceType.bits).toBe(256);
 
-      const ownerType = owner.declaredType as Ast.ElementaryType;
+      const ownerType = owner.declaredType as Ast.Type.Elementary;
       expect(ownerType.kind).toBe("address");
 
-      const flagType = flag.declaredType as Ast.ElementaryType;
+      const flagType = flag.declaredType as Ast.Type.Elementary;
       expect(flagType.kind).toBe("bool");
     });
 
@@ -127,12 +127,12 @@ code {}`;
       const [nums, fixed] = result.declarations;
 
       expect(nums.declaredType?.type).toBe("ComplexType");
-      const numsType = nums.declaredType as Ast.ComplexType;
+      const numsType = nums.declaredType as Ast.Type.Complex;
       expect(numsType.kind).toBe("array");
       expect(numsType.size).toBeUndefined();
       expect(numsType.typeArgs).toHaveLength(1);
 
-      const fixedType = fixed.declaredType as Ast.ComplexType;
+      const fixedType = fixed.declaredType as Ast.Type.Complex;
       expect(fixedType.kind).toBe("array");
       expect(fixedType.size).toBe(10);
     });
@@ -152,15 +152,15 @@ code {}`;
       const result = parseResult.value;
       const mapping = result.declarations[0];
 
-      const mapType = mapping.declaredType as Ast.ComplexType;
+      const mapType = mapping.declaredType as Ast.Type.Complex;
       expect(mapType.type).toBe("ComplexType");
       expect(mapType.kind).toBe("mapping");
       expect(mapType.typeArgs).toHaveLength(2);
 
-      const keyType = mapType.typeArgs![0] as Ast.ElementaryType;
+      const keyType = mapType.typeArgs![0] as Ast.Type.Elementary;
       expect(keyType.kind).toBe("address");
 
-      const valueType = mapType.typeArgs![1] as Ast.ElementaryType;
+      const valueType = mapType.typeArgs![1] as Ast.Type.Elementary;
       expect(valueType.kind).toBe("uint");
       expect(valueType.bits).toBe(256);
     });
@@ -184,7 +184,7 @@ code {}`;
       const position = result.declarations.find((d) => d.name === "position");
 
       expect(position?.declaredType?.type).toBe("ReferenceType");
-      expect((position?.declaredType as Ast.ReferenceType).name).toBe("Point");
+      expect((position?.declaredType as Ast.Type.Reference).name).toBe("Point");
     });
   });
 
@@ -254,18 +254,19 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const [letX, letFlag] = result.body.items as Ast.DeclarationStatement[];
+      const [letX, letFlag] = result.body.items as Ast.Statement.Declare[];
 
       expect(letX.type).toBe("DeclarationStatement");
       expect(letX.declaration.kind).toBe("variable");
       expect(letX.declaration.name).toBe("x");
 
-      const xInit = letX.declaration.initializer as Ast.LiteralExpression;
+      const xInit = letX.declaration.initializer as Ast.Expression.Literal;
       expect(xInit.type).toBe("LiteralExpression");
       expect(xInit.kind).toBe("number");
       expect(xInit.value).toBe("42");
 
-      const flagInit = letFlag.declaration.initializer as Ast.LiteralExpression;
+      const flagInit = letFlag.declaration
+        .initializer as Ast.Expression.Literal;
       expect(flagInit.kind).toBe("boolean");
       expect(flagInit.value).toBe("true");
     });
@@ -291,8 +292,8 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.ExpressionStatement[];
-      const exprs = stmts.map((s) => s.expression as Ast.LiteralExpression);
+      const stmts = result.body.items as Ast.Statement.Express[];
+      const exprs = stmts.map((s) => s.expression as Ast.Expression.Literal);
 
       expect(exprs[0].kind).toBe("number");
       expect(exprs[0].value).toBe("42");
@@ -331,9 +332,9 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.ExpressionStatement[];
+      const stmts = result.body.items as Ast.Statement.Express[];
       const [x, balance] = stmts.map(
-        (s) => s.expression as Ast.IdentifierExpression,
+        (s) => s.expression as Ast.Expression.Identifier,
       );
 
       expect(x.type).toBe("IdentifierExpression");
@@ -357,8 +358,8 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.ExpressionStatement[];
-      const exprs = stmts.map((s) => s.expression as Ast.OperatorExpression);
+      const stmts = result.body.items as Ast.Statement.Express[];
+      const exprs = stmts.map((s) => s.expression as Ast.Expression.Operator);
 
       expect(exprs[0].operator).toBe("+");
       expect(exprs[0].operands).toHaveLength(2);
@@ -388,20 +389,20 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.ExpressionStatement[];
-      const exprs = stmts.map((s) => s.expression as Ast.AccessExpression);
+      const stmts = result.body.items as Ast.Statement.Express[];
+      const exprs = stmts.map((s) => s.expression as Ast.Expression.Access);
 
       expect(exprs[0].kind).toBe("member");
       expect(exprs[0].property).toBe("x");
 
       expect(exprs[1].kind).toBe("index");
-      expect((exprs[1].property as Ast.LiteralExpression).value).toBe("0");
+      expect((exprs[1].property as Ast.Expression.Literal).value).toBe("0");
 
       // nested.field.subfield is two member accesses
       const nested = exprs[2];
       expect(nested.kind).toBe("member");
       expect(nested.property).toBe("subfield");
-      const nestedObj = nested.object as Ast.AccessExpression;
+      const nestedObj = nested.object as Ast.Expression.Access;
       expect(nestedObj.kind).toBe("member");
       expect(nestedObj.property).toBe("field");
 
@@ -425,9 +426,9 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.ExpressionStatement[];
+      const stmts = result.body.items as Ast.Statement.Express[];
       const [sender, value, data] = stmts.map(
-        (s) => s.expression as Ast.SpecialExpression,
+        (s) => s.expression as Ast.Expression.Special,
       );
 
       expect(sender.type).toBe("SpecialExpression");
@@ -455,20 +456,20 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.ExpressionStatement[];
+      const stmts = result.body.items as Ast.Statement.Express[];
 
       // a + b * c should be a + (b * c)
-      const expr1 = stmts[0].expression as Ast.OperatorExpression;
+      const expr1 = stmts[0].expression as Ast.Expression.Operator;
       expect(expr1.operator).toBe("+");
-      const right1 = expr1.operands[1] as Ast.OperatorExpression;
+      const right1 = expr1.operands[1] as Ast.Expression.Operator;
       expect(right1.operator).toBe("*");
 
       // x == y && z != w should be (x == y) && (z != w)
-      const expr2 = stmts[1].expression as Ast.OperatorExpression;
+      const expr2 = stmts[1].expression as Ast.Expression.Operator;
       expect(expr2.operator).toBe("&&");
-      const left2 = expr2.operands[0] as Ast.OperatorExpression;
+      const left2 = expr2.operands[0] as Ast.Expression.Operator;
       expect(left2.operator).toBe("==");
-      const right2 = expr2.operands[1] as Ast.OperatorExpression;
+      const right2 = expr2.operands[1] as Ast.Expression.Operator;
       expect(right2.operator).toBe("!=");
     });
   });
@@ -489,14 +490,14 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.AssignmentStatement[];
+      const stmts = result.body.items as Ast.Statement.Assign[];
 
       expect(stmts[0].type).toBe("AssignmentStatement");
-      expect((stmts[0].target as Ast.IdentifierExpression).name).toBe("x");
-      expect((stmts[0].value as Ast.LiteralExpression).value).toBe("42");
+      expect((stmts[0].target as Ast.Expression.Identifier).name).toBe("x");
+      expect((stmts[0].value as Ast.Expression.Literal).value).toBe("42");
 
-      expect((stmts[1].target as Ast.AccessExpression).kind).toBe("member");
-      expect((stmts[2].target as Ast.AccessExpression).kind).toBe("index");
+      expect((stmts[1].target as Ast.Expression.Access).kind).toBe("member");
+      expect((stmts[2].target as Ast.Expression.Access).kind).toBe("index");
     });
 
     it("should parse control flow statements", () => {
@@ -525,7 +526,7 @@ code {}`;
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
       const [if1, if2, forLoop] = result.body
-        .items as Ast.ControlFlowStatement[];
+        .items as Ast.Statement.ControlFlow[];
 
       expect(if1.kind).toBe("if");
       expect(if1.condition).toBeDefined();
@@ -534,7 +535,7 @@ code {}`;
 
       expect(if2.kind).toBe("if");
       expect(if2.body?.items[0].type).toBe("ControlFlowStatement");
-      expect((if2.body?.items[0] as Ast.ControlFlowStatement).kind).toBe(
+      expect((if2.body?.items[0] as Ast.Statement.ControlFlow).kind).toBe(
         "break",
       );
       expect(if2.alternate).toBeDefined();
@@ -561,16 +562,16 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.ControlFlowStatement[];
+      const stmts = result.body.items as Ast.Statement.ControlFlow[];
 
       expect(stmts[0].kind).toBe("return");
       expect(stmts[0].value).toBeUndefined();
 
       expect(stmts[1].kind).toBe("return");
-      expect((stmts[1].value as Ast.LiteralExpression).value).toBe("42");
+      expect((stmts[1].value as Ast.Expression.Literal).value).toBe("42");
 
       expect(stmts[2].kind).toBe("return");
-      expect((stmts[2].value as Ast.OperatorExpression).operator).toBe("+");
+      expect((stmts[2].value as Ast.Expression.Operator).operator).toBe("+");
     });
   });
 
@@ -621,7 +622,7 @@ code {}`;
       const codeStmts = result.body.items;
       expect(codeStmts).toHaveLength(3); // let, if, return
 
-      const ifStmt = codeStmts[1] as Ast.ControlFlowStatement;
+      const ifStmt = codeStmts[1] as Ast.Statement.ControlFlow;
       expect(ifStmt.body?.items).toHaveLength(2); // two assignments
       expect(ifStmt.alternate?.items).toHaveLength(1); // one return
     });
