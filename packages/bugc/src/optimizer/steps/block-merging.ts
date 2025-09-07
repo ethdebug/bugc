@@ -1,10 +1,10 @@
-import { IrModule } from "#ir";
+import * as Ir from "#ir";
 import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class BlockMergingStep extends BaseOptimizationStep {
   name = "block-merging";
 
-  run(module: IrModule, context: OptimizationContext): IrModule {
+  run(module: Ir.Module, context: OptimizationContext): Ir.Module {
     const optimized = this.cloneModule(module);
 
     // Process each function separately

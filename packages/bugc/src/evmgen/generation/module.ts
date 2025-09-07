@@ -17,7 +17,7 @@ import * as Function from "./function.js";
  * Generate bytecode for entire module
  */
 export function generate(
-  module: Ir.IrModule,
+  module: Ir.Module,
   memory: Memory.Module.Info,
   blocks: Layout.Module.Info,
 ): {

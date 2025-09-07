@@ -2,11 +2,12 @@ import { describe, it, expect } from "vitest";
 
 import { compile } from "#compiler";
 
-import { IrStats } from "./stats.js";
-import { IrModule } from "../ir.js";
+import * as Ir from "#ir/spec";
 
-describe("IrStats", () => {
-  const compileToIr = async (source: string): Promise<IrModule> => {
+import { Statistics } from "./stats.js";
+
+describe("Statistics", () => {
+  const compileToIr = async (source: string): Promise<Ir.Module> => {
     const result = await compile({ to: "ir", source, sourcePath: "test.bug" });
 
     if (!result.success) {
@@ -32,7 +33,7 @@ describe("IrStats", () => {
       `;
 
       const ir = await compileToIr(source);
-      const stats = new IrStats();
+      const stats = new Statistics.Analyzer();
       const analysis = stats.analyze(ir);
 
       // Check dominator relationships
@@ -71,7 +72,7 @@ describe("IrStats", () => {
       `;
 
       const ir = await compileToIr(source);
-      const stats = new IrStats();
+      const stats = new Statistics.Analyzer();
       const analysis = stats.analyze(ir);
 
       const dom = analysis.dominatorTree;
@@ -107,7 +108,7 @@ describe("IrStats", () => {
       `;
 
       const ir = await compileToIr(source);
-      const stats = new IrStats();
+      const stats = new Statistics.Analyzer();
       const analysis = stats.analyze(ir);
 
       // Check that loops are detected
@@ -154,7 +155,7 @@ describe("IrStats", () => {
       `;
 
       const ir = await compileToIr(source);
-      const stats = new IrStats();
+      const stats = new Statistics.Analyzer();
       const analysis = stats.analyze(ir);
 
       const dom = analysis.dominatorTree;
@@ -188,7 +189,7 @@ describe("IrStats", () => {
       `;
 
       const ir = await compileToIr(source);
-      const stats = new IrStats();
+      const stats = new Statistics.Analyzer();
       const analysis = stats.analyze(ir);
 
       // Should detect both loops
@@ -231,7 +232,7 @@ describe("IrStats", () => {
       `;
 
       const ir = await compileToIr(source);
-      const stats = new IrStats();
+      const stats = new Statistics.Analyzer();
       const analysis = stats.analyze(ir);
 
       // Should detect all three loops

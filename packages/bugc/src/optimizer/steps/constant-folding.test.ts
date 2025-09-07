@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { IrModule, BasicBlock, IrInstruction } from "#ir";
+import * as Ir from "#ir";
 
 import { ConstantFoldingStep } from "./constant-folding.js";
 import { OptimizationContext } from "../optimizer.js";
@@ -8,8 +8,8 @@ import { OptimizationContext } from "../optimizer.js";
 describe("ConstantFoldingStep", () => {
   const step = new ConstantFoldingStep();
 
-  function createTestModule(instructions: IrInstruction[]): IrModule {
-    const block: BasicBlock = {
+  function createTestModule(instructions: Ir.Instruction[]): Ir.Module {
+    const block: Ir.Block = {
       id: "entry",
       phis: [],
       instructions,

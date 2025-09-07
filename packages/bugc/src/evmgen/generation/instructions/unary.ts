@@ -16,10 +16,10 @@ const { NOT, PUSHn, SUB } = operations;
  * Generate code for unary operations
  */
 export function generateUnary<S extends Stack>(
-  inst: Ir.UnaryOpInstruction,
+  inst: Ir.Instruction.UnaryOp,
 ): Transition<S, readonly ["value", ...S]> {
   const map: {
-    [O in Ir.UnaryOp]: (
+    [O in Ir.Instruction.UnaryOp["op"]]: (
       state: State<readonly ["a", ...S]>,
     ) => State<readonly [Stack.Brand, ...S]>;
   } = {

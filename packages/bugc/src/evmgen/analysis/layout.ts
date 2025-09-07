@@ -5,7 +5,7 @@
  * for jump target resolution.
  */
 
-import type { IrFunction, IrModule } from "#ir";
+import type * as Ir from "#ir";
 import { Result } from "#result";
 
 import * as Memory from "./memory.js";
@@ -25,7 +25,9 @@ export namespace Module {
   /**
    * Analyze block layout for entire module
    */
-  export function perform(module: IrModule): Result<Module.Info, Memory.Error> {
+  export function perform(
+    module: Ir.Module,
+  ): Result<Module.Info, Memory.Error> {
     const result: Module.Info = {
       main: {} as Function.Info,
       functions: {},
@@ -75,7 +77,7 @@ export namespace Function {
    * minimizing jump distances.
    */
   export function perform(
-    func: IrFunction,
+    func: Ir.Function,
   ): Result<Function.Info, Memory.Error> {
     try {
       const visited = new Set<string>();
@@ -105,7 +107,7 @@ export namespace Function {
  * Perform depth-first traversal to order blocks
  */
 function dfsOrder(
-  func: IrFunction,
+  func: Ir.Function,
   blockId: string,
   visited: Set<string> = new Set(),
 ): string[] {
@@ -131,7 +133,7 @@ function dfsOrder(
 
 // Legacy exports for compatibility
 export type BlockLayout = Function.Info;
-export const layoutBlocks = (func: IrFunction): Function.Info => {
+export const layoutBlocks = (func: Ir.Function): Function.Info => {
   const result = Function.perform(func);
   if (!result.success) {
     throw new Error(

@@ -12,7 +12,7 @@ const { PUSHn, MSTORE, KECCAK256 } = operations;
  * Generate code for computing a mapping slot
  */
 export function generateComputeSlot<S extends Stack>(
-  inst: Ir.ComputeSlotInstruction,
+  inst: Ir.Instruction.ComputeSlot,
 ): Transition<S, readonly ["value", ...S]> {
   return (
     pipe<S>()
@@ -36,7 +36,7 @@ export function generateComputeSlot<S extends Stack>(
  * Generate code for computing an array slot
  */
 export function generateComputeArraySlot<S extends Stack>(
-  inst: Ir.ComputeArraySlotInstruction,
+  inst: Ir.Instruction.ComputeArraySlot,
 ): Transition<S, readonly ["value", ...S]> {
   // For arrays: keccak256(baseSlot)
   return (

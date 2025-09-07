@@ -11,7 +11,7 @@ const { PUSHn, MSTORE, KECCAK256 } = operations;
  * Generate code for hash operations
  */
 export function generateHashOp<S extends Stack>(
-  inst: Ir.HashInstruction,
+  inst: Ir.Instruction.Hash,
 ): Transition<S, readonly ["value", ...S]> {
   return pipe<S>()
     .then(loadValue(inst.value))

@@ -9,7 +9,7 @@ import type { SourceLocation } from "#ast";
 /**
  * Error codes for IR errors
  */
-export enum IrErrorCode {
+export enum ErrorCode {
   INVALID_NODE = "IR001",
   UNKNOWN_IDENTIFIER = "IR002",
   INTERNAL_ERROR = "IR003",
@@ -25,7 +25,7 @@ export enum IrErrorCode {
 /**
  * IR error message templates
  */
-export const IrErrorMessages = {
+export const ErrorMessages = {
   UNKNOWN_IDENTIFIER: (name: string) => `Unknown identifier: ${name}`,
   STORAGE_MODIFICATION_ERROR: (varName: string, typeName: string) =>
     `Cannot modify storage through local variable '${varName}' of type ${typeName}. Direct storage access required for persistent changes.`,
@@ -36,12 +36,12 @@ export const IrErrorMessages = {
 /**
  * IR generation errors
  */
-export class IrError extends BugError {
+export class Error extends BugError {
   constructor(
     message: string,
     location?: SourceLocation,
     severity: Severity = Severity.Error,
-    code: IrErrorCode = IrErrorCode.GENERAL,
+    code: ErrorCode = ErrorCode.GENERAL,
   ) {
     super(message, code, location, severity);
   }

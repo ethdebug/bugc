@@ -12,10 +12,10 @@ const { ADD, SUB, MUL, DIV, MOD, EQ, LT, GT, AND, OR, NOT } = operations;
  * Generate code for binary operations
  */
 export function generateBinary<S extends Stack>(
-  inst: Ir.BinaryOpInstruction,
+  inst: Ir.Instruction.BinaryOp,
 ): Transition<S, readonly ["value", ...S]> {
   const map: {
-    [O in Ir.BinaryOp]: (
+    [O in Ir.Instruction.BinaryOp["op"]]: (
       state: State<readonly ["a", "b", ...S]>,
     ) => State<readonly [Stack.Brand, ...S]>;
   } = {

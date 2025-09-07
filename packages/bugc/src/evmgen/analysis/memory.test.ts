@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 
-import type { IrFunction, BasicBlock } from "#ir";
+import type * as Ir from "#ir";
 
 import * as Memory from "./memory.js";
 import * as Liveness from "./liveness.js";
 
 describe("Memory Planning", () => {
   it("should allocate memory for phi destinations", () => {
-    const func: IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -38,7 +38,7 @@ describe("Memory Planning", () => {
               falseTarget: "merge",
             },
             predecessors: new Set(),
-          } as BasicBlock,
+          } as Ir.Block,
         ],
         [
           "merge",
@@ -64,7 +64,7 @@ describe("Memory Planning", () => {
             instructions: [],
             terminator: { kind: "return" },
             predecessors: new Set(["entry"]),
-          } as BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -88,7 +88,7 @@ describe("Memory Planning", () => {
   });
 
   it("should allocate memory for cross-block values", () => {
-    const func: IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -111,7 +111,7 @@ describe("Memory Planning", () => {
               target: "next",
             },
             predecessors: new Set(),
-          } as BasicBlock,
+          } as Ir.Block,
         ],
         [
           "next",
@@ -137,7 +137,7 @@ describe("Memory Planning", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(["entry"]),
-          } as BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -155,7 +155,7 @@ describe("Memory Planning", () => {
   });
 
   it("should allocate memory for deeply nested stack values", () => {
-    const func: IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -176,7 +176,7 @@ describe("Memory Planning", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(),
-          } as BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -195,7 +195,7 @@ describe("Memory Planning", () => {
   });
 
   it("should use sequential memory slots", () => {
-    const func: IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -211,7 +211,7 @@ describe("Memory Planning", () => {
               target: "block1",
             },
             predecessors: new Set(),
-          } as BasicBlock,
+          } as Ir.Block,
         ],
         [
           "block1",
@@ -252,7 +252,7 @@ describe("Memory Planning", () => {
             instructions: [],
             terminator: { kind: "return" },
             predecessors: new Set(["entry"]),
-          } as BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };

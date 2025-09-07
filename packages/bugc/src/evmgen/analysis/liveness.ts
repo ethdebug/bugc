@@ -22,7 +22,7 @@ export namespace Function {
   /**
    * Perform liveness analysis on a function
    */
-  export function analyze(func: Ir.IrFunction): Function.Info {
+  export function analyze(func: Ir.Function): Function.Info {
     const liveIn = new Map<string, Set<string>>();
     const liveOut = new Map<string, Set<string>>();
     const lastUse = new Map<string, string>();
@@ -187,7 +187,7 @@ export namespace Module {
   /**
    * Analyze liveness for entire module
    */
-  export function analyze(module: Ir.IrModule): Module.Info {
+  export function analyze(module: Ir.Module): Module.Info {
     const result: Module.Info = {
       functions: {},
     };
@@ -222,7 +222,7 @@ function valueId(val: Ir.Value): string {
 /**
  * Collect all values used by an instruction
  */
-function getUsedValues(inst: Ir.IrInstruction): Set<string> {
+function getUsedValues(inst: Ir.Instruction): Set<string> {
   const used = new Set<string>();
 
   // Helper to add a value if it's not a constant
@@ -318,7 +318,7 @@ function getUsedValues(inst: Ir.IrInstruction): Set<string> {
 /**
  * Get the value defined by an instruction
  */
-function getDefinedValue(inst: Ir.IrInstruction): string | undefined {
+function getDefinedValue(inst: Ir.Instruction): string | undefined {
   switch (inst.kind) {
     case "const":
     case "binary":

@@ -5,7 +5,6 @@
  * the AST and final code generation phases.
  */
 
-export * from "./ir.js";
+export * from "./spec/index.js";
 export * from "./errors.js";
-// Re-export analysis tools
-export * from "./analysis/index.js";
+export * as Analysis from "./analysis/index.js";

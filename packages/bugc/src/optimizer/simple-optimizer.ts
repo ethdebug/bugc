@@ -2,7 +2,7 @@
  * Simplified optimizer implementation that uses the optimization step architecture
  */
 
-import { IrModule } from "#ir";
+import * as Ir from "#ir";
 import { OptimizationPipeline, OptimizationStep } from "./optimizer.js";
 import {
   ConstantFoldingStep,
@@ -17,7 +17,7 @@ import {
 /**
  * Apply all optimizations based on the specified level
  */
-export function optimizeIr(module: IrModule, level: number): IrModule {
+export function optimizeIr(module: Ir.Module, level: number): Ir.Module {
   if (level === 0) return module;
 
   const steps = createOptimizationPipeline(level);

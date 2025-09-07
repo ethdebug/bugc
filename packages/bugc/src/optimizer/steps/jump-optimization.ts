@@ -1,10 +1,10 @@
-import { IrModule, IrFunction } from "#ir";
+import * as Ir from "#ir";
 import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class JumpOptimizationStep extends BaseOptimizationStep {
   name = "jump-optimization";
 
-  run(module: IrModule, context: OptimizationContext): IrModule {
+  run(module: Ir.Module, context: OptimizationContext): Ir.Module {
     const optimized = this.cloneModule(module);
 
     // Process each function separately
@@ -134,7 +134,7 @@ export class JumpOptimizationStep extends BaseOptimizationStep {
   }
 
   private updatePhisForRedirections(
-    func: IrFunction,
+    func: Ir.Function,
     redirections: Map<string, Map<string, string>>,
     jumpTargets: Map<string, string>,
   ): void {
@@ -200,7 +200,7 @@ export class JumpOptimizationStep extends BaseOptimizationStep {
     }
   }
 
-  private findReachableBlocks(func: IrFunction): Set<string> {
+  private findReachableBlocks(func: Ir.Function): Set<string> {
     const reachable = new Set<string>();
     const worklist = [func.entry];
 

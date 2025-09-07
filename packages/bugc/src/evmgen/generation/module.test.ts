@@ -6,7 +6,7 @@ import { generate } from "./module.js";
 
 describe("Module.generate", () => {
   it("should generate runtime bytecode for module without constructor", () => {
-    const module: Ir.IrModule = {
+    const module: Ir.Module = {
       name: "Test",
       storage: { slots: [] },
       functions: new Map(),
@@ -23,7 +23,7 @@ describe("Module.generate", () => {
               instructions: [],
               terminator: { kind: "return" },
               predecessors: new Set(),
-            } as Ir.BasicBlock,
+            } as Ir.Block,
           ],
         ]),
       },
@@ -56,7 +56,7 @@ describe("Module.generate", () => {
   });
 
   it("should generate deployment bytecode with constructor", () => {
-    const module: Ir.IrModule = {
+    const module: Ir.Module = {
       name: "Test",
       storage: { slots: [] },
       functions: new Map(),
@@ -73,7 +73,7 @@ describe("Module.generate", () => {
               instructions: [],
               terminator: { kind: "return" },
               predecessors: new Set(),
-            } as Ir.BasicBlock,
+            } as Ir.Block,
           ],
         ]),
       },
@@ -90,7 +90,7 @@ describe("Module.generate", () => {
               instructions: [],
               terminator: { kind: "return" },
               predecessors: new Set(),
-            } as Ir.BasicBlock,
+            } as Ir.Block,
           ],
         ]),
       },
@@ -139,7 +139,7 @@ describe("Module.generate", () => {
 
   describe("Bytecode Optimization", () => {
     it("should use optimal PUSH opcodes based on value size", () => {
-      const module: Ir.IrModule = {
+      const module: Ir.Module = {
         name: "Test",
         storage: { slots: [] },
         functions: new Map(),
@@ -223,7 +223,7 @@ describe("Module.generate", () => {
         dest: `%${i}`,
       }));
 
-      const module: Ir.IrModule = {
+      const module: Ir.Module = {
         name: "LargeContract",
         storage: { slots: [] },
         functions: new Map(),
@@ -312,7 +312,7 @@ describe("Module.generate", () => {
     });
 
     it("should calculate deployment size correctly with optimal PUSH opcodes", () => {
-      const module: Ir.IrModule = {
+      const module: Ir.Module = {
         name: "Test",
         storage: { slots: [] },
         functions: new Map(),
@@ -398,7 +398,7 @@ describe("Module.generate", () => {
       ];
 
       for (const { value, expectedPushSize } of testCases) {
-        const module: Ir.IrModule = {
+        const module: Ir.Module = {
           name: "Test",
           storage: { slots: [] },
           functions: new Map(),

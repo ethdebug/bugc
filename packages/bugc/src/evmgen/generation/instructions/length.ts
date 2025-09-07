@@ -12,7 +12,7 @@ const { PUSHn, CALLDATASIZE, SLOAD, MLOAD, SUB, SHR } = operations;
  * Generate code for length operations
  */
 export function generateLength<S extends Stack>(
-  inst: Ir.LengthInstruction,
+  inst: Ir.Instruction.Length,
 ): Transition<S, readonly ["value", ...S]> {
   // Check if this is msg.data (calldata) - use CALLDATASIZE
   const objectId = valueId(inst.object);

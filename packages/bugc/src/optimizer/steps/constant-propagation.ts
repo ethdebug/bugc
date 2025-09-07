@@ -1,10 +1,10 @@
-import { IrModule, IrInstruction, TypeRef, type Value } from "#ir";
+import * as Ir from "#ir";
 import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class ConstantPropagationStep extends BaseOptimizationStep {
   name = "constant-propagation";
 
-  run(module: IrModule, context: OptimizationContext): IrModule {
+  run(module: Ir.Module, context: OptimizationContext): Ir.Module {
     const optimized = this.cloneModule(module);
 
     // Process each function separately
@@ -13,7 +13,7 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
       const constants = new Map<string, bigint | boolean | string>();
 
       for (const block of func.blocks.values()) {
-        const newInstructions: IrInstruction[] = [];
+        const newInstructions: Ir.Instruction[] = [];
 
         for (const inst of block.instructions) {
           let newInst = inst;
@@ -36,7 +36,7 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
                 value: constValue,
                 type: this.getTypeForValue(constValue),
                 loc: inst.loc,
-              } as IrInstruction;
+              } as Ir.Instruction;
               constants.set(inst.dest, constValue);
 
               context.trackTransformation({
@@ -84,13 +84,13 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
   }
 
   private propagateConstantsIntoInstruction(
-    inst: IrInstruction,
+    inst: Ir.Instruction,
     constants: Map<string, bigint | boolean | string>,
-  ): IrInstruction {
+  ): Ir.Instruction {
     // Clone instruction and replace temp operands with constants where possible
     const result = { ...inst };
 
-    const propagateValue = (value: Value): Value => {
+    const propagateValue = (value: Ir.Value): Ir.Value => {
       if (value.kind === "temp") {
         const constValue = constants.get(value.id);
         if (constValue !== undefined) {
@@ -183,7 +183,7 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
     return changed ? result : inst;
   }
 
-  private getTypeForValue(value: bigint | boolean | string): TypeRef {
+  private getTypeForValue(value: bigint | boolean | string): Ir.Type {
     if (typeof value === "boolean") {
       return { kind: "bool" };
     } else if (typeof value === "bigint") {
@@ -193,7 +193,7 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
     }
   }
 
-  private hasSideEffects(inst: IrInstruction): boolean {
+  private hasSideEffects(inst: Ir.Instruction): boolean {
     switch (inst.kind) {
       case "store_storage":
       case "store_mapping":

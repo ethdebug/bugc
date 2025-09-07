@@ -8,12 +8,12 @@
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
 
-import { IrModule, IrInstruction, BasicBlock } from "#ir";
+import * as Ir from "#ir";
 
 import { optimizeIr as optimize } from "./simple-optimizer.js";
 
 // Simple IR validator for testing
-function validateIr(module: IrModule): { isValid: boolean } {
+function validateIr(module: Ir.Module): { isValid: boolean } {
   // Basic validation - check that module has required fields
   return {
     isValid:
@@ -116,7 +116,7 @@ describe("Optimizer Property Tests", () => {
           const assignments = new Map<string, number>();
 
           const countAssignments = (func: {
-            blocks: Map<string, BasicBlock>;
+            blocks: Map<string, Ir.Block>;
           }): void => {
             for (const block of func.blocks.values()) {
               // Count phi assignments
@@ -234,7 +234,7 @@ describe("Optimizer Property Tests", () => {
 
 // Helper functions for creating test modules
 
-function createModuleWithBinaryOp(a: bigint, b: bigint, op: string): IrModule {
+function createModuleWithBinaryOp(a: bigint, b: bigint, op: string): Ir.Module {
   return {
     name: "Test",
     main: {
@@ -299,8 +299,8 @@ function createModuleWithBinaryOp(a: bigint, b: bigint, op: string): IrModule {
   };
 }
 
-function createModuleWithDeadCode(useFlags: boolean[]): IrModule {
-  const instructions: IrInstruction[] = [];
+function createModuleWithDeadCode(useFlags: boolean[]): Ir.Module {
+  const instructions: Ir.Instruction[] = [];
 
   // Create computations
   useFlags.forEach((_, index) => {
@@ -313,7 +313,7 @@ function createModuleWithDeadCode(useFlags: boolean[]): IrModule {
   });
 
   // Use some values
-  const usedInstructions: IrInstruction[] = [];
+  const usedInstructions: Ir.Instruction[] = [];
   useFlags.forEach((used, index) => {
     if (used && index > 0) {
       usedInstructions.push({
@@ -354,7 +354,7 @@ function createModuleWithDeadCode(useFlags: boolean[]): IrModule {
   };
 }
 
-function createModuleWithDuplicateExpressions(a: bigint, b: bigint): IrModule {
+function createModuleWithDuplicateExpressions(a: bigint, b: bigint): Ir.Module {
   return {
     name: "Test",
     main: {
@@ -446,8 +446,8 @@ function createModuleWithDuplicateExpressions(a: bigint, b: bigint): IrModule {
 function createModuleWithMergeableBlocks(
   cond1: boolean,
   _cond2: boolean,
-): IrModule {
-  const blocks = new Map<string, BasicBlock>();
+): Ir.Module {
+  const blocks = new Map<string, Ir.Block>();
 
   // Entry block
   blocks.set("entry", {
@@ -505,7 +505,7 @@ function createModuleWithMergeableBlocks(
 }
 
 // Generator for random IR modules
-function generateRandomModule(): fc.Arbitrary<IrModule> {
+function generateRandomModule(): fc.Arbitrary<Ir.Module> {
   return fc.record({
     name: fc.constant("Test"),
     main: generateRandomFunction(),
@@ -518,7 +518,7 @@ function generateRandomFunction(): fc.Arbitrary<{
   name: string;
   locals: never[];
   entry: string;
-  blocks: Map<string, BasicBlock>;
+  blocks: Map<string, Ir.Block>;
 }> {
   return fc.record({
     name: fc.constant("main"),
@@ -528,9 +528,9 @@ function generateRandomFunction(): fc.Arbitrary<{
   });
 }
 
-function createSimpleBlocks(): Map<string, BasicBlock> {
+function createSimpleBlocks(): Map<string, Ir.Block> {
   // Create a simple but valid control flow graph
-  const blocks = new Map<string, BasicBlock>();
+  const blocks = new Map<string, Ir.Block>();
 
   blocks.set("entry", {
     id: "entry",
@@ -552,11 +552,11 @@ function createSimpleBlocks(): Map<string, BasicBlock> {
 
 // Utility functions
 
-function getAllInstructions(module: IrModule): IrInstruction[] {
-  const instructions: IrInstruction[] = [];
+function getAllInstructions(module: Ir.Module): Ir.Instruction[] {
+  const instructions: Ir.Instruction[] = [];
 
   const collectFromFunction = (func: {
-    blocks: Map<string, BasicBlock>;
+    blocks: Map<string, Ir.Block>;
   }): void => {
     for (const block of func.blocks.values()) {
       instructions.push(...block.instructions);
@@ -571,7 +571,7 @@ function getAllInstructions(module: IrModule): IrInstruction[] {
   return instructions;
 }
 
-function hasValidControlFlow(module: IrModule): boolean {
+function hasValidControlFlow(module: Ir.Module): boolean {
   // Check that all blocks have valid terminators
   for (const block of module.main.blocks.values()) {
     if (!block.terminator) return false;
@@ -579,7 +579,7 @@ function hasValidControlFlow(module: IrModule): boolean {
   return true;
 }
 
-function hasValidPhiNodes(module: IrModule): boolean {
+function hasValidPhiNodes(module: Ir.Module): boolean {
   // Phi nodes should only appear at block entry
   for (const block of module.main.blocks.values()) {
     if (block.phis && !Array.isArray(block.phis)) return false;
@@ -587,7 +587,7 @@ function hasValidPhiNodes(module: IrModule): boolean {
   return true;
 }
 
-function allJumpTargetsExist(module: IrModule): boolean {
+function allJumpTargetsExist(module: Ir.Module): boolean {
   const blockIds = new Set(module.main.blocks.keys());
 
   for (const block of module.main.blocks.values()) {
@@ -602,10 +602,10 @@ function allJumpTargetsExist(module: IrModule): boolean {
   return true;
 }
 
-function countInstructions(module: IrModule): number {
+function countInstructions(module: Ir.Module): number {
   let count = 0;
 
-  const countInFunction = (func: { blocks: Map<string, BasicBlock> }): void => {
+  const countInFunction = (func: { blocks: Map<string, Ir.Block> }): void => {
     for (const block of func.blocks.values()) {
       count += block.instructions.length;
       if (block.phis) count += block.phis.length;
@@ -620,16 +620,16 @@ function countInstructions(module: IrModule): number {
   return count;
 }
 
-function countBinaryOps(module: IrModule): number {
+function countBinaryOps(module: Ir.Module): number {
   return getAllInstructions(module).filter((inst) => inst.kind === "binary")
     .length;
 }
 
-function hasValidStructure(module: IrModule): boolean {
+function hasValidStructure(module: Ir.Module): boolean {
   return module.main.blocks.size > 0 && hasValidControlFlow(module);
 }
 
-function countBlocks(module: IrModule): number {
+function countBlocks(module: Ir.Module): number {
   let count = module.main.blocks.size;
   for (const func of module.functions.values()) {
     count += func.blocks.size;
@@ -637,7 +637,7 @@ function countBlocks(module: IrModule): number {
   return count;
 }
 
-function hasAllPaths(_original: IrModule, _optimized: IrModule): boolean {
+function hasAllPaths(_original: Ir.Module, _optimized: Ir.Module): boolean {
   // Simplified check - in real implementation would trace all paths
   return true;
 }

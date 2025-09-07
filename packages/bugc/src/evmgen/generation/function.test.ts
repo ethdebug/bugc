@@ -7,7 +7,7 @@ import { generate } from "./function.js";
 
 describe("Function.generate", () => {
   it("should generate bytecode for simple constants", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -27,7 +27,7 @@ describe("Function.generate", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -65,7 +65,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle local variable operations", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [{ id: "local_i", name: "i", type: { kind: "uint", bits: 256 } }],
       entry: "entry",
@@ -131,7 +131,7 @@ describe("Function.generate", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -157,7 +157,7 @@ describe("Function.generate", () => {
   });
 
   it("should generate slice operation with MCOPY", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -223,7 +223,7 @@ describe("Function.generate", () => {
               },
             },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -267,7 +267,7 @@ describe("Function.generate", () => {
   });
 
   it("should generate binary operations", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -308,7 +308,7 @@ describe("Function.generate", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -337,7 +337,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle jumps between blocks", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -353,7 +353,7 @@ describe("Function.generate", () => {
               target: "next",
             },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
         [
           "next",
@@ -363,7 +363,7 @@ describe("Function.generate", () => {
             instructions: [],
             terminator: { kind: "return" },
             predecessors: new Set(["entry"]),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -404,7 +404,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle conditional branches", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -433,7 +433,7 @@ describe("Function.generate", () => {
               falseTarget: "else",
             },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
         [
           "then",
@@ -443,7 +443,7 @@ describe("Function.generate", () => {
             instructions: [],
             terminator: { kind: "return" },
             predecessors: new Set(["entry"]),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
         [
           "else",
@@ -453,7 +453,7 @@ describe("Function.generate", () => {
             instructions: [],
             terminator: { kind: "return" },
             predecessors: new Set(["entry"]),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -484,7 +484,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle storage operations", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -523,7 +523,7 @@ describe("Function.generate", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -548,7 +548,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle environment operations", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -572,7 +572,7 @@ describe("Function.generate", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -600,7 +600,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle array slot computation", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -663,7 +663,7 @@ describe("Function.generate", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -702,7 +702,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle array element load", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -763,7 +763,7 @@ describe("Function.generate", () => {
               },
             },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -801,7 +801,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle mapping slot computation", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -854,7 +854,7 @@ describe("Function.generate", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -888,7 +888,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle mapping value load", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -939,7 +939,7 @@ describe("Function.generate", () => {
               },
             },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -979,7 +979,7 @@ describe("Function.generate", () => {
   it("should handle nested array/mapping access", () => {
     // Test something like: mapping<address, array<uint256>>
     // users[msg.sender][index]
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -1063,7 +1063,7 @@ describe("Function.generate", () => {
               },
             },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -1102,7 +1102,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle slice with zero length", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -1161,7 +1161,7 @@ describe("Function.generate", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -1183,7 +1183,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle slice operation on calldata (msg.data)", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -1263,7 +1263,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle msg.data.length using CALLDATASIZE", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -1328,7 +1328,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle slice operation on bytes", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -1415,7 +1415,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle string constants with UTF-8 encoding", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -1473,7 +1473,7 @@ describe("Function.generate", () => {
   });
 
   it("should handle UTF-8 multi-byte characters correctly", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",

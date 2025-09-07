@@ -17,7 +17,7 @@ import { generateTerminator } from "./control-flow/index.js";
  * Generate code for a basic block
  */
 export function generate<S extends Stack>(
-  block: Ir.BasicBlock,
+  block: Ir.Block,
   predecessor?: string,
   isLastBlock: boolean = false,
   isFirstBlock: boolean = false,
@@ -71,7 +71,7 @@ export function generate<S extends Stack>(
  * Generate code for phi nodes
  */
 function generatePhis<S extends Stack>(
-  phis: Ir.PhiInstruction[],
+  phis: Ir.Block.Phi[],
   predecessor: string,
 ): Transition<S, S> {
   return phis
@@ -83,7 +83,7 @@ function generatePhis<S extends Stack>(
 }
 
 function generatePhi<S extends Stack>(
-  phi: Ir.PhiInstruction,
+  phi: Ir.Block.Phi,
   predecessor: string,
 ): Transition<S, S> {
   const { PUSHn, MSTORE } = operations;

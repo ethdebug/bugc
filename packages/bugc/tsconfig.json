@@ -26,7 +26,8 @@
       "#evmgen/pass": ["./src/evmgen/pass"],
 
       "#ir": ["./src/ir/index"],
-      "#ir/*": ["./src/ir/*"],
+      "#ir/spec": ["./src/ir/spec"],
+      "#ir/analysis": ["./src/ir/analysis"],
 
       "#irgen": ["./src/irgen/index"],
       "#irgen/*": ["./src/irgen/*"],

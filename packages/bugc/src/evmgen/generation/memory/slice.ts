@@ -3,7 +3,7 @@ import type * as Ir from "#ir";
 /**
  * Get the size of a type in bytes
  */
-export function getTypeSize(type: Ir.TypeRef): bigint {
+export function getTypeSize(type: Ir.Type): bigint {
   switch (type.kind) {
     case "uint":
     case "int":
@@ -36,7 +36,7 @@ export function getTypeSize(type: Ir.TypeRef): bigint {
  * Get the element size for sliceable types
  * Returns the size of each element in bytes
  */
-export function getSliceElementSize(type: Ir.TypeRef): bigint {
+export function getSliceElementSize(type: Ir.Type): bigint {
   switch (type.kind) {
     case "array":
       // Copying Solidity, all array elements are padded to 32 bytes in memory
@@ -54,7 +54,7 @@ export function getSliceElementSize(type: Ir.TypeRef): bigint {
  * For dynamic bytes/strings in memory, data starts after the 32-byte length field.
  * For fixed-size bytes and arrays, data starts immediately.
  */
-export function getSliceDataOffset(type: Ir.TypeRef): bigint {
+export function getSliceDataOffset(type: Ir.Type): bigint {
   switch (type.kind) {
     case "bytes":
       // Dynamic bytes have a 32-byte length field before the data

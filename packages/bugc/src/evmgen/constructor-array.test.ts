@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { parse } from "#parser";
 import { TypeChecker } from "#typechecker";
 import { IrBuilder } from "#irgen";
-import type { BinaryOpInstruction } from "#ir";
+import type * as Ir from "#ir";
 
 import { Layout, Liveness, Memory } from "#evmgen/analysis";
 import { Module, Function } from "#evmgen/generation";
@@ -215,7 +215,7 @@ code {}
     // Find the add instruction destinations (these are the computed slots)
     const slotTemps = entry.instructions
       .filter((i) => i.kind === "binary" && i.op === "add")
-      .map((i) => (i as BinaryOpInstruction).dest);
+      .map((i) => (i as Ir.Instruction & { kind: "binary" }).dest);
 
     // These should NOT be allocated to memory if they're only used once
     for (const temp of slotTemps) {

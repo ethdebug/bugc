@@ -10,7 +10,7 @@ import { loadValue, storeValueIfNeeded } from "../values/index.js";
  * Cast is a no-op at the EVM level since types are checked at compile time
  */
 export function generateCast<S extends Stack>(
-  inst: Ir.CastInstruction,
+  inst: Ir.Instruction.Cast,
 ): Transition<S, readonly ["value", ...S]> {
   // Just load the value and store it with the new type annotation
   return pipe<S>()

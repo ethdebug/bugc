@@ -58,7 +58,7 @@ export namespace Module {
    * Analyze memory requirements for entire module
    */
   export function plan(
-    module: Ir.IrModule,
+    module: Ir.Module,
     liveness: Liveness.Module.Info,
   ): Result<Module.Info, Error> {
     const result: Module.Info = {
@@ -124,7 +124,7 @@ export namespace Function {
    * Plan memory layout for a function with type-aware packing
    */
   export function plan(
-    func: Ir.IrFunction,
+    func: Ir.Function,
     liveness: Liveness.Function.Info,
   ): Result<Function.Info, Error> {
     try {
@@ -210,10 +210,7 @@ export namespace Function {
 /**
  * Simulate stack effects of an instruction
  */
-function simulateInstruction(
-  stack: string[],
-  inst: Ir.IrInstruction,
-): string[] {
+function simulateInstruction(stack: string[], inst: Ir.Instruction): string[] {
   const newStack = [...stack];
 
   // Pop consumed values based on instruction type
@@ -290,7 +287,7 @@ function valueId(val: Ir.Value): string {
 /**
  * Collect all values used by an instruction
  */
-function getUsedValues(inst: Ir.IrInstruction): Set<string> {
+function getUsedValues(inst: Ir.Instruction): Set<string> {
   const used = new Set<string>();
 
   // Helper to add a value if it's not a constant
@@ -390,7 +387,7 @@ function findStackPosition(stack: string[], value: string): number {
 /**
  * Get the size in bytes for a given type
  */
-function getTypeSize(type: Ir.TypeRef): number {
+function getTypeSize(type: Ir.Type): number {
   switch (type.kind) {
     case "bool":
       return 1;
@@ -419,10 +416,7 @@ function getTypeSize(type: Ir.TypeRef): number {
 /**
  * Get type information for a value ID
  */
-function getValueType(
-  valueId: string,
-  func: Ir.IrFunction,
-): Ir.TypeRef | undefined {
+function getValueType(valueId: string, func: Ir.Function): Ir.Type | undefined {
   // Check if it's a local variable
   for (const local of func.locals || []) {
     if (local.id === valueId) {
@@ -444,7 +438,7 @@ function getValueType(
       if ("dest" in inst && inst.dest === valueId) {
         // Get type based on instruction kind
         if ("type" in inst && inst.type) {
-          return inst.type as Ir.TypeRef;
+          return inst.type as Ir.Type;
         }
         // For instructions without explicit type, infer from operation
         if (inst.kind === "binary" || inst.kind === "unary") {
@@ -468,10 +462,10 @@ function getValueType(
  * Identify values that need memory allocation with their types
  */
 function identifyMemoryValues(
-  func: Ir.IrFunction,
+  func: Ir.Function,
   liveness: Liveness.Function.Info,
-): Map<string, Ir.TypeRef> {
-  const needsMemory = new Map<string, Ir.TypeRef>();
+): Map<string, Ir.Type> {
+  const needsMemory = new Map<string, Ir.Type>();
 
   // All cross-block values need memory
   for (const value of liveness.crossBlockValues) {

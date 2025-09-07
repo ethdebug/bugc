@@ -9,15 +9,7 @@
  * produce valid SSA form from the start.
  */
 
-import {
-  IrModule,
-  IrFunction,
-  PhiInstruction,
-  Value,
-  TypeRef,
-  IrInstruction,
-  Terminator,
-} from "#ir";
+import * as Ir from "#ir";
 
 // Helper function to compare sets
 function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
@@ -47,7 +39,7 @@ export class PhiInserter {
   /**
    * Insert phi nodes at control flow join points
    */
-  insertPhiNodes(module: IrModule): IrModule {
+  insertPhiNodes(module: Ir.Module): Ir.Module {
     // Process each function
     if (module.create) {
       this.insertPhiNodesInFunction(module.create);
@@ -60,7 +52,7 @@ export class PhiInserter {
     return module;
   }
 
-  private insertPhiNodesInFunction(func: IrFunction): void {
+  private insertPhiNodesInFunction(func: Ir.Function): void {
     // Step 1: Compute dominator tree
     const dominators = this.computeDominatorTree(func);
 
@@ -102,7 +94,7 @@ export class PhiInserter {
     }
   }
 
-  private collectVariableDefinitions(func: IrFunction): VariableDefinitions {
+  private collectVariableDefinitions(func: Ir.Function): VariableDefinitions {
     const definitions: VariableDefinitions = {};
 
     // Collect all assignments to temps and locals
@@ -130,7 +122,7 @@ export class PhiInserter {
   }
 
   private computeDominatorTree(
-    func: IrFunction,
+    func: Ir.Function,
   ): Record<string, string | null> {
     const dominators: Record<string, string | null> = {};
     const blockIds = Array.from(func.blocks.keys());
@@ -243,7 +235,7 @@ export class PhiInserter {
   }
 
   private computeDominanceFrontier(
-    func: IrFunction,
+    func: Ir.Function,
     dominators: Record<string, string | null>,
   ): DominanceFrontier {
     const frontier: DominanceFrontier = {};
@@ -281,7 +273,7 @@ export class PhiInserter {
   }
 
   private insertPhiNode(
-    func: IrFunction,
+    func: Ir.Function,
     blockId: string,
     varName: string,
   ): void {
@@ -297,7 +289,7 @@ export class PhiInserter {
     if (!varType) return;
 
     // Create phi node with sources from all predecessors
-    const sources = new Map<string, Value>();
+    const sources = new Map<string, Ir.Value>();
     for (const pred of block.predecessors) {
       // Initially, use the variable itself as the source
       // A later pass will resolve these to the actual reaching definitions
@@ -306,10 +298,10 @@ export class PhiInserter {
         id: varName.startsWith("t") ? varName : undefined,
         name: varName.startsWith("t") ? undefined : varName,
         type: varType,
-      } as Value);
+      } as Ir.Value);
     }
 
-    const phi: PhiInstruction = {
+    const phi: Ir.Block.Phi = {
       kind: "phi",
       sources,
       dest: varName,
@@ -320,7 +312,7 @@ export class PhiInserter {
     block.phis.push(phi);
   }
 
-  private computeLiveness(func: IrFunction): LivenessInfo {
+  private computeLiveness(func: Ir.Function): LivenessInfo {
     const liveIn = new Map<string, Set<string>>();
     const liveOut = new Map<string, Set<string>>();
 
@@ -331,10 +323,10 @@ export class PhiInserter {
     }
 
     // Helper to get variables used by an instruction
-    const getUsedVars = (inst: IrInstruction): Set<string> => {
+    const getUsedVars = (inst: Ir.Instruction): Set<string> => {
       const used = new Set<string>();
 
-      const addValue = (val: Value | undefined): void => {
+      const addValue = (val: Ir.Value | undefined): void => {
         if (val && val.kind === "temp") {
           used.add(val.id);
         } else if (val && val.kind === "local") {
@@ -395,7 +387,7 @@ export class PhiInserter {
             addValue(inst.baseSlot);
           }
           if ("index" in inst && inst.index) {
-            addValue(inst.index as Value);
+            addValue(inst.index as Ir.Value);
           }
           break;
         case "compute_field_offset":
@@ -431,7 +423,7 @@ export class PhiInserter {
     };
 
     // Helper to get variables used by terminator
-    const getTerminatorUsedVars = (term: Terminator): Set<string> => {
+    const getTerminatorUsedVars = (term: Ir.Block.Terminator): Set<string> => {
       const used = new Set<string>();
       if (term.kind === "branch" && term.condition) {
         if (term.condition.kind === "temp") {
@@ -523,12 +515,12 @@ export class PhiInserter {
     return { liveIn, liveOut };
   }
 
-  private getVariableType(func: IrFunction, varName: string): TypeRef | null {
+  private getVariableType(func: Ir.Function, varName: string): Ir.Type | null {
     // Search through instructions to find the type of this variable
     for (const block of func.blocks.values()) {
       for (const inst of block.instructions) {
         if ("dest" in inst && inst.dest === varName && "type" in inst) {
-          return inst.type as TypeRef;
+          return inst.type as Ir.Type;
         }
       }
     }

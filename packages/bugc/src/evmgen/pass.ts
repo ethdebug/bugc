@@ -1,6 +1,6 @@
 import { Result } from "#result";
 import type { Pass } from "#compiler";
-import type { IrModule } from "#ir";
+import type * as Ir from "#ir";
 import type * as Evm from "#evm";
 
 import { Module } from "#evmgen/generation";
@@ -27,7 +27,7 @@ export interface EvmGenerationOutput {
  */
 export const pass: Pass<{
   needs: {
-    ir: IrModule;
+    ir: Ir.Module;
   };
   adds: {
     bytecode: EvmGenerationOutput;

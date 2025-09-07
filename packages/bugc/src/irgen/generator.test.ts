@@ -7,7 +7,7 @@ import { Result, Severity } from "#result";
 import "#test/matchers";
 
 describe("IrBuilder", () => {
-  function buildIR(source: string): Ir.IrModule {
+  function buildIR(source: string): Ir.Module {
     const parseResult = parse(source);
     if (!parseResult.success) {
       throw new Error(
@@ -143,13 +143,13 @@ describe("IrBuilder", () => {
 
       // Find the comparison instructions
       const gtInst = entry.instructions.find(
-        (i) => i.kind === "binary" && i.op === "gt",
+        (i: Ir.Instruction) => i.kind === "binary" && i.op === "gt",
       );
       const leInst = entry.instructions.find(
-        (i) => i.kind === "binary" && i.op === "le",
+        (i: Ir.Instruction) => i.kind === "binary" && i.op === "le",
       );
       const andInst = entry.instructions.find(
-        (i) => i.kind === "binary" && i.op === "and",
+        (i: Ir.Instruction) => i.kind === "binary" && i.op === "and",
       );
 
       expect(gtInst).toBeDefined();

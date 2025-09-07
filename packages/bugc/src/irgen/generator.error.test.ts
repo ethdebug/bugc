@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { compile } from "#compiler";
-import type { IrModule } from "#ir";
+import type * as Ir from "#ir";
 import { Result, Severity } from "#result";
 import type { BugError } from "#errors";
 import "#test/matchers";
@@ -8,7 +8,7 @@ import "#test/matchers";
 describe("IrBuilder error handling", () => {
   const compileTest = async (
     source: string,
-  ): Promise<Result<IrModule, BugError>> => {
+  ): Promise<Result<Ir.Module, BugError>> => {
     return Result.map(
       await compile({ to: "ir", source, sourcePath: "test.bug" }),
       ({ ir }) => ir,

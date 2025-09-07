@@ -24,12 +24,12 @@ import { Result, Severity, type MessagesBySeverity } from "#result";
  */
 export class IrBuilder extends Ast.BaseAstVisitor<void> {
   private context!: IrContext;
-  private errors: Ir.IrError[] = [];
+  private errors: Ir.Error[] = [];
 
   /**
    * Build IR module from AST
    */
-  build(program: Ast.Program, types: TypeMap): Result<Ir.IrModule, Ir.IrError> {
+  build(program: Ast.Program, types: TypeMap): Result<Ir.Module, Ir.Error> {
     // Reset errors
     this.errors = [];
     // Initialize context
@@ -71,10 +71,10 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     }
 
     const functionsContext = this.context as IrContext & {
-      functions?: Map<string, Ir.IrFunction>;
+      functions?: Map<string, Ir.Function>;
     };
 
-    const module: Ir.IrModule = {
+    const module: Ir.Module = {
       name: program.name,
       storage: this.context.storage,
       functions: functionsContext.functions || new Map(),
@@ -84,14 +84,14 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
 
     // Add create function if present
     const contextWithCreate = this.context as IrContext & {
-      createFunction?: Ir.IrFunction;
+      createFunction?: Ir.Function;
     };
     if (contextWithCreate.createFunction) {
       module.create = contextWithCreate.createFunction;
     }
 
     // Build messages by severity
-    const messages: MessagesBySeverity<Ir.IrError> = {};
+    const messages: MessagesBySeverity<Ir.Error> = {};
     for (const error of this.errors) {
       const severity = error.severity;
       if (!messages[severity]) {
@@ -123,7 +123,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
 
     // Process function declarations
     const functionsContext = this.context as IrContext & {
-      functions?: Map<string, Ir.IrFunction>;
+      functions?: Map<string, Ir.Function>;
     };
     functionsContext.functions = new Map();
 
@@ -153,7 +153,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       this.context.locals = new Map();
 
       // Create entry block for constructor
-      const entryBlock: Ir.BasicBlock = {
+      const entryBlock: Ir.Block = {
         id: "entry",
         phis: [],
         instructions: [],
@@ -174,7 +174,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
 
       // Store create function (we'll use it when building the module)
       const contextWithCreate = this.context as IrContext & {
-        createFunction?: Ir.IrFunction;
+        createFunction?: Ir.Function;
       };
       contextWithCreate.createFunction = this.context.currentFunction;
 
@@ -202,7 +202,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     }
   }
 
-  processFunctionDeclaration(decl: Ast.Declaration): Ir.IrFunction | null {
+  processFunctionDeclaration(decl: Ast.Declaration): Ir.Function | null {
     if (decl.kind !== "function" || !decl.metadata?.body) {
       return null;
     }
@@ -213,7 +213,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     const savedLocals = this.context.locals;
 
     // Create new function
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: decl.name,
       locals: [],
       entry: "entry",
@@ -224,7 +224,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     this.context.usedLocalNames = new Map();
 
     // Create entry block
-    const entryBlock: Ir.BasicBlock = {
+    const entryBlock: Ir.Block = {
       id: "entry",
       phis: [],
       instructions: [],
@@ -245,7 +245,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
         const param = decl.metadata.parameters![i];
         const paramType = ft.parameterTypes[i];
 
-        const localVar: Ir.LocalVariable = {
+        const localVar: Ir.Function.LocalVariable = {
           name: param.name,
           type: this.bugTypeToIrType(paramType),
           id: this.genLocalId(param.name),
@@ -270,11 +270,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       if (declType instanceof FunctionType && declType.returnType) {
         // Function should return a value but doesn't - add error
         this.errors.push(
-          new Ir.IrError(
+          new Ir.Error(
             `Function ${decl.name} must return a value`,
             decl.loc ?? undefined,
             Severity.Error,
-            Ir.IrErrorCode.MISSING_RETURN,
+            Ir.ErrorCode.MISSING_RETURN,
           ),
         );
       }
@@ -310,17 +310,17 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
         const declType = this.context.types.get(decl);
         if (!declType) {
           this.errors.push(
-            new Ir.IrError(
+            new Ir.Error(
               `Cannot determine type for variable: ${decl.name}`,
               decl.loc ?? undefined,
               Severity.Error,
-              Ir.IrErrorCode.UNKNOWN_TYPE,
+              Ir.ErrorCode.UNKNOWN_TYPE,
             ),
           );
           return;
         }
 
-        const localVar: Ir.LocalVariable = {
+        const localVar: Ir.Function.LocalVariable = {
           name: decl.name,
           type: this.bugTypeToIrType(declType),
           id: this.genLocalId(decl.name),
@@ -578,11 +578,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
         const _exhaustiveCheck: never = node;
         void _exhaustiveCheck;
         this.errors.push(
-          new Ir.IrError(
+          new Ir.Error(
             `Unexpected expression type`,
             undefined,
             Severity.Error,
-            Ir.IrErrorCode.INVALID_NODE,
+            Ir.ErrorCode.INVALID_NODE,
           ),
         );
         return {
@@ -607,7 +607,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
         dest: temp.id,
         loc: node.loc ?? undefined,
       });
-      return Ir.temp(temp.id, local.type);
+      return Ir.Value.temp(temp.id, local.type);
     }
 
     // Check if it's a storage variable
@@ -616,7 +616,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       const temp = this.genTemp(storageSlot.type);
       this.emit({
         kind: "load_storage",
-        slot: Ir.constant(BigInt(storageSlot.slot), {
+        slot: Ir.Value.constant(BigInt(storageSlot.slot), {
           kind: "uint",
           bits: 256,
         }),
@@ -624,15 +624,15 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
         dest: temp.id,
         loc: node.loc ?? undefined,
       });
-      return Ir.temp(temp.id, storageSlot.type);
+      return Ir.Value.temp(temp.id, storageSlot.type);
     }
 
     this.errors.push(
-      new Ir.IrError(
-        Ir.IrErrorMessages.UNKNOWN_IDENTIFIER(name),
+      new Ir.Error(
+        Ir.ErrorMessages.UNKNOWN_IDENTIFIER(name),
         node.loc || undefined,
         Severity.Error,
-        Ir.IrErrorCode.UNKNOWN_IDENTIFIER,
+        Ir.ErrorCode.UNKNOWN_IDENTIFIER,
       ),
     );
     return {
@@ -646,11 +646,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     const nodeType = this.context.types.get(node);
     if (!nodeType) {
       this.errors.push(
-        new Ir.IrError(
+        new Ir.Error(
           `Cannot determine type for literal: ${node.value}`,
           node.loc ?? undefined,
           Severity.Error,
-          Ir.IrErrorCode.UNKNOWN_TYPE,
+          Ir.ErrorCode.UNKNOWN_TYPE,
         ),
       );
       // Return a default value to allow compilation to continue
@@ -695,11 +695,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
         break;
       default:
         this.errors.push(
-          new Ir.IrError(
+          new Ir.Error(
             `Unknown literal kind: ${node.kind}`,
             node.loc || undefined,
             Severity.Error,
-            Ir.IrErrorCode.INVALID_NODE,
+            Ir.ErrorCode.INVALID_NODE,
           ),
         );
         return {
@@ -717,18 +717,18 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       loc: node.loc ?? undefined,
     });
 
-    return Ir.temp(temp.id, type);
+    return Ir.Value.temp(temp.id, type);
   }
 
   visitOperatorExpression(node: Ast.OperatorExpression): Ir.Value {
     const nodeType = this.context.types.get(node);
     if (!nodeType) {
       this.errors.push(
-        new Ir.IrError(
+        new Ir.Error(
           `Cannot determine type for operator expression: ${node.operator}`,
           node.loc ?? undefined,
           Severity.Error,
-          Ir.IrErrorCode.UNKNOWN_TYPE,
+          Ir.ErrorCode.UNKNOWN_TYPE,
         ),
       );
       // Return a default value to allow compilation to continue
@@ -768,11 +768,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       });
     } else {
       this.errors.push(
-        new Ir.IrError(
+        new Ir.Error(
           `Invalid operator arity: ${node.operands.length}`,
           node.loc || undefined,
           Severity.Error,
-          Ir.IrErrorCode.INVALID_NODE,
+          Ir.ErrorCode.INVALID_NODE,
         ),
       );
       return {
@@ -782,7 +782,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       };
     }
 
-    return Ir.temp(temp.id, resultType);
+    return Ir.Value.temp(temp.id, resultType);
   }
 
   visitAccessExpression(node: Ast.AccessExpression): Ir.Value {
@@ -800,7 +800,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
             (objectType.kind === "bytes" || objectType.kind === "string"))
         ) {
           const object = this.visitExpression(node.object);
-          const resultType: Ir.TypeRef = { kind: "uint", bits: 256 };
+          const resultType: Ir.Type = { kind: "uint", bits: 256 };
           const temp = this.genTemp(resultType);
 
           this.emit({
@@ -810,7 +810,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
             loc: node.loc ?? undefined,
           });
 
-          return Ir.temp(temp.id, resultType);
+          return Ir.Value.temp(temp.id, resultType);
         }
       }
 
@@ -853,7 +853,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
             loc: node.loc ?? undefined,
           });
 
-          return Ir.temp(temp.id, irFieldType);
+          return Ir.Value.temp(temp.id, irFieldType);
         }
       }
     } else if (node.kind === "slice") {
@@ -865,7 +865,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
         const end = this.visitExpression(node.end!);
 
         // Slicing bytes returns dynamic bytes
-        const resultType: Ir.TypeRef = { kind: "bytes" };
+        const resultType: Ir.Type = { kind: "bytes" };
         const temp = this.genTemp(resultType);
 
         this.emit({
@@ -877,15 +877,15 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
           loc: node.loc ?? undefined,
         });
 
-        return Ir.temp(temp.id, resultType);
+        return Ir.Value.temp(temp.id, resultType);
       }
 
       this.errors.push(
-        new Ir.IrError(
+        new Ir.Error(
           "Only bytes types can be sliced",
           node.loc || undefined,
           Severity.Error,
-          Ir.IrErrorCode.INVALID_NODE,
+          Ir.ErrorCode.INVALID_NODE,
         ),
       );
       return {
@@ -903,7 +903,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
         const index = this.visitExpression(node.property as Ast.Expression);
 
         // Bytes indexing returns uint8
-        const elementType: Ir.TypeRef = { kind: "uint", bits: 8 };
+        const elementType: Ir.Type = { kind: "uint", bits: 8 };
         const temp = this.genTemp(elementType);
 
         this.emit({
@@ -915,7 +915,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
           loc: node.loc ?? undefined,
         });
 
-        return Ir.temp(temp.id, elementType);
+        return Ir.Value.temp(temp.id, elementType);
       }
 
       // For non-bytes types, try to find a complete storage access chain
@@ -949,7 +949,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
           loc: node.loc ?? undefined,
         });
 
-        return Ir.temp(temp.id, elementType);
+        return Ir.Value.temp(temp.id, elementType);
       } else if (objectType instanceof MappingType) {
         // Simple mapping access
         const storageVar = this.findStorageVariable(node.object);
@@ -966,17 +966,17 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
             loc: node.loc ?? undefined,
           });
 
-          return Ir.temp(temp.id, valueType);
+          return Ir.Value.temp(temp.id, valueType);
         }
       }
     }
 
     this.errors.push(
-      new Ir.IrError(
+      new Ir.Error(
         "Invalid access expression",
         node.loc || undefined,
         Severity.Error,
-        Ir.IrErrorCode.INVALID_NODE,
+        Ir.ErrorCode.INVALID_NODE,
       ),
     );
     return {
@@ -994,11 +994,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     const targetType = this.context.types.get(node);
     if (!targetType) {
       this.errors.push(
-        new Ir.IrError(
+        new Ir.Error(
           "Cannot determine target type for cast expression",
           node.loc ?? undefined,
           Severity.Error,
-          Ir.IrErrorCode.UNKNOWN_TYPE,
+          Ir.ErrorCode.UNKNOWN_TYPE,
         ),
       );
       return exprValue; // Return the original value
@@ -1030,11 +1030,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       // keccak256 built-in function
       if (node.arguments.length !== 1) {
         this.errors.push(
-          new Ir.IrError(
+          new Ir.Error(
             "keccak256 expects exactly 1 argument",
             node.loc || undefined,
             Severity.Error,
-            Ir.IrErrorCode.INVALID_ARGUMENT_COUNT,
+            Ir.ErrorCode.INVALID_ARGUMENT_COUNT,
           ),
         );
         return {
@@ -1048,7 +1048,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       const argValue = this.visitExpression(node.arguments[0]);
 
       // Generate hash instruction
-      const resultType: Ir.TypeRef = { kind: "bytes", size: 32 }; // bytes32
+      const resultType: Ir.Type = { kind: "bytes", size: 32 }; // bytes32
       const resultTemp = this.genTemp(resultType).id;
 
       this.emit({
@@ -1069,11 +1069,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       const callType = this.context.types.get(node);
       if (!callType) {
         this.errors.push(
-          new Ir.IrError(
+          new Ir.Error(
             `Unknown function: ${functionName}`,
             node.loc || undefined,
             Severity.Error,
-            Ir.IrErrorCode.UNKNOWN_TYPE,
+            Ir.ErrorCode.UNKNOWN_TYPE,
           ),
         );
         return {
@@ -1122,11 +1122,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
 
     // Other forms of function calls not supported
     this.errors.push(
-      new Ir.IrError(
+      new Ir.Error(
         "Complex function call expressions not yet supported",
         node.loc || undefined,
         Severity.Error,
-        Ir.IrErrorCode.UNSUPPORTED_FEATURE,
+        Ir.ErrorCode.UNSUPPORTED_FEATURE,
       ),
     );
     return {
@@ -1140,11 +1140,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     const nodeType = this.context.types.get(node);
     if (!nodeType) {
       this.errors.push(
-        new Ir.IrError(
+        new Ir.Error(
           `Cannot determine type for special expression: ${node.kind}`,
           node.loc ?? undefined,
           Severity.Error,
-          Ir.IrErrorCode.UNKNOWN_TYPE,
+          Ir.ErrorCode.UNKNOWN_TYPE,
         ),
       );
       // Return a default value to allow compilation to continue
@@ -1158,7 +1158,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     const resultType = this.bugTypeToIrType(nodeType);
     const temp = this.genTemp(resultType);
 
-    let op: Ir.EnvOp;
+    let op: Ir.Instruction.Env["op"];
     switch (node.kind) {
       case "msg.sender":
         op = "msg_sender";
@@ -1177,11 +1177,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
         break;
       default:
         this.errors.push(
-          new Ir.IrError(
+          new Ir.Error(
             `Unknown special expression: ${node.kind}`,
             node.loc || undefined,
             Severity.Error,
-            Ir.IrErrorCode.INVALID_NODE,
+            Ir.ErrorCode.INVALID_NODE,
           ),
         );
         return {
@@ -1198,7 +1198,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       loc: node.loc ?? undefined,
     });
 
-    return Ir.temp(temp.id, resultType);
+    return Ir.Value.temp(temp.id, resultType);
   }
 
   // Required visitor methods for types
@@ -1241,7 +1241,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       if (storageSlot) {
         this.emit({
           kind: "store_storage",
-          slot: Ir.constant(BigInt(storageSlot.slot), {
+          slot: Ir.Value.constant(BigInt(storageSlot.slot), {
             kind: "uint",
             bits: 256,
           }),
@@ -1252,11 +1252,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       }
 
       this.errors.push(
-        new Ir.IrError(
-          Ir.IrErrorMessages.UNKNOWN_IDENTIFIER(name),
+        new Ir.Error(
+          Ir.ErrorMessages.UNKNOWN_IDENTIFIER(name),
           node.loc || undefined,
           Severity.Error,
-          Ir.IrErrorCode.UNKNOWN_IDENTIFIER,
+          Ir.ErrorCode.UNKNOWN_IDENTIFIER,
         ),
       );
       return;
@@ -1388,22 +1388,22 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     }
 
     this.errors.push(
-      new Ir.IrError(
+      new Ir.Error(
         "Invalid lvalue",
         node.loc || undefined,
         Severity.Error,
-        Ir.IrErrorCode.INVALID_LVALUE,
+        Ir.ErrorCode.INVALID_LVALUE,
       ),
     );
   }
 
   // Helper methods
 
-  private emit(instruction: Ir.IrInstruction): void {
+  private emit(instruction: Ir.Instruction): void {
     this.context.currentBlock.instructions.push(instruction);
   }
 
-  private genTemp(type: Ir.TypeRef): { id: string; type: Ir.TypeRef } {
+  private genTemp(type: Ir.Type): { id: string; type: Ir.Type } {
     const id = `t${this.context.tempCounter++}`;
     return { id, type };
   }
@@ -1417,9 +1417,9 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     return count === 0 ? name : `${name}_${count}`;
   }
 
-  private createBlock(label: string): Ir.BasicBlock {
+  private createBlock(label: string): Ir.Block {
     const id = `${label}_${this.context.blockCounter++}`;
-    const block: Ir.BasicBlock = {
+    const block: Ir.Block = {
       id,
       phis: [],
       instructions: [],
@@ -1431,7 +1431,10 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     return block;
   }
 
-  private setTerminator(block: Ir.BasicBlock, terminator: Ir.Terminator): void {
+  private setTerminator(
+    block: Ir.Block,
+    terminator: Ir.Block.Terminator,
+  ): void {
     // Set the terminator
     block.terminator = terminator;
 
@@ -1455,7 +1458,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     }
   }
 
-  private isTerminated(block: Ir.BasicBlock): boolean {
+  private isTerminated(block: Ir.Block): boolean {
     return (
       block.terminator !== undefined &&
       (block.terminator.kind === "return" ||
@@ -1464,10 +1467,10 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     );
   }
 
-  private astOpToIrOp(op: string): Ir.BinaryOp {
+  private astOpToIrOp(op: string): Ir.Instruction.BinaryOp["op"] {
     switch (op) {
       case "+":
-        return "add";
+        return "add" as const;
       case "-":
         return "sub";
       case "*":
@@ -1494,18 +1497,18 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
         return "or";
       default:
         this.errors.push(
-          new Ir.IrError(
+          new Ir.Error(
             `Unknown operator: ${op}. This is likely a bug in the compiler.`,
             undefined,
             Severity.Error,
-            Ir.IrErrorCode.INTERNAL_ERROR,
+            Ir.ErrorCode.INTERNAL_ERROR,
           ),
         );
         return "add"; // Default fallback for error case
     }
   }
 
-  private bugTypeToIrType(type: Type): Ir.TypeRef {
+  private bugTypeToIrType(type: Type): Ir.Type {
     if (type instanceof ElementaryType) {
       switch (type.kind) {
         case "uint":
@@ -1524,11 +1527,11 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
           return { kind: "string" };
         default:
           this.errors.push(
-            new Ir.IrError(
+            new Ir.Error(
               `Unknown elementary type: ${type.kind}`,
               undefined,
               Severity.Error,
-              Ir.IrErrorCode.UNKNOWN_TYPE,
+              Ir.ErrorCode.UNKNOWN_TYPE,
             ),
           );
           return { kind: "uint", bits: 256 }; // Default fallback for error case
@@ -1546,7 +1549,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
         value: this.bugTypeToIrType(type.valueType),
       };
     } else if (type instanceof StructType) {
-      const fields: Ir.StructField[] = [];
+      const fields: Ir.Type.StructField[] = [];
       let offset = 0;
       for (const [name, fieldType] of type.fields) {
         fields.push({
@@ -1568,21 +1571,21 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       // Function types are not directly convertible to IR types
       // This shouldn't happen in normal code generation
       this.errors.push(
-        new Ir.IrError(
+        new Ir.Error(
           `Cannot convert function type to IR type`,
           undefined,
           Severity.Error,
-          Ir.IrErrorCode.UNKNOWN_TYPE,
+          Ir.ErrorCode.UNKNOWN_TYPE,
         ),
       );
       return { kind: "uint", bits: 256 }; // Default fallback
     } else {
       this.errors.push(
-        new Ir.IrError(
+        new Ir.Error(
           `Cannot convert type to IR: ${(type as { kind?: string }).kind || "unknown"}`,
           undefined,
           Severity.Error,
-          Ir.IrErrorCode.UNKNOWN_TYPE,
+          Ir.ErrorCode.UNKNOWN_TYPE,
         ),
       );
       return { kind: "uint", bits: 256 }; // Default fallback for error case
@@ -1643,35 +1646,35 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
           : "unknown";
 
         this.errors.push(
-          new Ir.IrError(
-            Ir.IrErrorMessages.STORAGE_MODIFICATION_ERROR(name, typeDesc),
+          new Ir.Error(
+            Ir.ErrorMessages.STORAGE_MODIFICATION_ERROR(name, typeDesc),
             expr.loc ?? undefined,
             Severity.Error,
-            Ir.IrErrorCode.STORAGE_ACCESS_ERROR,
+            Ir.ErrorCode.STORAGE_ACCESS_ERROR,
           ),
         );
       }
     } else if (current.type === "CallExpression") {
       // Provide specific error for function calls
       this.errors.push(
-        new Ir.IrError(
-          Ir.IrErrorMessages.UNSUPPORTED_STORAGE_PATTERN(
+        new Ir.Error(
+          Ir.ErrorMessages.UNSUPPORTED_STORAGE_PATTERN(
             "function return values",
           ),
           expr.loc || undefined,
           Severity.Error,
-          Ir.IrErrorCode.UNSUPPORTED_FEATURE,
+          Ir.ErrorCode.UNSUPPORTED_FEATURE,
         ),
       );
     } else if (accesses.length > 0) {
       // Other unsupported base expressions when we have an access chain
       this.errors.push(
-        new Ir.IrError(
+        new Ir.Error(
           `Storage access chain must start with a storage variable identifier. ` +
             `Found ${current.type} at the base of the access chain.`,
           current.loc ?? undefined,
           Severity.Error,
-          Ir.IrErrorCode.STORAGE_ACCESS_ERROR,
+          Ir.ErrorCode.STORAGE_ACCESS_ERROR,
         ),
       );
     }
@@ -1681,7 +1684,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
 
   private findStorageVariable(
     expr: Ast.Expression,
-  ): Ir.StorageSlot | undefined {
+  ): Ir.Module.StorageSlot | undefined {
     const chain = this.findStorageAccessChain(expr);
     return chain?.slot;
   }
@@ -1699,7 +1702,10 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       // Direct storage assignment
       this.emit({
         kind: "store_storage",
-        slot: Ir.constant(BigInt(chain.slot.slot), { kind: "uint", bits: 256 }),
+        slot: Ir.Value.constant(BigInt(chain.slot.slot), {
+          kind: "uint",
+          bits: 256,
+        }),
         value,
         loc,
       });
@@ -1707,7 +1713,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
     }
 
     // Compute the final storage slot through the chain
-    let currentSlot: Ir.Value = Ir.constant(BigInt(chain.slot.slot), {
+    let currentSlot: Ir.Value = Ir.Value.constant(BigInt(chain.slot.slot), {
       kind: "uint",
       bits: 256,
     });
@@ -1723,12 +1729,12 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
             kind: "compute_slot",
             baseSlot: currentSlot,
             key: access.key,
-            keyType: (currentType as { kind: "mapping"; key: Ir.TypeRef }).key,
+            keyType: (currentType as { kind: "mapping"; key: Ir.Type }).key,
             dest: slotTemp.id,
             loc,
           });
-          currentSlot = Ir.temp(slotTemp.id, { kind: "uint", bits: 256 });
-          currentType = (currentType as { kind: "mapping"; value: Ir.TypeRef })
+          currentSlot = Ir.Value.temp(slotTemp.id, { kind: "uint", bits: 256 });
+          currentType = (currentType as { kind: "mapping"; value: Ir.Type })
             .value;
         } else if (currentType.kind === "array") {
           // Array access - both fixed and dynamic arrays use keccak256(slot) + index
@@ -1746,22 +1752,25 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
           this.emit({
             kind: "binary",
             op: "add",
-            left: Ir.temp(baseSlotTemp.id, { kind: "uint", bits: 256 }),
+            left: Ir.Value.temp(baseSlotTemp.id, { kind: "uint", bits: 256 }),
             right: access.key,
             dest: finalSlotTemp.id,
             loc,
           });
 
-          currentSlot = Ir.temp(finalSlotTemp.id, { kind: "uint", bits: 256 });
-          currentType = (currentType as { kind: "array"; element: Ir.TypeRef })
+          currentSlot = Ir.Value.temp(finalSlotTemp.id, {
+            kind: "uint",
+            bits: 256,
+          });
+          currentType = (currentType as { kind: "array"; element: Ir.Type })
             .element;
         } else {
           this.errors.push(
-            new Ir.IrError(
+            new Ir.Error(
               `Cannot index into non-mapping/array type: ${currentType.kind}`,
               loc,
               Severity.Error,
-              Ir.IrErrorCode.UNKNOWN_TYPE,
+              Ir.ErrorCode.UNKNOWN_TYPE,
             ),
           );
         }
@@ -1771,7 +1780,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
           const structType = currentType as {
             kind: "struct";
             name: string;
-            fields: Ir.StructField[];
+            fields: Ir.Type.StructField[];
           };
           const fieldIndex = structType.fields.findIndex(
             (f) => f.name === access.fieldName,
@@ -1786,25 +1795,28 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
               dest: offsetTemp.id,
               loc,
             });
-            currentSlot = Ir.temp(offsetTemp.id, { kind: "uint", bits: 256 });
+            currentSlot = Ir.Value.temp(offsetTemp.id, {
+              kind: "uint",
+              bits: 256,
+            });
             currentType = structType.fields[fieldIndex].type;
           } else {
             this.errors.push(
-              new Ir.IrError(
+              new Ir.Error(
                 `Field ${access.fieldName} not found in struct ${structType.name}`,
                 loc,
                 Severity.Error,
-                Ir.IrErrorCode.UNKNOWN_TYPE,
+                Ir.ErrorCode.UNKNOWN_TYPE,
               ),
             );
           }
         } else {
           this.errors.push(
-            new Ir.IrError(
+            new Ir.Error(
               `Cannot access member of non-struct type: ${currentType.kind}`,
               loc,
               Severity.Error,
-              Ir.IrErrorCode.UNKNOWN_TYPE,
+              Ir.ErrorCode.UNKNOWN_TYPE,
             ),
           );
         }
@@ -1826,7 +1838,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
    */
   private emitStorageChainLoad(
     chain: StorageAccessChain,
-    resultType: Ir.TypeRef,
+    resultType: Ir.Type,
     loc?: Ast.SourceLocation,
   ): Ir.Value {
     if (chain.accesses.length === 0) {
@@ -1834,16 +1846,19 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       const temp = this.genTemp(resultType);
       this.emit({
         kind: "load_storage",
-        slot: Ir.constant(BigInt(chain.slot.slot), { kind: "uint", bits: 256 }),
+        slot: Ir.Value.constant(BigInt(chain.slot.slot), {
+          kind: "uint",
+          bits: 256,
+        }),
         type: resultType,
         dest: temp.id,
         loc,
       });
-      return Ir.temp(temp.id, resultType);
+      return Ir.Value.temp(temp.id, resultType);
     }
 
     // Compute the final storage slot through the chain
-    let currentSlot: Ir.Value = Ir.constant(BigInt(chain.slot.slot), {
+    let currentSlot: Ir.Value = Ir.Value.constant(BigInt(chain.slot.slot), {
       kind: "uint",
       bits: 256,
     });
@@ -1859,12 +1874,12 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
             kind: "compute_slot",
             baseSlot: currentSlot,
             key: access.key,
-            keyType: (currentType as { kind: "mapping"; key: Ir.TypeRef }).key,
+            keyType: (currentType as { kind: "mapping"; key: Ir.Type }).key,
             dest: slotTemp.id,
             loc,
           });
-          currentSlot = Ir.temp(slotTemp.id, { kind: "uint", bits: 256 });
-          currentType = (currentType as { kind: "mapping"; value: Ir.TypeRef })
+          currentSlot = Ir.Value.temp(slotTemp.id, { kind: "uint", bits: 256 });
+          currentType = (currentType as { kind: "mapping"; value: Ir.Type })
             .value;
         } else if (currentType.kind === "array") {
           // Array access - both fixed and dynamic arrays use keccak256(slot) + index
@@ -1882,22 +1897,25 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
           this.emit({
             kind: "binary",
             op: "add",
-            left: Ir.temp(baseSlotTemp.id, { kind: "uint", bits: 256 }),
+            left: Ir.Value.temp(baseSlotTemp.id, { kind: "uint", bits: 256 }),
             right: access.key,
             dest: finalSlotTemp.id,
             loc,
           });
 
-          currentSlot = Ir.temp(finalSlotTemp.id, { kind: "uint", bits: 256 });
-          currentType = (currentType as { kind: "array"; element: Ir.TypeRef })
+          currentSlot = Ir.Value.temp(finalSlotTemp.id, {
+            kind: "uint",
+            bits: 256,
+          });
+          currentType = (currentType as { kind: "array"; element: Ir.Type })
             .element;
         } else {
           this.errors.push(
-            new Ir.IrError(
+            new Ir.Error(
               `Cannot index into non-mapping/array type: ${currentType.kind}`,
               loc,
               Severity.Error,
-              Ir.IrErrorCode.UNKNOWN_TYPE,
+              Ir.ErrorCode.UNKNOWN_TYPE,
             ),
           );
         }
@@ -1907,7 +1925,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
           const structType = currentType as {
             kind: "struct";
             name: string;
-            fields: Ir.StructField[];
+            fields: Ir.Type.StructField[];
           };
           const fieldIndex = structType.fields.findIndex(
             (f) => f.name === access.fieldName,
@@ -1922,25 +1940,28 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
               dest: offsetTemp.id,
               loc,
             });
-            currentSlot = Ir.temp(offsetTemp.id, { kind: "uint", bits: 256 });
+            currentSlot = Ir.Value.temp(offsetTemp.id, {
+              kind: "uint",
+              bits: 256,
+            });
             currentType = structType.fields[fieldIndex].type;
           } else {
             this.errors.push(
-              new Ir.IrError(
+              new Ir.Error(
                 `Field ${access.fieldName} not found in struct ${structType.name}`,
                 loc,
                 Severity.Error,
-                Ir.IrErrorCode.UNKNOWN_TYPE,
+                Ir.ErrorCode.UNKNOWN_TYPE,
               ),
             );
           }
         } else {
           this.errors.push(
-            new Ir.IrError(
+            new Ir.Error(
               `Cannot access member of non-struct type: ${currentType.kind}`,
               loc,
               Severity.Error,
-              Ir.IrErrorCode.UNKNOWN_TYPE,
+              Ir.ErrorCode.UNKNOWN_TYPE,
             ),
           );
         }
@@ -1957,7 +1978,7 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
       loc,
     });
 
-    return Ir.temp(resultTemp.id, resultType);
+    return Ir.Value.temp(resultTemp.id, resultType);
   }
 }
 
@@ -1966,9 +1987,9 @@ export class IrBuilder extends Ast.BaseAstVisitor<void> {
  */
 export interface IrContext {
   /** Current function being built */
-  currentFunction: Ir.IrFunction;
+  currentFunction: Ir.Function;
   /** Current basic block being built */
-  currentBlock: Ir.BasicBlock;
+  currentBlock: Ir.Block;
   /** Counter for generating unique temporary IDs */
   tempCounter: number;
   /** Counter for generating unique block IDs */
@@ -1978,9 +1999,9 @@ export interface IrContext {
   /** Types mapping for type information */
   types: TypeMap;
   /** Storage layout being built */
-  storage: Ir.StorageLayout;
+  storage: Ir.Module.StorageLayout;
   /** Mapping from AST variable names to IR local IDs */
-  locals: Map<string, Ir.LocalVariable>;
+  locals: Map<string, Ir.Function.LocalVariable>;
   /** Track used local names to handle shadowing */
   usedLocalNames: Map<string, number>;
   /** Stack of loop contexts for break/continue */
@@ -1998,7 +2019,7 @@ interface LoopContext {
  * Represents a chain of accesses from a storage variable
  */
 interface StorageAccessChain {
-  slot: Ir.StorageSlot;
+  slot: Ir.Module.StorageSlot;
   accesses: Array<{
     kind: "index" | "member";
     key?: Ir.Value; // For index access

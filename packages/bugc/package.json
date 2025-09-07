@@ -35,7 +35,9 @@
     "#evmgen/pass": "./dist/src/evmgen/pass.js",
 
     "#ir": "./dist/src/ir/index.js",
-    "#ir/*": "./dist/src/ir/*.js",
+    "#ir/spec": "./dist/src/ir/spec/index.js",
+    "#ir/analysis": "./dist/src/ir/analysis/index.js",
+
     "#irgen": "./dist/src/irgen/index.js",
     "#irgen/*": "./dist/src/irgen/*.js",
     "#optimizer": "./dist/src/optimizer/index.js",

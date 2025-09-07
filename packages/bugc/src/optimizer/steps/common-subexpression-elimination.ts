@@ -1,11 +1,11 @@
-import { IrModule, IrInstruction, Value } from "#ir";
+import * as Ir from "#ir";
 
 import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
   name = "common-subexpression-elimination";
 
-  run(module: IrModule, context: OptimizationContext): IrModule {
+  run(module: Ir.Module, context: OptimizationContext): Ir.Module {
     const optimized = this.cloneModule(module);
 
     // Process each function separately
@@ -16,7 +16,7 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
       for (const block of func.blocks.values()) {
         // Map of expression -> temp that computes it
         const expressions = new Map<string, string>();
-        const newInstructions: IrInstruction[] = [];
+        const newInstructions: Ir.Instruction[] = [];
 
         for (const inst of block.instructions) {
           // Apply any replacements to this instruction
@@ -102,9 +102,9 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
   }
 
   private applyValueReplacement(
-    value: Value,
+    value: Ir.Value,
     replacements: Map<string, string>,
-  ): Value {
+  ): Ir.Value {
     if (value.kind === "temp" && replacements.has(value.id)) {
       return {
         kind: "temp",
@@ -116,14 +116,14 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
   }
 
   private applyReplacements(
-    inst: IrInstruction,
+    inst: Ir.Instruction,
     replacements: Map<string, string>,
-  ): IrInstruction {
+  ): Ir.Instruction {
     // Clone the instruction and replace any temp references
     const result = { ...inst };
 
     // Helper to replace a value
-    const replaceValue = (value: Value): Value => {
+    const replaceValue = (value: Ir.Value): Ir.Value => {
       if (value.kind === "temp" && replacements.has(value.id)) {
         return {
           kind: "temp",
@@ -192,7 +192,7 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
     return result;
   }
 
-  private getExpressionKey(inst: IrInstruction): string {
+  private getExpressionKey(inst: Ir.Instruction): string {
     if (inst.kind === "binary") {
       const leftKey = this.getValueKey(inst.left);
       const rightKey = this.getValueKey(inst.right);
@@ -212,7 +212,7 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
     return "";
   }
 
-  private getValueKey(value: Value): string {
+  private getValueKey(value: Ir.Value): string {
     if (value.kind === "const") {
       return `const:${value.value}`;
     } else if (value.kind === "temp") {
@@ -223,7 +223,7 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
     return "unknown";
   }
 
-  private getTypeKey(type: Value["type"]): string {
+  private getTypeKey(type: Ir.Value["type"]): string {
     if (!type) return "unknown";
     switch (type.kind) {
       case "bool":
@@ -251,7 +251,7 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
     return ["add", "mul", "eq", "ne", "and", "or"].includes(op);
   }
 
-  private hasSideEffects(inst: IrInstruction): boolean {
+  private hasSideEffects(inst: Ir.Instruction): boolean {
     switch (inst.kind) {
       case "store_storage":
       case "store_mapping":

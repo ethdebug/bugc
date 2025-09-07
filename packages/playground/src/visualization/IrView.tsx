@@ -1,14 +1,13 @@
-import type { IrModule } from "@ethdebug/bugc";
-import { IrFormatter } from "./formatIr";
+import { Ir } from "@ethdebug/bugc";
 import "./IrView.css";
 
 interface IrViewProps {
-  ir: IrModule;
+  ir: Ir.Module;
   optimized?: boolean;
 }
 
 export function IrView({ ir, optimized = false }: IrViewProps) {
-  const formatter = new IrFormatter();
+  const formatter = new Ir.Analysis.Formatter();
   const formatted = formatter.format(ir);
 
   // Calculate stats for all functions

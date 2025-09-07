@@ -1,11 +1,11 @@
-import { IrModule, IrInstruction, IrFunction, BasicBlock } from "#ir";
+import * as Ir from "#ir";
 import { SourceLocation } from "#ast";
 
 export type OptimizationLevel = 0 | 1 | 2 | 3;
 
 export interface OptimizationStep {
   name: string;
-  run(module: IrModule, context: OptimizationContext): IrModule;
+  run(module: Ir.Module, context: OptimizationContext): Ir.Module;
 }
 
 export interface OptimizationContext {
@@ -42,7 +42,7 @@ export interface OptimizationStats {
 }
 
 export interface OptimizationResult {
-  module: IrModule;
+  module: Ir.Module;
   stats: OptimizationStats[];
   transformations: SourceTransform[];
 }
@@ -71,7 +71,7 @@ export class OptimizationContextImpl implements OptimizationContext {
 export class OptimizationPipeline {
   constructor(private steps: OptimizationStep[]) {}
 
-  optimize(module: IrModule): OptimizationResult {
+  optimize(module: Ir.Module): OptimizationResult {
     const context = new OptimizationContextImpl();
     const stats: OptimizationStats[] = [];
 
@@ -105,7 +105,7 @@ export class OptimizationPipeline {
     };
   }
 
-  private countInstructions(module: IrModule): number {
+  private countInstructions(module: Ir.Module): number {
     let count = 0;
 
     // Count main function instructions
@@ -135,7 +135,7 @@ export class OptimizationPipeline {
     return count;
   }
 
-  private countBlocks(module: IrModule): number {
+  private countBlocks(module: Ir.Module): number {
     let count = module.main.blocks.size;
 
     if (module.create) {
@@ -157,14 +157,14 @@ export class OptimizationPipeline {
 export abstract class BaseOptimizationStep implements OptimizationStep {
   abstract name: string;
 
-  abstract run(module: IrModule, context: OptimizationContext): IrModule;
+  abstract run(module: Ir.Module, context: OptimizationContext): Ir.Module;
 
   /**
    * Apply optimization to all functions (main, create, and user-defined)
    */
   protected processAllFunctions(
-    module: IrModule,
-    processor: (func: IrFunction, funcName: string) => void,
+    module: Ir.Module,
+    processor: (func: Ir.Function, funcName: string) => void,
   ): void {
     // Process main function
     processor(module.main, "main");
@@ -182,18 +182,18 @@ export abstract class BaseOptimizationStep implements OptimizationStep {
     }
   }
 
-  protected cloneModule(module: IrModule): IrModule {
+  protected cloneModule(module: Ir.Module): Ir.Module {
     // Clone main function
     const clonedMain = this.cloneFunction(module.main);
 
     // Clone create function if present
-    let clonedCreate: IrFunction | undefined;
+    let clonedCreate: Ir.Function | undefined;
     if (module.create) {
       clonedCreate = this.cloneFunction(module.create);
     }
 
     // Clone user-defined functions
-    const clonedFunctions = new Map<string, IrFunction>();
+    const clonedFunctions = new Map<string, Ir.Function>();
     if (module.functions) {
       for (const [name, func] of module.functions.entries()) {
         clonedFunctions.set(name, this.cloneFunction(func));
@@ -212,9 +212,9 @@ export abstract class BaseOptimizationStep implements OptimizationStep {
     };
   }
 
-  protected cloneFunction(func: IrFunction): IrFunction {
+  protected cloneFunction(func: Ir.Function): Ir.Function {
     // Deep clone that preserves Map structure
-    const clonedBlocks = new Map<string, BasicBlock>();
+    const clonedBlocks = new Map<string, Ir.Block>();
 
     for (const [id, block] of func.blocks.entries()) {
       clonedBlocks.set(id, {
@@ -237,12 +237,12 @@ export abstract class BaseOptimizationStep implements OptimizationStep {
   }
 
   protected replaceInstruction(
-    instructions: IrInstruction[],
+    instructions: Ir.Instruction[],
     index: number,
-    newInstruction: IrInstruction | null,
+    newInstruction: Ir.Instruction | null,
     context: OptimizationContext,
     reason: string,
-  ): IrInstruction[] {
+  ): Ir.Instruction[] {
     const result = [...instructions];
     const original = instructions[index];
 

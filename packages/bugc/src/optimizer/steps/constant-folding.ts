@@ -1,13 +1,13 @@
 import { keccak256 } from "ethereum-cryptography/keccak";
 
-import { IrModule, IrInstruction, Value, TypeRef } from "#ir";
+import * as Ir from "#ir";
 
 import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class ConstantFoldingStep extends BaseOptimizationStep {
   name = "constant-folding";
 
-  run(module: IrModule, context: OptimizationContext): IrModule {
+  run(module: Ir.Module, context: OptimizationContext): Ir.Module {
     const optimized = this.cloneModule(module);
 
     // Process all functions in the module
@@ -16,7 +16,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
       const constants = new Map<string, bigint | boolean | string>();
 
       for (const block of func.blocks.values()) {
-        const newInstructions: IrInstruction[] = [];
+        const newInstructions: Ir.Instruction[] = [];
 
         for (let i = 0; i < block.instructions.length; i++) {
           const inst = block.instructions[i];
@@ -125,7 +125,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
   }
 
   private canFoldBinary(
-    inst: IrInstruction,
+    inst: Ir.Instruction,
     constants: Map<string, bigint | boolean | string>,
   ): boolean {
     if (inst.kind !== "binary") return false;
@@ -137,9 +137,9 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
   }
 
   private foldBinary(
-    inst: IrInstruction & { kind: "binary" },
+    inst: Ir.Instruction & { kind: "binary" },
     constants: Map<string, bigint | boolean | string>,
-  ): IrInstruction | null {
+  ): Ir.Instruction | null {
     const leftValue = this.getConstantValue(inst.left, constants);
     const rightValue = this.getConstantValue(inst.right, constants);
 
@@ -158,7 +158,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
   }
 
   private getConstantValue(
-    value: Value,
+    value: Ir.Value,
     constants: Map<string, bigint | boolean | string>,
   ): bigint | boolean | string | undefined {
     if (value.kind === "const") {
@@ -217,7 +217,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
     return undefined;
   }
 
-  private getResultType(_op: string, resultType: string): TypeRef {
+  private getResultType(_op: string, resultType: string): Ir.Type {
     if (resultType === "boolean") {
       return { kind: "bool" };
     } else if (resultType === "bigint") {
@@ -227,7 +227,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
   }
 
   private canFoldHash(
-    inst: IrInstruction,
+    inst: Ir.Instruction,
     constants: Map<string, bigint | boolean | string>,
   ): boolean {
     if (inst.kind !== "hash") return false;
@@ -238,9 +238,9 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
   }
 
   private foldHash(
-    inst: IrInstruction & { kind: "hash" },
+    inst: Ir.Instruction & { kind: "hash" },
     constants: Map<string, bigint | boolean | string>,
-  ): IrInstruction | null {
+  ): Ir.Instruction | null {
     const inputValue = this.getConstantValue(inst.value, constants);
 
     if (typeof inputValue !== "string") return null;
@@ -268,7 +268,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
   }
 
   private canFoldSlice(
-    inst: IrInstruction,
+    inst: Ir.Instruction,
     constants: Map<string, bigint | boolean | string>,
   ): boolean {
     if (inst.kind !== "slice") return false;
@@ -288,9 +288,9 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
   }
 
   private foldSlice(
-    inst: IrInstruction & { kind: "slice" },
+    inst: Ir.Instruction & { kind: "slice" },
     constants: Map<string, bigint | boolean | string>,
-  ): IrInstruction | null {
+  ): Ir.Instruction | null {
     const objectValue = this.getConstantValue(inst.object, constants);
     const startValue = this.getConstantValue(inst.start, constants);
     const endValue = this.getConstantValue(inst.end, constants);
@@ -320,7 +320,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
     const slicedValue = (objectValue >> shiftAmount) & mask;
 
     // The result type depends on the slice length
-    const resultType: TypeRef =
+    const resultType: Ir.Type =
       length <= 32 ? { kind: "bytes", size: length * 8 } : { kind: "bytes" };
 
     return {
@@ -332,7 +332,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
     };
   }
 
-  private canFoldLength(inst: IrInstruction): boolean {
+  private canFoldLength(inst: Ir.Instruction): boolean {
     if (inst.kind !== "length") return false;
 
     // We can only fold length of fixed-size arrays
@@ -341,8 +341,8 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
   }
 
   private foldLength(
-    inst: IrInstruction & { kind: "length" },
-  ): IrInstruction | null {
+    inst: Ir.Instruction & { kind: "length" },
+  ): Ir.Instruction | null {
     const objectType = inst.object.type;
 
     if (objectType.kind === "array" && objectType.size !== undefined) {

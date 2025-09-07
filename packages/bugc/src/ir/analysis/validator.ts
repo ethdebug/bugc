@@ -2,22 +2,9 @@
  * IR Validator - checks IR consistency and correctness
  */
 
-import {
-  IrModule,
-  IrFunction,
-  BasicBlock,
-  IrInstruction,
-  Value,
-  TypeRef,
-} from "../ir.js";
+import * as Ir from "#ir/spec";
 
-export interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-export class IrValidator {
+export class Validator {
   private errors: string[] = [];
   private warnings: string[] = [];
   private tempDefs: Set<string> = new Set();
@@ -25,7 +12,7 @@ export class IrValidator {
   private localDefs: Set<string> = new Set();
   private blockIds: Set<string> = new Set();
 
-  validate(module: IrModule): ValidationResult {
+  validate(module: Ir.Module): Validator.Result {
     this.errors = [];
     this.warnings = [];
     this.tempDefs = new Set();
@@ -46,7 +33,7 @@ export class IrValidator {
     };
   }
 
-  private validateModule(module: IrModule): void {
+  private validateModule(module: Ir.Module): void {
     // Check module has a name
     if (!module.name) {
       this.error("Module must have a name");
@@ -63,7 +50,7 @@ export class IrValidator {
     }
   }
 
-  private validateStorageLayout(storage: IrModule["storage"]): void {
+  private validateStorageLayout(storage: Ir.Module["storage"]): void {
     const usedSlots = new Set<number>();
 
     for (const slot of storage.slots) {
@@ -83,7 +70,7 @@ export class IrValidator {
     }
   }
 
-  private validateFunction(func: IrFunction): void {
+  private validateFunction(func: Ir.Function): void {
     // Collect all block IDs
     for (const blockId of func.blocks.keys()) {
       this.blockIds.add(blockId);
@@ -117,8 +104,8 @@ export class IrValidator {
 
   private validateBlock(
     blockId: string,
-    block: BasicBlock,
-    _func: IrFunction,
+    block: Ir.Block,
+    _func: Ir.Function,
   ): void {
     // Validate instructions
     for (const inst of block.instructions) {
@@ -139,7 +126,7 @@ export class IrValidator {
     }
   }
 
-  private validateInstruction(inst: IrInstruction): void {
+  private validateInstruction(inst: Ir.Instruction): void {
     // Check instruction has required fields
     if (!inst.kind) {
       this.error("Instruction must have a kind");
@@ -206,7 +193,7 @@ export class IrValidator {
     }
   }
 
-  private validateConstInstruction(inst: IrInstruction): void {
+  private validateConstInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "const") return;
 
     if (!inst.dest) {
@@ -222,7 +209,7 @@ export class IrValidator {
     this.validateType(inst.type);
   }
 
-  private validateLoadStorageInstruction(inst: IrInstruction): void {
+  private validateLoadStorageInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "load_storage") return;
 
     if (!inst.dest) {
@@ -240,7 +227,7 @@ export class IrValidator {
     this.validateType(inst.type);
   }
 
-  private validateStoreStorageInstruction(inst: IrInstruction): void {
+  private validateStoreStorageInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "store_storage") return;
 
     if (!inst.slot) {
@@ -256,7 +243,7 @@ export class IrValidator {
     }
   }
 
-  private validateLoadLocalInstruction(inst: IrInstruction): void {
+  private validateLoadLocalInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "load_local") return;
 
     if (!inst.dest) {
@@ -272,7 +259,7 @@ export class IrValidator {
     }
   }
 
-  private validateStoreLocalInstruction(inst: IrInstruction): void {
+  private validateStoreLocalInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "store_local") return;
 
     if (!inst.local) {
@@ -288,7 +275,7 @@ export class IrValidator {
     }
   }
 
-  private validateBinaryInstruction(inst: IrInstruction): void {
+  private validateBinaryInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "binary") return;
 
     if (!inst.dest) {
@@ -314,7 +301,7 @@ export class IrValidator {
     }
   }
 
-  private validateUnaryInstruction(inst: IrInstruction): void {
+  private validateUnaryInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "unary") return;
 
     if (!inst.dest) {
@@ -334,7 +321,7 @@ export class IrValidator {
     }
   }
 
-  private validateEnvInstruction(inst: IrInstruction): void {
+  private validateEnvInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "env") return;
 
     if (!inst.dest) {
@@ -358,7 +345,7 @@ export class IrValidator {
     }
   }
 
-  private validateLoadMappingInstruction(inst: IrInstruction): void {
+  private validateLoadMappingInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "load_mapping") return;
 
     if (!inst.dest) {
@@ -380,7 +367,7 @@ export class IrValidator {
     this.validateType(inst.valueType);
   }
 
-  private validateStoreMappingInstruction(inst: IrInstruction): void {
+  private validateStoreMappingInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "store_mapping") return;
 
     if (inst.slot === undefined) {
@@ -400,7 +387,7 @@ export class IrValidator {
     }
   }
 
-  private validateComputeSlotInstruction(inst: IrInstruction): void {
+  private validateComputeSlotInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "compute_slot") return;
 
     if (!inst.dest) {
@@ -424,7 +411,7 @@ export class IrValidator {
     this.validateType(inst.keyType);
   }
 
-  private validateComputeArraySlotInstruction(inst: IrInstruction): void {
+  private validateComputeArraySlotInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "compute_array_slot") return;
 
     if (!inst.dest) {
@@ -440,7 +427,7 @@ export class IrValidator {
     }
   }
 
-  private validateComputeFieldOffsetInstruction(inst: IrInstruction): void {
+  private validateComputeFieldOffsetInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "compute_field_offset") return;
 
     if (!inst.dest) {
@@ -460,7 +447,7 @@ export class IrValidator {
     }
   }
 
-  private validateLoadFieldInstruction(inst: IrInstruction): void {
+  private validateLoadFieldInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "load_field") return;
 
     if (!inst.dest) {
@@ -486,7 +473,7 @@ export class IrValidator {
     this.validateType(inst.type);
   }
 
-  private validateStoreFieldInstruction(inst: IrInstruction): void {
+  private validateStoreFieldInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "store_field") return;
 
     if (!inst.object) {
@@ -510,7 +497,7 @@ export class IrValidator {
     }
   }
 
-  private validateLoadIndexInstruction(inst: IrInstruction): void {
+  private validateLoadIndexInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "load_index") return;
 
     if (!inst.dest) {
@@ -534,7 +521,7 @@ export class IrValidator {
     this.validateType(inst.elementType);
   }
 
-  private validateStoreIndexInstruction(inst: IrInstruction): void {
+  private validateStoreIndexInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "store_index") return;
 
     if (!inst.array) {
@@ -556,7 +543,7 @@ export class IrValidator {
     }
   }
 
-  private validateHashInstruction(inst: IrInstruction): void {
+  private validateHashInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "hash") return;
 
     if (!inst.dest) {
@@ -572,7 +559,7 @@ export class IrValidator {
     }
   }
 
-  private validateTerminator(term: BasicBlock["terminator"]): void {
+  private validateTerminator(term: Ir.Block["terminator"]): void {
     if (!term.kind) {
       this.error("Terminator must have a kind");
       return;
@@ -612,7 +599,7 @@ export class IrValidator {
     }
   }
 
-  private validateValue(value: Value): void {
+  private validateValue(value: Ir.Value): void {
     if (!value || typeof value !== "object") return;
 
     switch (value.kind) {
@@ -650,7 +637,7 @@ export class IrValidator {
     }
   }
 
-  private validateType(type: TypeRef): void {
+  private validateType(type: Ir.Type): void {
     if (!type || !type.kind) {
       this.error("Type must have a kind");
       return;
@@ -720,7 +707,7 @@ export class IrValidator {
     }
   }
 
-  private checkUnreachableBlocks(func: IrFunction): void {
+  private checkUnreachableBlocks(func: Ir.Function): void {
     const reachable = new Set<string>();
     const worklist = [func.entry];
 
@@ -743,7 +730,7 @@ export class IrValidator {
     }
   }
 
-  private checkPredecessorConsistency(func: IrFunction): void {
+  private checkPredecessorConsistency(func: Ir.Function): void {
     // Build actual predecessor sets
     const actualPreds = new Map<string, Set<string>>();
 
@@ -778,7 +765,7 @@ export class IrValidator {
     }
   }
 
-  private getTerminatorTargets(term: BasicBlock["terminator"]): string[] {
+  private getTerminatorTargets(term: Ir.Block["terminator"]): string[] {
     switch (term.kind) {
       case "jump":
         return [term.target];
@@ -797,5 +784,13 @@ export class IrValidator {
 
   private warning(message: string): void {
     this.warnings.push(message);
+  }
+}
+
+export namespace Validator {
+  export interface Result {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
   }
 }

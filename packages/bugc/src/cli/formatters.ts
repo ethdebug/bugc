@@ -1,4 +1,4 @@
-import { type IrModule, IrFormatter } from "#ir";
+import * as Ir from "#ir";
 
 export function formatJson(
   data: unknown,
@@ -76,7 +76,7 @@ function removeKeys(obj: unknown, keysToRemove: string[]): unknown {
   return obj;
 }
 
-export function formatIrText(ir: IrModule): string {
-  const formatter = new IrFormatter();
+export function formatIrText(ir: Ir.Module): string {
+  const formatter = new Ir.Analysis.Formatter();
   return formatter.format(ir);
 }

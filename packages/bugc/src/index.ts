@@ -23,7 +23,7 @@ export {
 export type { Type, TypeKind, BugSymbol, TypeMap } from "#types";
 
 // Re-export IR functionality
-export * from "#ir";
+export * as Ir from "#ir";
 
 // Re-export IR generation functionality
 export { IrBuilder } from "#irgen";
@@ -42,7 +42,7 @@ export * from "#result";
 export { compile, type CompileOptions } from "#compiler";
 
 // Re-export EVM functionality
-export * from "#evm";
+export * as Evm from "#evm";
 
 // CLI utilities are not exported to avoid browser compatibility issues
 // They should be imported directly from ./cli when needed in Node.js environments

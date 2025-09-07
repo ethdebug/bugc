@@ -2,22 +2,13 @@
  * IR formatter for human-readable text output
  */
 
-import {
-  IrModule,
-  IrFunction,
-  BasicBlock,
-  IrInstruction,
-  PhiInstruction,
-  Value,
-  TypeRef,
-  Terminator,
-} from "../ir.js";
+import * as Ir from "#ir/spec";
 
-export class IrFormatter {
+export class Formatter {
   private indent = 0;
   private output: string[] = [];
 
-  format(module: IrModule): string {
+  format(module: Ir.Module): string {
     this.output = [];
     this.indent = 0;
 
@@ -63,7 +54,7 @@ export class IrFormatter {
     return this.output.join("\n");
   }
 
-  private formatFunction(func: IrFunction): void {
+  private formatFunction(func: Ir.Function): void {
     // Format function signature with parameters
     const paramCount = func.paramCount || 0;
     const params: string[] = [];
@@ -97,7 +88,7 @@ export class IrFormatter {
     this.line("}");
   }
 
-  private formatBlock(id: string, block: BasicBlock): void {
+  private formatBlock(id: string, block: Ir.Block): void {
     // Block header - only show predecessors for merge points (multiple preds)
     // or if block has phi nodes (which indicates it's a merge point)
     const showPreds =
@@ -128,7 +119,7 @@ export class IrFormatter {
     this.line("");
   }
 
-  private formatPhiInstruction(inst: PhiInstruction): string {
+  private formatPhiInstruction(inst: Ir.Block.Phi): string {
     const sources: string[] = [];
     for (const [block, value] of inst.sources) {
       sources.push(`[${block}: ${this.formatValue(value)}]`);
@@ -138,9 +129,9 @@ export class IrFormatter {
     const typeStr = inst.type ? `: ${this.formatType(inst.type)}` : "";
     return `${dest}${typeStr} = phi ${sources.join(", ")}`;
   }
-  private formatInstruction(inst: IrInstruction): string {
+  private formatInstruction(inst: Ir.Instruction): string {
     // Helper to add type annotation to dest
-    const destWithType = (dest: string, type?: TypeRef): string => {
+    const destWithType = (dest: string, type?: Ir.Type): string => {
       // Add appropriate prefix for destinations
       const formattedDest = dest.startsWith("t") ? `%${dest}` : `^${dest}`;
       return type
@@ -231,7 +222,7 @@ export class IrFormatter {
     }
   }
 
-  private formatTerminator(term: Terminator): string {
+  private formatTerminator(term: Ir.Block.Terminator): string {
     switch (term.kind) {
       case "jump":
         return `jump ${term.target}`;
@@ -250,7 +241,7 @@ export class IrFormatter {
   }
 
   private formatValue(
-    value: Value | bigint | string | boolean,
+    value: Ir.Value | bigint | string | boolean,
     includeType: boolean = false,
   ): string {
     if (typeof value === "bigint") {
@@ -292,7 +283,7 @@ export class IrFormatter {
 
   private formatConstValue(
     value: bigint | string | boolean,
-    type?: TypeRef,
+    type?: Ir.Type,
   ): string {
     if (typeof value === "bigint") {
       // If we have type information and it's a bytes type, format as hex
@@ -316,7 +307,7 @@ export class IrFormatter {
     return value.toString();
   }
 
-  private formatType(type: TypeRef): string {
+  private formatType(type: Ir.Type): string {
     switch (type.kind) {
       case "uint":
         return `uint${type.bits}`;
@@ -348,7 +339,7 @@ export class IrFormatter {
     this.output.push(indentStr + text);
   }
 
-  private topologicalSort(func: IrFunction): string[] {
+  private topologicalSort(func: Ir.Function): string[] {
     const visited = new Set<string>();
     const result: string[] = [];
 
@@ -379,7 +370,7 @@ export class IrFormatter {
     return result.reverse();
   }
 
-  private getSuccessors(block: BasicBlock): string[] {
+  private getSuccessors(block: Ir.Block): string[] {
     switch (block.terminator.kind) {
       case "jump":
         return [block.terminator.target];

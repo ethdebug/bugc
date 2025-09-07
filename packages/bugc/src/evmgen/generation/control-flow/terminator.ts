@@ -9,7 +9,7 @@ import { valueId, loadValue } from "../values/index.js";
  * Generate code for a block terminator
  */
 export function generateTerminator<S extends Stack>(
-  term: Ir.Terminator,
+  term: Ir.Block.Terminator,
   isLastBlock: boolean = false,
 ): Transition<S, S> {
   const { PUSHn, PUSH2, MSTORE, RETURN, STOP, JUMP, JUMPI } = operations;

@@ -13,7 +13,7 @@ const { PUSHn, MLOAD, MSTORE, DUP2, ADD } = operations;
  * Generate code for loading from local memory
  */
 export function generateLoadLocal<S extends Stack>(
-  inst: Ir.LoadLocalInstruction,
+  inst: Ir.Instruction.LoadLocal,
 ): Transition<S, readonly ["value", ...S]> {
   return pipe<S>()
     .peek((state, builder) => {
@@ -37,7 +37,7 @@ export function generateLoadLocal<S extends Stack>(
  * Generate code for storing to local memory
  */
 export function generateStoreLocal<S extends Stack>(
-  inst: Ir.StoreLocalInstruction,
+  inst: Ir.Instruction.StoreLocal,
 ): Transition<S, S> {
   return pipe<S>()
     .peek((state, builder) => {

@@ -1,10 +1,10 @@
-import { IrModule, PhiInstruction, IrInstruction, Value } from "#ir";
+import * as Ir from "#ir";
 import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class DeadCodeEliminationStep extends BaseOptimizationStep {
   name = "dead-code-elimination";
 
-  run(module: IrModule, context: OptimizationContext): IrModule {
+  run(module: Ir.Module, context: OptimizationContext): Ir.Module {
     const optimized = this.cloneModule(module);
 
     // Process each function separately
@@ -57,7 +57,7 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
         }
 
         // Remove dead instructions
-        const newInstructions: IrInstruction[] = [];
+        const newInstructions: Ir.Instruction[] = [];
 
         for (const inst of block.instructions) {
           if (this.hasSideEffects(inst)) {
@@ -88,7 +88,7 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
   }
 
   private collectUsedValues(
-    inst: PhiInstruction | IrInstruction,
+    inst: Ir.Block.Phi | Ir.Instruction,
     used: Set<string>,
   ): void {
     switch (inst.kind) {
@@ -169,7 +169,7 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
     }
   }
 
-  private collectValueUse(value: Value, used: Set<string>): void {
+  private collectValueUse(value: Ir.Value, used: Set<string>): void {
     if (value.kind === "temp") {
       used.add(value.id);
     } else if (value.kind === "local") {
@@ -177,7 +177,7 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
     }
   }
 
-  private hasSideEffects(inst: IrInstruction): boolean {
+  private hasSideEffects(inst: Ir.Instruction): boolean {
     switch (inst.kind) {
       case "store_storage":
       case "store_mapping":

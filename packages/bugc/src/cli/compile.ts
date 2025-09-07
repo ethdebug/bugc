@@ -13,7 +13,7 @@ import {
 } from "./options.js";
 import { displayErrors, displayWarnings } from "./output.js";
 import { formatJson, formatIrText } from "./formatters.js";
-import { type IrModule, IrValidator, IrStats, IrFormatter } from "#ir";
+import * as Ir from "#ir";
 import { EvmFormatter } from "#evm/analysis";
 import type { Program } from "#ast";
 import type { EvmGenerationOutput } from "#evmgen/pass";
@@ -27,11 +27,11 @@ type Phase = "ast" | "ir" | "bytecode";
 type CompilerOutput<T extends Phase> = T extends "ast"
   ? { ast: Program }
   : T extends "ir"
-    ? { ast: Program; ir: IrModule }
+    ? { ast: Program; ir: Ir.Module }
     : T extends "bytecode"
       ? {
           ast: Program;
-          ir: IrModule;
+          ir: Ir.Module;
           bytecode: EvmGenerationOutput;
         }
       : never;
@@ -256,7 +256,7 @@ function formatAst(ast: Program, format: string, pretty: boolean): string {
   }
 }
 
-function formatIr(ir: IrModule, format: string): string {
+function formatIr(ir: Ir.Module, format: string): string {
   if (format === "json") {
     return formatJson(ir, false);
   } else {
@@ -308,7 +308,7 @@ function formatBytecode(
 
 // Post-processing functions
 async function postProcessIr(
-  ir: IrModule,
+  ir: Ir.Module,
   args: Record<string, unknown> & { filePath?: string },
 ): Promise<void> {
   // Handle --validate flag
@@ -338,8 +338,8 @@ async function postProcessIr(
   }
 }
 
-function validateIr(ir: IrModule): void {
-  const validator = new IrValidator();
+function validateIr(ir: Ir.Module): void {
+  const validator = new Ir.Analysis.Validator();
   const validationResult = validator.validate(ir);
 
   if (!validationResult.isValid) {
@@ -361,8 +361,8 @@ function validateIr(ir: IrModule): void {
   console.error("");
 }
 
-function showStats(ir: IrModule): void {
-  const stats = new IrStats();
+function showStats(ir: Ir.Module): void {
+  const stats = new Ir.Analysis.Statistics.Analyzer();
   const statistics = stats.analyze(ir);
 
   console.log("=== IR Statistics ===");
@@ -402,7 +402,7 @@ async function showBothVersions(
     if (format === "json") {
       console.log(JSON.stringify(unoptIr, null, 2));
     } else {
-      const formatter = new IrFormatter();
+      const formatter = new Ir.Analysis.Formatter();
       console.log(formatter.format(unoptIr));
     }
     console.log("\n=== Optimized IR (Level " + optimizationLevel + ") ===");

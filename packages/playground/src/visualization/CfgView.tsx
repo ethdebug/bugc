@@ -15,25 +15,19 @@ import ReactFlow, {
 } from "react-flow-renderer";
 import dagre from "dagre";
 import "react-flow-renderer/dist/style.css";
-import type {
-  IrModule,
-  IrFunction,
-  BasicBlock,
-  IrInstruction,
-  Terminator,
-} from "@ethdebug/bugc";
+import type { Ir } from "@ethdebug/bugc";
 import "./CfgView.css";
 
 interface CfgViewProps {
-  ir: IrModule;
+  ir: Ir.Module;
   optimized?: boolean;
   showComparison?: boolean;
-  comparisonIr?: IrModule;
+  comparisonIr?: Ir.Module;
 }
 
 interface BlockNodeData {
   label: string;
-  block: BasicBlock;
+  block: Ir.Block;
   isEntry: boolean;
   instructionCount: number;
   functionName?: string;
@@ -74,7 +68,7 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
     const nodes: Node<BlockNodeData>[] = [];
     const edges: Edge[] = [];
 
-    const processFunction = (func: IrFunction, funcName: string) => {
+    const processFunction = (func: Ir.Function, funcName: string) => {
       const blockEntries = Array.from(func.blocks.entries());
 
       // Create nodes with function name prefix to ensure unique IDs
@@ -162,7 +156,7 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
     processFunction(ir.main, "main");
 
     // Add call edges between blocks and functions
-    const allFunctions = new Map<string, IrFunction>();
+    const allFunctions = new Map<string, Ir.Function>();
     if (ir.functions) {
       ir.functions.forEach((func, name) => allFunctions.set(name, func));
     }
@@ -278,7 +272,7 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
     return selectedNode.replace(":", "::");
   }, [selectedNode]);
 
-  const formatInstruction = useCallback((inst: IrInstruction): string => {
+  const formatInstruction = useCallback((inst: Ir.Instruction): string => {
     // Recreate the formatting logic from IrFormatter since methods are private
     const formatValue = (value: unknown): string => {
       if (typeof value === "bigint") return value.toString();
@@ -376,7 +370,7 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
     }
   }, []);
 
-  const formatTerminator = useCallback((term: Terminator): string => {
+  const formatTerminator = useCallback((term: Ir.Block.Terminator): string => {
     const formatValue = (value: unknown): string => {
       if (typeof value === "bigint") return value.toString();
       if (typeof value === "string") return JSON.stringify(value);
@@ -460,7 +454,7 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
               <h5>Instructions:</h5>
               <pre className="instruction-list">
                 {selectedBlock.instructions.map(
-                  (inst: IrInstruction, i: number) => (
+                  (inst: Ir.Instruction, i: number) => (
                     <div key={i} className="instruction">
                       {formatInstruction(inst)}
                     </div>

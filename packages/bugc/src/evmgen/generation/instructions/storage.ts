@@ -11,7 +11,7 @@ const { PUSHn, SLOAD, SSTORE, MSTORE, KECCAK256 } = operations;
  * Generate code for loading from storage
  */
 export function generateLoadStorage<S extends Stack>(
-  inst: Ir.LoadStorageInstruction,
+  inst: Ir.Instruction.LoadStorage,
 ): Transition<S, readonly ["value", ...S]> {
   return pipe<S>()
     .then(loadValue(inst.slot), { as: "key" })
@@ -24,7 +24,7 @@ export function generateLoadStorage<S extends Stack>(
  * Generate code for storing to storage
  */
 export function generateStoreStorage<S extends Stack>(
-  inst: Ir.StoreStorageInstruction,
+  inst: Ir.Instruction.StoreStorage,
 ): Transition<S, S> {
   return pipe<S>()
     .then(loadValue(inst.value), { as: "value" })
@@ -37,7 +37,7 @@ export function generateStoreStorage<S extends Stack>(
  * Generate code for loading from a mapping
  */
 export function generateLoadMapping<S extends Stack>(
-  inst: Ir.LoadMappingInstruction,
+  inst: Ir.Instruction.LoadMapping,
 ): Transition<S, readonly ["value", ...S]> {
   return (
     pipe<S>()
@@ -67,7 +67,7 @@ export function generateLoadMapping<S extends Stack>(
  * Generate code for storing to a mapping
  */
 export function generateStoreMapping<S extends Stack>(
-  inst: Ir.StoreMappingInstruction,
+  inst: Ir.Instruction.StoreMapping,
 ): Transition<S, S> {
   return (
     pipe<S>()

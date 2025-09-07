@@ -32,7 +32,7 @@ import {
  * Generate code for an IR instruction
  */
 export function generate<S extends Stack>(
-  inst: Ir.IrInstruction,
+  inst: Ir.Instruction,
 ): Transition<S, Stack> {
   switch (inst.kind) {
     case "const":

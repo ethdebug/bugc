@@ -17,7 +17,7 @@ const { PUSHn, DUP2, MSTORE, ADD } = operations;
  * Generate code for const instructions
  */
 export function generateConst<S extends Stack>(
-  inst: Ir.ConstInstruction,
+  inst: Ir.Instruction.Const,
 ): Transition<S, readonly ["value", ...S]> {
   // Check the type to determine how to handle the constant
   // Fixed-size bytes are stored as values on the stack

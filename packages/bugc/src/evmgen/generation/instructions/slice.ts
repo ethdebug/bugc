@@ -25,7 +25,7 @@ const { PUSHn, MUL, ADD, SUB, DUP1, SWAP1, SWAP3, MCOPY, CALLDATACOPY } =
  * Generate code for slice operations
  */
 export function generateSlice<S extends Stack>(
-  inst: Ir.SliceInstruction,
+  inst: Ir.Instruction.Slice,
 ): Transition<S, readonly ["value", ...S]> {
   const objectId = valueId(inst.object);
 

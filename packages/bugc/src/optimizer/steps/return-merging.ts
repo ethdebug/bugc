@@ -1,10 +1,10 @@
-import { IrModule, Value } from "#ir";
+import * as Ir from "#ir";
 import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
 
 export class ReturnMergingStep extends BaseOptimizationStep {
   name = "return-merging";
 
-  run(module: IrModule, context: OptimizationContext): IrModule {
+  run(module: Ir.Module, context: OptimizationContext): Ir.Module {
     const optimized = this.cloneModule(module);
 
     // Process each function separately
@@ -112,7 +112,7 @@ export class ReturnMergingStep extends BaseOptimizationStep {
     return optimized;
   }
 
-  private getReturnSignature(value?: Value): string {
+  private getReturnSignature(value?: Ir.Value): string {
     if (!value) {
       return "void";
     }

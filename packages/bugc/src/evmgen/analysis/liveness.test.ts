@@ -5,7 +5,7 @@ import * as Liveness from "./liveness.js";
 
 describe("Liveness Analysis", () => {
   it("should identify live-in and live-out sets for a simple function", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -46,7 +46,7 @@ describe("Liveness Analysis", () => {
             ],
             terminator: { kind: "return" },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -64,7 +64,7 @@ describe("Liveness Analysis", () => {
   });
 
   it("should track values across blocks", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -89,7 +89,7 @@ describe("Liveness Analysis", () => {
               falseTarget: "else",
             },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
         [
           "then",
@@ -109,7 +109,7 @@ describe("Liveness Analysis", () => {
               target: "merge",
             },
             predecessors: new Set(["entry"]),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
         [
           "else",
@@ -129,7 +129,7 @@ describe("Liveness Analysis", () => {
               target: "merge",
             },
             predecessors: new Set(["entry"]),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
         [
           "merge",
@@ -139,7 +139,7 @@ describe("Liveness Analysis", () => {
             instructions: [],
             terminator: { kind: "return" },
             predecessors: new Set(["then", "else"]),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };
@@ -155,7 +155,7 @@ describe("Liveness Analysis", () => {
   });
 
   it("should handle phi nodes correctly", () => {
-    const func: Ir.IrFunction = {
+    const func: Ir.Function = {
       name: "test",
       locals: [],
       entry: "entry",
@@ -178,7 +178,7 @@ describe("Liveness Analysis", () => {
               target: "loop",
             },
             predecessors: new Set(),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
         [
           "loop",
@@ -260,7 +260,7 @@ describe("Liveness Analysis", () => {
               falseTarget: "exit",
             },
             predecessors: new Set(["entry", "loop"]),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
         [
           "exit",
@@ -277,7 +277,7 @@ describe("Liveness Analysis", () => {
               },
             },
             predecessors: new Set(["loop"]),
-          } as Ir.BasicBlock,
+          } as Ir.Block,
         ],
       ]),
     };

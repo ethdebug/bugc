@@ -15,7 +15,7 @@ import { serialize } from "../serialize.js";
  * Generate bytecode for a function
  */
 export function generate(
-  func: Ir.IrFunction,
+  func: Ir.Function,
   memory: Memory.Function.Info,
   layout: Layout.Function.Info,
 ) {

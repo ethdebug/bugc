@@ -1,6 +1,6 @@
 import type { Program } from "#ast";
 import type { TypeMap } from "#types";
-import type { IrModule, IrError } from "#ir";
+import type * as Ir from "#ir";
 import { Result } from "#result";
 import type { Pass } from "#compiler";
 
@@ -17,16 +17,16 @@ export const pass: Pass<{
     types: TypeMap;
   };
   adds: {
-    ir: IrModule;
+    ir: Ir.Module;
   };
-  error: IrError;
+  error: Ir.Error;
 }> = {
   async run({ ast, types }) {
     const generator = new IrBuilder();
     const result = generator.build(ast, types);
 
     // Insert phi nodes after generating the IR
-    return Result.map(result, (ir: IrModule) => {
+    return Result.map(result, (ir: Ir.Module) => {
       const phiInserter = new PhiInserter();
       const irWithPhis = phiInserter.insertPhiNodes(ir);
       return { ir: irWithPhis };

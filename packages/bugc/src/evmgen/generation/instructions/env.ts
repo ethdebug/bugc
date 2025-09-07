@@ -12,10 +12,10 @@ const { CALLER, CALLVALUE, PUSH0, TIMESTAMP, NUMBER } = operations;
  * Generate code for environment operations
  */
 export function generateEnvOp<S extends Stack>(
-  inst: Ir.EnvInstruction,
+  inst: Ir.Instruction.Env,
 ): Transition<S, readonly ["value", ...S]> {
   const map: {
-    [O in Ir.EnvOp]: <S extends Stack>(
+    [O in Ir.Instruction.Env["op"]]: <S extends Stack>(
       state: State<readonly [...S]>,
     ) => State<readonly [Stack.Brand, ...S]>;
   } = {
