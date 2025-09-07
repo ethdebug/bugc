@@ -1,5 +1,8 @@
 import * as Ir from "#ir";
-import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
+import {
+  BaseOptimizationStep,
+  type OptimizationContext,
+} from "../optimizer.js";
 
 export class DeadCodeEliminationStep extends BaseOptimizationStep {
   name = "dead-code-elimination";

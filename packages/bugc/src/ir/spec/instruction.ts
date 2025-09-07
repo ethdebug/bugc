@@ -1,6 +1,6 @@
 import type * as Ast from "#ast";
 
-import { Type } from "./type.js";
+import type { Type } from "./type.js";
 import { Value } from "./value.js";
 
 export type Instruction =

@@ -2,7 +2,7 @@
  * Type factories and utilities for the BUG type system
  */
 
-import { Type, ElementaryType } from "./definitions.js";
+import { type Type, ElementaryType } from "./definitions.js";
 
 // Type utilities
 export const Types = {

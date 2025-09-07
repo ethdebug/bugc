@@ -3,7 +3,7 @@
  * All methods manually construct the JSON-RPC requests
  */
 
-import { EIP1193Provider } from "./provider.js";
+import type { EIP1193Provider } from "./provider.js";
 
 export interface TransactionRequest {
   from?: string;

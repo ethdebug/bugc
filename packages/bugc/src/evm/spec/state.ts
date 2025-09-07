@@ -1,4 +1,4 @@
-import { $ } from "./hkts.js";
+import type { $ } from "./hkts.js";
 import type { Stack, TopN, PopN, Push } from "./stack.js";
 
 export namespace Unsafe {

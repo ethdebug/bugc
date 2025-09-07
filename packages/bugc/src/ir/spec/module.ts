@@ -1,7 +1,7 @@
 import type * as Ast from "#ast";
 
-import { Type } from "./type.js";
-import { Function as IrFunction } from "./function.js";
+import type { Type } from "./type.js";
+import type { Function as IrFunction } from "./function.js";
 
 /**
  * Top-level Ir module representing a complete BUG program

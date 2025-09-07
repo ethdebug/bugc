@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { AccessExpression } from "#ast";
+import type { AccessExpression } from "#ast";
 
 import { parse } from "./parser.js";
 

@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   Ast,
-  Program,
-  Declaration,
-  Block,
-  Expression,
-  Statement,
+  type Program,
+  type Declaration,
+  type Block,
+  type Expression,
+  type Statement,
   BaseAstVisitor,
   cloneNode,
   updateNode,

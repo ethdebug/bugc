@@ -9,7 +9,7 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 // Debug compilation not yet available in new interface
 import * as Format from "@ethdebug/format";
-import { CliBase, BaseCliOptions } from "../src/cli-base.js";
+import { CliBase, type BaseCliOptions } from "../src/cli-base.js";
 import { StorageDecoder } from "./storage-decoder.js";
 
 interface StorageOptions extends BaseCliOptions {

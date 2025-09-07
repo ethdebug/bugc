@@ -1,4 +1,4 @@
-import { $ } from "./hkts.js";
+import type { $ } from "./hkts.js";
 
 /**
  * Represents an EVM stack as an ordered list of semantic stack brands.

@@ -2,7 +2,7 @@
  * Symbol table for tracking variables and their types
  */
 
-import { Type } from "./definitions.js";
+import type { Type } from "./definitions.js";
 
 // Symbol table entry
 export interface BugSymbol {

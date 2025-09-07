@@ -1,4 +1,4 @@
-import { $ } from "./hkts.js";
+import type { $ } from "./hkts.js";
 
 import type { Stack } from "./stack.js";
 import type { State } from "./state.js";

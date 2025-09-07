@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { compile } from "@ethdebug/bugc";
 import { formatError } from "@ethdebug/bugc/dist/src/cli";
-import { CliBase, BaseCliOptions } from "../src/cli-base.js";
+import { CliBase, type BaseCliOptions } from "../src/cli-base.js";
 
 interface DeployOptions extends BaseCliOptions {
   from?: string;

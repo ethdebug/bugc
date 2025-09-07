@@ -1,4 +1,4 @@
-import { parseArgs, ParseArgsConfig } from "util";
+import { parseArgs, type ParseArgsConfig } from "util";
 import { createProvider } from "./provider.js";
 import { RpcClient } from "./client.js";
 

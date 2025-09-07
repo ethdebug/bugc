@@ -5,14 +5,14 @@
 import P from "parsimmon";
 import {
   Ast,
-  Program,
-  TypeNode,
-  Expression,
-  Statement,
-  Block,
-  Declaration,
+  type Program,
+  type TypeNode,
+  type Expression,
+  type Statement,
+  type Block,
+  type Declaration,
   setParentReferences,
-  SourceLocation,
+  type SourceLocation,
 } from "#ast";
 import { Result } from "#result";
 import { ParseError } from "./errors.js";

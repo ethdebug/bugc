@@ -1,7 +1,7 @@
 import type * as Ast from "#ast";
 
-import { Type } from "./type.js";
-import { Block } from "./block.js";
+import type { Type } from "./type.js";
+import type { Block } from "./block.js";
 
 /**
  * Ir function containing basic blocks

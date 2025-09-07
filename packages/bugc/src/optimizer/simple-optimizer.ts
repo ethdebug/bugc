@@ -3,7 +3,7 @@
  */
 
 import * as Ir from "#ir";
-import { OptimizationPipeline, OptimizationStep } from "./optimizer.js";
+import { OptimizationPipeline, type OptimizationStep } from "./optimizer.js";
 import {
   ConstantFoldingStep,
   DeadCodeEliminationStep,

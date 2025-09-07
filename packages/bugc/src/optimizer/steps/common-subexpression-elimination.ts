@@ -1,6 +1,9 @@
 import * as Ir from "#ir";
 
-import { BaseOptimizationStep, OptimizationContext } from "../optimizer.js";
+import {
+  BaseOptimizationStep,
+  type OptimizationContext,
+} from "../optimizer.js";
 
 export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
   name = "common-subexpression-elimination";

@@ -1,8 +1,8 @@
 import type * as Ast from "#ast";
 
 import { Value } from "./value.js";
-import { Type } from "./type.js";
-import { Instruction } from "./instruction.js";
+import type { Type } from "./type.js";
+import type { Instruction } from "./instruction.js";
 
 /**
  * Basic block - sequence of instructions with single entry/exit

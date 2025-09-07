@@ -1,4 +1,4 @@
-import { ParseArgsConfig } from "util";
+import type { ParseArgsConfig } from "util";
 
 export const commonOptions: ParseArgsConfig["options"] = {
   help: {

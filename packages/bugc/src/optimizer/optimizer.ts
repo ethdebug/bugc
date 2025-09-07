@@ -1,5 +1,5 @@
 import * as Ir from "#ir";
-import { SourceLocation } from "#ast";
+import { type SourceLocation } from "#ast";
 
 export type OptimizationLevel = 0 | 1 | 2 | 3;
 

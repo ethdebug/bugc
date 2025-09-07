@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { compile } from "./compile";
-import { CompileResult } from "./types";
+import type { CompileResult } from "./types";
 
 export function useCompiler() {
   const [compileResult, setCompileResult] = useState<CompileResult | null>(

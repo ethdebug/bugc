@@ -6,7 +6,7 @@
  * Useful for refining types when more specific information becomes available.
  */
 
-import { $ } from "./hkts.js";
+import type { $ } from "./hkts.js";
 
 import type { Stack, PopN } from "./stack.js";
 import type { State } from "./state.js";

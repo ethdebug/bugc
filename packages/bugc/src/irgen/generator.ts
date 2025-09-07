@@ -8,14 +8,14 @@
 import * as Ast from "#ast";
 import * as Ir from "#ir";
 import {
-  Type,
+  type Type,
   ElementaryType,
   ArrayType,
   MappingType,
   StructType,
   FunctionType,
   ErrorType,
-  TypeMap,
+  type TypeMap,
 } from "#types";
 import { Result, Severity, type MessagesBySeverity } from "#result";
 

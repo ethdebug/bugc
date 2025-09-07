@@ -1,14 +1,14 @@
 import { useMemo, useCallback, useState, useEffect } from "react";
 import ReactFlow, {
-  Node,
-  Edge,
+  type Node,
+  type Edge,
   Controls,
   Background,
   useNodesState,
   useEdgesState,
   Handle,
   Position,
-  NodeProps,
+  type NodeProps,
   MarkerType,
   useReactFlow,
   ReactFlowProvider,
