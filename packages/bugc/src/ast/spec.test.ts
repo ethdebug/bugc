@@ -309,15 +309,6 @@ describe("Ast", () => {
         expect(clone).toEqual(original);
       });
 
-      it("should not clone parent references", () => {
-        const parent = Ast.block("statements", []);
-        const child = Ast.Expression.identifier("x");
-        child.parent = parent;
-
-        const clone = Ast.Node.clone(child);
-        expect(clone.parent).toBeUndefined();
-      });
-
       it("should handle complex nested structures", () => {
         const program = Ast.program(
           "Test",
@@ -365,54 +356,6 @@ describe("Ast", () => {
       });
     });
 
-    describe("setParentReferences", () => {
-      it("should set parent references throughout tree", () => {
-        const program = Ast.program(
-          "Test",
-          [],
-          Ast.block("program", [
-            Ast.Statement.express(
-              Ast.Expression.operator("+", [
-                Ast.Expression.identifier("x"),
-                Ast.Expression.literal("number", "42"),
-              ]),
-            ),
-          ]),
-          Ast.block("program", []),
-        );
-
-        Ast.Node.setParentReferences(program);
-
-        expect(program.parent).toBeUndefined();
-        expect(program.body.parent).toBe(program);
-
-        const stmt = program.body.items[0] as Ast.Statement;
-        expect(stmt.parent).toBe(program.body);
-
-        const expr = (
-          stmt as {
-            expression: Ast.Expression & { operands: Ast.Expression[] };
-          }
-        ).expression;
-        expect(expr.parent).toBe(stmt);
-        expect(expr.operands[0].parent).toBe(expr);
-        expect(expr.operands[1].parent).toBe(expr);
-      });
-
-      it("should handle arrays of nodes", () => {
-        const block = Ast.block("statements", [
-          Ast.Statement.express(Ast.Expression.identifier("a")),
-          Ast.Statement.express(Ast.Expression.identifier("b")),
-          Ast.Statement.express(Ast.Expression.identifier("c")),
-        ]);
-
-        Ast.Node.setParentReferences(block);
-
-        block.items.forEach((item) => {
-          expect(item.parent).toBe(block);
-        });
-      });
-    });
   });
 
   describe("Complex Scenarios", () => {

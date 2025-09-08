@@ -17,28 +17,35 @@ export interface SourceLocation {
   length: number;
 }
 
-export interface Node {
-  type: string;
-  loc: SourceLocation | null;
-  parent?: Node; // Parent reference for traversal
-}
+export type Node =
+  | Program
+  | Declaration
+  | Block
+  | Type
+  | Statement
+  | Expression;
+
 
 export namespace Node {
+  export interface Base {
+    type: string;
+    loc: SourceLocation | null;
+  }
+
   export function clone<T extends Node>(node: T): T {
     const clone = { ...node };
-    delete clone.parent; // Don't clone parent references
 
     // Deep clone child nodes
     for (const [key, value] of Object.entries(clone)) {
       if (value && typeof value === "object") {
         if (Array.isArray(value)) {
-          (clone as Record<string, unknown>)[key] = value.map((item) =>
+          (clone as unknown as Record<string, unknown>)[key] = value.map((item) =>
             item && typeof item === "object" && "type" in item
               ? Node.clone(item)
               : item,
           );
         } else if ("type" in value) {
-          (clone as Record<string, unknown>)[key] = Node.clone(value);
+          (clone as unknown as Record<string, unknown>)[key] = Node.clone(value);
         }
       }
     }
@@ -49,32 +56,11 @@ export namespace Node {
   export function update<T extends Node>(node: T, updates: Partial<T>): T {
     return { ...node, ...updates };
   }
-
-  export function setParentReferences(root: Node, parent?: Node): void {
-    root.parent = parent;
-
-    for (const [key, value] of Object.entries(root)) {
-      // Skip parent reference to avoid circular traversal
-      if (key === "parent") continue;
-
-      if (value && typeof value === "object") {
-        if (Array.isArray(value)) {
-          value.forEach((item) => {
-            if (item && typeof item === "object" && "type" in item) {
-              Node.setParentReferences(item, root);
-            }
-          });
-        } else if ("type" in value) {
-          Node.setParentReferences(value as Node, root);
-        }
-      }
-    }
-  }
 }
 
 // Program structure
 
-export interface Program extends Node {
+export interface Program extends Node.Base {
   type: "Program";
   name: string;
   declarations: Declaration[]; // All top-level declarations
@@ -102,7 +88,7 @@ export function program(
 // Unified Declaration pattern
 // Covers: struct declarations, field declarations, storage declarations, and variable declarations
 
-export interface Declaration extends Node {
+export interface Declaration extends Node.Base {
   type: "Declaration";
   kind: "struct" | "field" | "storage" | "variable" | "function";
   name: string;
@@ -159,7 +145,7 @@ export type DataLocation =
 // Unified Block pattern
 // Covers: code blocks, storage blocks, statement blocks
 
-export interface Block extends Node {
+export interface Block extends Node.Base {
   type: "Block";
   kind: "program" | "storage" | "statements" | "struct-body" | "define";
   items: (Statement | Declaration)[];
@@ -183,7 +169,7 @@ export function isType(node: Node): node is Type {
 
 export namespace Type {
   // Elementary types aligned with ethdebug format
-  export interface Elementary extends Node {
+  export interface Elementary extends Node.Base {
     type: "ElementaryType";
     kind: Type.Elementary.Kind;
     bits?: number; // For numeric and bytes types
@@ -256,7 +242,7 @@ export namespace Type {
     return Type.elementary("ufixed", bits);
   }
 
-  export interface Complex extends Node {
+  export interface Complex extends Node.Base {
     type: "ComplexType";
     kind: Type.Complex.Kind;
     typeArgs?: Type[]; // For array, mapping
@@ -279,7 +265,7 @@ export namespace Type {
       | "enum";
   }
 
-  export interface Reference extends Node {
+  export interface Reference extends Node.Base {
     type: "ReferenceType";
     name: string;
   }
@@ -303,7 +289,7 @@ export function isStatement(node: Node): node is Statement {
 }
 
 export namespace Statement {
-  export interface Declare extends Node {
+  export interface Declare extends Node.Base {
     type: "DeclarationStatement";
     declaration: Declaration;
   }
@@ -315,7 +301,7 @@ export namespace Statement {
     return { type: "DeclarationStatement", declaration, loc: loc ?? null };
   }
 
-  export interface Assign extends Node {
+  export interface Assign extends Node.Base {
     type: "AssignmentStatement";
     target: Expression; // Must be assignable (validated during semantic analysis)
     value: Expression;
@@ -337,7 +323,7 @@ export namespace Statement {
     };
   }
 
-  export interface ControlFlow extends Node {
+  export interface ControlFlow extends Node.Base {
     type: "ControlFlowStatement";
     kind: "if" | "for" | "while" | "return" | "break" | "continue";
 
@@ -359,7 +345,7 @@ export namespace Statement {
     return { type: "ControlFlowStatement", kind, ...options, loc: loc ?? null };
   }
 
-  export interface Express extends Node {
+  export interface Express extends Node.Base {
     type: "ExpressionStatement";
     expression: Expression;
   }
@@ -403,7 +389,7 @@ export namespace Expression {
     );
   }
 
-  export interface Identifier extends Node {
+  export interface Identifier extends Node.Base {
     type: "IdentifierExpression";
     name: string;
   }
@@ -415,7 +401,7 @@ export namespace Expression {
     return { type: "IdentifierExpression", name, loc: loc ?? null };
   }
 
-  export interface Literal extends Node {
+  export interface Literal extends Node.Base {
     type: "LiteralExpression";
     kind: "number" | "string" | "boolean" | "address" | "hex";
     value: string; // Always store as string for precision
@@ -431,7 +417,7 @@ export namespace Expression {
     return { type: "LiteralExpression", kind, value, unit, loc: loc ?? null };
   }
 
-  export interface Operator extends Node {
+  export interface Operator extends Node.Base {
     type: "OperatorExpression";
     operator: string;
     operands: Expression[];
@@ -446,7 +432,7 @@ export namespace Expression {
     return { type: "OperatorExpression", operator, operands, loc: loc ?? null };
   }
 
-  export interface Access extends Node {
+  export interface Access extends Node.Base {
     type: "AccessExpression";
     kind: "member" | "index" | "slice";
     object: Expression;
@@ -474,7 +460,7 @@ export namespace Expression {
     return node;
   }
 
-  export interface Call extends Node {
+  export interface Call extends Node.Base {
     type: "CallExpression";
     callee: Expression;
     arguments: Expression[];
@@ -493,7 +479,7 @@ export namespace Expression {
     };
   }
 
-  export interface Cast extends Node {
+  export interface Cast extends Node.Base {
     type: "CastExpression";
     expression: Expression;
     targetType: Type;
@@ -512,7 +498,7 @@ export namespace Expression {
     };
   }
 
-  export interface Special extends Node {
+  export interface Special extends Node.Base {
     type: "SpecialExpression";
     kind:
       | "msg.sender"

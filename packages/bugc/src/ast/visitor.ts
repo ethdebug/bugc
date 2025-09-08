@@ -21,62 +21,48 @@ export interface Visitor<T, C = never> {
 }
 
 // Base visitor implementation
-export function visit<T, C = never>(
+export function visit<N extends Ast.Node, T, C = never>(
   visitor: Visitor<T, C>,
-  node: Ast.Node,
+  node: N,
   context: C,
 ): T {
   switch (node.type) {
     case "Program":
-      return visitor.program(node as Ast.Program, context);
+      return visitor.program(node, context);
     case "Declaration":
-      return visitor.declaration(node as Ast.Declaration, context);
+      return visitor.declaration(node, context);
     case "Block":
-      return visitor.block(node as Ast.Block, context);
+      return visitor.block(node, context);
     case "ElementaryType":
-      return visitor.elementaryType(node as Ast.Type.Elementary, context);
+      return visitor.elementaryType(node, context);
     case "ComplexType":
-      return visitor.complexType(node as Ast.Type.Complex, context);
+      return visitor.complexType(node, context);
     case "ReferenceType":
-      return visitor.referenceType(node as Ast.Type.Reference, context);
+      return visitor.referenceType(node, context);
     case "DeclarationStatement":
-      return visitor.declarationStatement(
-        node as Ast.Statement.Declare,
-        context,
-      );
+      return visitor.declarationStatement(node, context);
     case "AssignmentStatement":
-      return visitor.assignmentStatement(node as Ast.Statement.Assign, context);
+      return visitor.assignmentStatement(node, context);
     case "ControlFlowStatement":
-      return visitor.controlFlowStatement(
-        node as Ast.Statement.ControlFlow,
-        context,
-      );
+      return visitor.controlFlowStatement(node, context);
     case "ExpressionStatement":
-      return visitor.expressionStatement(
-        node as Ast.Statement.Express,
-        context,
-      );
+      return visitor.expressionStatement(node, context);
     case "IdentifierExpression":
-      return visitor.identifierExpression(
-        node as Ast.Expression.Identifier,
-        context,
-      );
+      return visitor.identifierExpression(node, context);
     case "LiteralExpression":
-      return visitor.literalExpression(node as Ast.Expression.Literal, context);
+      return visitor.literalExpression(node, context);
     case "OperatorExpression":
-      return visitor.operatorExpression(
-        node as Ast.Expression.Operator,
-        context,
-      );
+      return visitor.operatorExpression(node, context);
     case "AccessExpression":
-      return visitor.accessExpression(node as Ast.Expression.Access, context);
+      return visitor.accessExpression(node, context);
     case "CallExpression":
-      return visitor.callExpression(node as Ast.Expression.Call, context);
+      return visitor.callExpression(node, context);
     case "CastExpression":
-      return visitor.castExpression(node as Ast.Expression.Cast, context);
+      return visitor.castExpression(node, context);
     case "SpecialExpression":
-      return visitor.specialExpression(node as Ast.Expression.Special, context);
+      return visitor.specialExpression(node, context);
     default:
+      // @ts-expect-error switch statement should be exhaustive
       throw new Error(`Unknown node type: ${node.type}`);
   }
 }

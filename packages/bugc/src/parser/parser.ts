@@ -980,8 +980,6 @@ const program = located(
     return programNode;
   }),
 ).map((prog) => {
-  // Set parent references after location is set
-  Ast.Node.setParentReferences(prog);
   return prog;
 });
 

@@ -25,28 +25,6 @@ describe("Normalized Parser", () => {
       expect(result.body.items).toEqual([]);
     });
 
-    it("should set parent references", () => {
-      const input = `
-        name Test;
-        storage {}
-        code {
-          let x = 42;
-        }
-      `;
-
-      const parseResult = parse(input);
-      expect(parseResult.success).toBe(true);
-      if (!parseResult.success) throw new Error("Parse failed");
-      const result = parseResult.value;
-      expect(result.parent).toBeUndefined();
-      expect(result.body.parent).toBeDefined();
-      expect(result.body.parent?.type).toBe("Program");
-      expect((result.body.parent as Ast.Program).name).toBe("Test");
-
-      const stmt = result.body.items[0];
-      expect(stmt.parent).toBe(result.body);
-    });
-
     it("should include source locations", () => {
       const input = `name Test;
 storage {}
