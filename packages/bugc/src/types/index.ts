@@ -7,7 +7,7 @@
  */
 
 // Re-export all type definitions
-export * from "./definitions.js";
+export { Type } from "./definitions.js";
 export * from "./factories.js";
 export * from "./symbol-table.js";
 

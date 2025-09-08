@@ -7,13 +7,7 @@
 import * as Ast from "#ast";
 
 import {
-  type Type,
-  ElementaryType as TypeElementaryType,
-  ArrayType as TypeArrayType,
-  MappingType as TypeMappingType,
-  StructType as TypeStructType,
-  FunctionType as TypeFunctionType,
-  ErrorType as TypeErrorType,
+  Type,
   Types as TypesUtil,
   SymbolTable,
   type BugSymbol,
@@ -30,7 +24,7 @@ import {
 
 export class TypeChecker extends Ast.BaseVisitor<Type | null> {
   private symbolTable = new SymbolTable();
-  private structTypes = new Map<string, TypeStructType>();
+  private structTypes = new Map<string, Type.Struct>();
   private currentReturnType: Type | null = null;
   private nodeTypes = new WeakMap<object, Type>();
   private errors: TypeError[] = [];
@@ -118,7 +112,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
       if (decl.kind === "function" && decl.metadata?.body) {
         // Set current return type for the function
         const funcType = this.symbolTable.lookup(decl.name)
-          ?.type as TypeFunctionType;
+          ?.type as Type.Function;
         if (funcType) {
           this.currentReturnType = funcType.returnType;
 
@@ -171,7 +165,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
       case "storage": {
         const type = node.declaredType
           ? this.resolveType(node.declaredType)
-          : new TypeErrorType("missing type");
+          : new Type.Failure("missing type");
         const symbol: BugSymbol = {
           name: node.name,
           type,
@@ -192,7 +186,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             TypeErrorCode.MISSING_INITIALIZER,
           );
           // Still define the variable with error type
-          const errorType = new TypeErrorType("missing initializer");
+          const errorType = new Type.Failure("missing initializer");
           const symbol: BugSymbol = {
             name: node.name,
             type: errorType,
@@ -215,19 +209,16 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           // Check that the initializer is compatible with the declared type
           if (initType && !this.isAssignable(type, initType)) {
             this.error(
-              ErrorMessages.TYPE_MISMATCH(
-                this.typeToString(type),
-                this.typeToString(initType),
-              ),
+              ErrorMessages.TYPE_MISMATCH(type.toString(), initType.toString()),
               node.initializer.loc,
               TypeErrorCode.TYPE_MISMATCH,
-              this.typeToString(type),
-              this.typeToString(initType),
+              type.toString(),
+              initType.toString(),
             );
           }
         } else {
           // Otherwise, infer the type from the initializer
-          type = initType || new TypeErrorType("invalid initializer");
+          type = initType || new Type.Failure("invalid initializer");
         }
 
         const symbol: BugSymbol = {
@@ -293,13 +284,13 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
     if (targetType && valueType && !this.isAssignable(targetType, valueType)) {
       this.error(
         ErrorMessages.TYPE_MISMATCH(
-          this.typeToString(targetType),
-          this.typeToString(valueType),
+          targetType.toString(),
+          valueType.toString(),
         ),
         node.loc,
         TypeErrorCode.TYPE_MISMATCH,
-        this.typeToString(targetType),
-        this.typeToString(valueType),
+        targetType.toString(),
+        valueType.toString(),
       );
     }
 
@@ -311,7 +302,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
       case "if": {
         if (node.condition) {
           const condType = this.visit(node.condition);
-          if (condType && !this.isBoolean(condType)) {
+          if (condType && !Type.Elementary.isBool(condType)) {
             this.error(
               "If condition must be boolean",
               node.condition.loc,
@@ -329,7 +320,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         if (node.init) this.visit(node.init);
         if (node.condition) {
           const condType = this.visit(node.condition);
-          if (condType && !this.isBoolean(condType)) {
+          if (condType && !Type.Elementary.isBool(condType)) {
             this.error(
               "For condition must be boolean",
               node.condition.loc,
@@ -350,13 +341,13 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             if (!this.isAssignable(this.currentReturnType, valueType)) {
               this.error(
                 ErrorMessages.TYPE_MISMATCH(
-                  this.typeToString(this.currentReturnType),
-                  this.typeToString(valueType),
+                  this.currentReturnType.toString(),
+                  valueType.toString(),
                 ),
                 node.loc,
                 TypeErrorCode.TYPE_MISMATCH,
-                this.typeToString(this.currentReturnType),
-                this.typeToString(valueType),
+                this.currentReturnType.toString(),
+                valueType.toString(),
               );
             }
           } else if (valueType && !this.currentReturnType) {
@@ -368,7 +359,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           }
         } else if (this.currentReturnType) {
           this.error(
-            `Function must return a value of type ${this.typeToString(this.currentReturnType)}`,
+            `Function must return a value of type ${this.currentReturnType.toString()}`,
             node.loc,
             TypeErrorCode.TYPE_MISMATCH,
           );
@@ -407,16 +398,16 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
     let type: Type | null = null;
     switch (node.kind) {
       case "number":
-        type = TypesUtil.uint256;
+        type = Type.Elementary.uint256;
         break;
       case "boolean":
-        type = TypesUtil.bool;
+        type = Type.Elementary.bool;
         break;
       case "string":
-        type = TypesUtil.string;
+        type = Type.Elementary.string;
         break;
       case "address":
-        type = TypesUtil.address;
+        type = Type.Elementary.address;
         break;
       case "hex": {
         // Determine bytes type based on hex literal length
@@ -430,10 +421,10 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
 
         // For fixed-size bytes types (bytes1 to bytes32)
         if (byteCount > 0 && byteCount <= 32) {
-          type = new TypeElementaryType("bytes", byteCount * 8);
+          type = new Type.Elementary("bytes", byteCount * 8);
         } else {
           // For larger hex literals, use dynamic bytes
-          type = TypesUtil.bytes;
+          type = Type.Elementary.bytes;
         }
         break;
       }
@@ -462,18 +453,18 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
 
       switch (node.operator) {
         case "!":
-          if (!this.isBoolean(operandType)) {
+          if (!Type.Elementary.isBool(operandType)) {
             this.error(
               ErrorMessages.INVALID_UNARY_OP("!", "boolean"),
               node.loc,
               TypeErrorCode.INVALID_OPERAND,
             );
           }
-          resultType = TypesUtil.bool;
+          resultType = Type.Elementary.bool;
           break;
 
         case "-":
-          if (!this.isNumeric(operandType)) {
+          if (!Type.Elementary.isNumeric(operandType)) {
             this.error(
               ErrorMessages.INVALID_UNARY_OP("-", "numeric"),
               node.loc,
@@ -500,52 +491,61 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         case "-":
         case "*":
         case "/":
-          if (!this.isNumeric(leftType) || !this.isNumeric(rightType)) {
+          if (
+            !Type.Elementary.isNumeric(leftType) ||
+            !Type.Elementary.isNumeric(rightType)
+          ) {
             this.error(
               ErrorMessages.INVALID_BINARY_OP(node.operator, "numeric"),
               node.loc,
               TypeErrorCode.INVALID_OPERAND,
             );
           }
-          resultType = this.commonNumericType(leftType, rightType);
+          resultType = TypesUtil.commonType(leftType, rightType);
           break;
 
         case "<":
         case ">":
         case "<=":
         case ">=":
-          if (!this.isNumeric(leftType) || !this.isNumeric(rightType)) {
+          if (
+            !Type.Elementary.isNumeric(leftType) ||
+            !Type.Elementary.isNumeric(rightType)
+          ) {
             this.error(
               ErrorMessages.INVALID_BINARY_OP(node.operator, "numeric"),
               node.loc,
               TypeErrorCode.INVALID_OPERAND,
             );
           }
-          resultType = TypesUtil.bool;
+          resultType = Type.Elementary.bool;
           break;
 
         case "==":
         case "!=":
           if (!this.isComparable(leftType, rightType)) {
             this.error(
-              `Cannot compare ${this.typeToString(leftType)} with ${this.typeToString(rightType)}`,
+              `Cannot compare ${leftType.toString()} with ${rightType.toString()}`,
               node.loc,
               TypeErrorCode.INVALID_OPERATION,
             );
           }
-          resultType = TypesUtil.bool;
+          resultType = Type.Elementary.bool;
           break;
 
         case "&&":
         case "||":
-          if (!this.isBoolean(leftType) || !this.isBoolean(rightType)) {
+          if (
+            !Type.Elementary.isBool(leftType) ||
+            !Type.Elementary.isBool(rightType)
+          ) {
             this.error(
               ErrorMessages.INVALID_BINARY_OP(node.operator, "boolean"),
               node.loc,
               TypeErrorCode.INVALID_OPERAND,
             );
           }
-          resultType = TypesUtil.bool;
+          resultType = Type.Elementary.bool;
           break;
 
         default:
@@ -580,7 +580,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
     if (node.kind === "member") {
       const property = node.property as string;
 
-      if (objectType instanceof TypeStructType) {
+      if (objectType instanceof Type.Struct) {
         const fieldType = objectType.getFieldType(property);
         if (!fieldType) {
           this.error(
@@ -593,18 +593,19 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         resultType = fieldType;
       } else if (property === "length") {
         // Handle .length property for arrays and bytes types
-        if (objectType instanceof TypeArrayType) {
+        if (objectType instanceof Type.Array) {
           // Array length is always uint256
-          resultType = TypesUtil.uint256;
+          resultType = Type.Elementary.uint256;
         } else if (
-          objectType instanceof TypeElementaryType &&
-          (objectType.kind === "bytes" || objectType.kind === "string")
+          Type.isElementary(objectType) &&
+          (Type.Elementary.isBytes(objectType) ||
+            Type.Elementary.isString(objectType))
         ) {
           // bytes and string length is uint256
-          resultType = TypesUtil.uint256;
+          resultType = Type.Elementary.uint256;
         } else {
           this.error(
-            `Type ${this.typeToString(objectType)} does not have a length property`,
+            `Type ${objectType.toString()} does not have a length property`,
             node.loc,
             TypeErrorCode.INVALID_OPERATION,
           );
@@ -612,7 +613,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         }
       } else {
         this.error(
-          `Cannot access member ${property} on ${this.typeToString(objectType)}`,
+          `Cannot access member ${property} on ${objectType.toString()}`,
           node.loc,
           TypeErrorCode.INVALID_OPERATION,
         );
@@ -628,17 +629,17 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
 
       // Only bytes types can be sliced for now
       if (
-        objectType instanceof TypeElementaryType &&
-        objectType.kind === "bytes"
+        Type.isElementary(objectType) &&
+        Type.Elementary.isBytes(objectType)
       ) {
-        if (!this.isNumeric(startType)) {
+        if (!Type.Elementary.isNumeric(startType)) {
           this.error(
             "Slice start index must be numeric",
             startExpr.loc,
             TypeErrorCode.INVALID_INDEX_TYPE,
           );
         }
-        if (!this.isNumeric(endType)) {
+        if (!Type.Elementary.isNumeric(endType)) {
           this.error(
             "Slice end index must be numeric",
             endExpr.loc,
@@ -646,10 +647,10 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           );
         }
         // Slicing bytes returns dynamic bytes
-        resultType = new TypeElementaryType("bytes");
+        resultType = Type.Elementary.bytes;
       } else {
         this.error(
-          `Cannot slice ${this.typeToString(objectType)} - only bytes types can be sliced`,
+          `Cannot slice ${objectType.toString()} - only bytes types can be sliced`,
           node.loc,
           TypeErrorCode.INVALID_OPERATION,
         );
@@ -661,8 +662,8 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
       const indexType = this.visit(indexExpr);
       if (!indexType) return null;
 
-      if (objectType instanceof TypeArrayType) {
-        if (!this.isNumeric(indexType)) {
+      if (objectType instanceof Type.Array) {
+        if (!Type.Elementary.isNumeric(indexType)) {
           this.error(
             "Array index must be numeric",
             indexExpr.loc,
@@ -670,34 +671,32 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           );
         }
         resultType = objectType.elementType;
-      } else if (objectType instanceof TypeMappingType) {
+      } else if (objectType instanceof Type.Mapping) {
         if (!this.isAssignable(objectType.keyType, indexType)) {
           this.error(
-            `Invalid mapping key: expected ${this.typeToString(objectType.keyType)}, got ${this.typeToString(indexType)}`,
+            `Invalid mapping key: expected ${objectType.keyType.toString()}, got ${indexType.toString()}`,
             indexExpr.loc,
             TypeErrorCode.TYPE_MISMATCH,
           );
         }
         resultType = objectType.valueType;
       } else if (
-        objectType instanceof TypeElementaryType &&
-        objectType.kind === "bytes"
+        Type.isElementary(objectType) &&
+        Type.Elementary.isBytes(objectType)
       ) {
         // Allow indexing into bytes types - returns uint8
-        if (
-          !this.isAssignable(new TypeElementaryType("uint", 256), indexType)
-        ) {
+        if (!this.isAssignable(Type.Elementary.uint256, indexType)) {
           this.error(
-            `Bytes index must be a numeric type, got ${this.typeToString(indexType)}`,
+            `Bytes index must be a numeric type, got ${indexType.toString()}`,
             indexExpr.loc,
             TypeErrorCode.TYPE_MISMATCH,
           );
         }
         // Bytes indexing returns uint8
-        resultType = new TypeElementaryType("uint", 8);
+        resultType = Type.Elementary.uint8;
       } else {
         this.error(
-          ErrorMessages.CANNOT_INDEX(this.typeToString(objectType)),
+          ErrorMessages.CANNOT_INDEX(objectType.toString()),
           node.loc,
           TypeErrorCode.NOT_INDEXABLE,
         );
@@ -732,8 +731,8 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
 
         // keccak256 accepts bytes types and strings
         if (
-          !TypesUtil.isBytesType(argType) &&
-          !TypesUtil.isStringType(argType)
+          !Type.Elementary.isBytes(argType) &&
+          !Type.Elementary.isString(argType)
         ) {
           this.error(
             "keccak256 argument must be bytes or string type",
@@ -744,7 +743,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         }
 
         // keccak256 returns bytes32
-        const resultType = TypesUtil.bytes32;
+        const resultType = Type.Elementary.bytes32;
         this.setType(node, resultType);
         return resultType;
       }
@@ -760,7 +759,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         return null;
       }
 
-      if (!(symbol.type instanceof TypeFunctionType)) {
+      if (!(symbol.type instanceof Type.Function)) {
         this.error(
           `${functionName} is not a function`,
           node.callee.loc,
@@ -789,18 +788,18 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         const expectedType = funcType.parameterTypes[i];
         if (!this.isAssignable(expectedType, argType)) {
           this.error(
-            `Argument ${i + 1} type mismatch: expected ${TypesUtil.toString(expectedType)}, got ${TypesUtil.toString(argType)}`,
+            `Argument ${i + 1} type mismatch: expected ${expectedType.toString()}, got ${argType.toString()}`,
             node.arguments[i].loc,
             TypeErrorCode.TYPE_MISMATCH,
-            TypesUtil.toString(expectedType),
-            TypesUtil.toString(argType),
+            expectedType.toString(),
+            argType.toString(),
           );
         }
       }
 
       // Return the function's return type
       const returnType =
-        funcType.returnType || new TypeErrorType("void function");
+        funcType.returnType || new Type.Failure("void function");
       this.setType(node, returnType);
       return returnType;
     }
@@ -826,11 +825,11 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
     // Check if the cast is valid
     if (!this.isValidCast(exprType, targetType)) {
       this.error(
-        `Cannot cast from ${TypesUtil.toString(exprType)} to ${TypesUtil.toString(targetType)}`,
+        `Cannot cast from ${exprType.toString()} to ${targetType.toString()}`,
         node.loc,
         TypeErrorCode.INVALID_TYPE_CAST,
-        TypesUtil.toString(targetType),
-        TypesUtil.toString(exprType),
+        targetType.toString(),
+        exprType.toString(),
       );
       return null;
     }
@@ -842,49 +841,50 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
 
   private isValidCast(fromType: Type, toType: Type): boolean {
     // Allow casting between numeric types
-    if (TypesUtil.isNumericType(fromType) && TypesUtil.isNumericType(toType)) {
+    if (
+      Type.Elementary.isNumeric(fromType) &&
+      Type.Elementary.isNumeric(toType)
+    ) {
       return true;
     }
 
     // Allow casting from uint256 to address
-    if (TypesUtil.isUintType(fromType) && TypesUtil.isAddressType(toType)) {
+    if (Type.Elementary.isUint(fromType) && Type.Elementary.isAddress(toType)) {
       return true;
     }
 
     // Allow casting from address to uint256
-    if (TypesUtil.isAddressType(fromType) && TypesUtil.isUintType(toType)) {
+    if (Type.Elementary.isAddress(fromType) && Type.Elementary.isUint(toType)) {
       return true;
     }
 
     // Allow casting between bytes types
-    if (TypesUtil.isBytesType(fromType) && TypesUtil.isBytesType(toType)) {
+    if (Type.Elementary.isBytes(fromType) && Type.Elementary.isBytes(toType)) {
       return true;
     }
 
     // Allow casting from string to bytes (for slicing without UTF-8 concerns)
-    if (TypesUtil.isStringType(fromType) && TypesUtil.isBytesType(toType)) {
+    if (Type.Elementary.isString(fromType) && Type.Elementary.isBytes(toType)) {
       return true;
     }
 
     // Allow casting from bytes to string (reverse operation)
-    if (TypesUtil.isBytesType(fromType) && TypesUtil.isStringType(toType)) {
+    if (Type.Elementary.isBytes(fromType) && Type.Elementary.isString(toType)) {
       return true;
     }
 
     // Allow casting from bytes (including dynamic bytes) to address
     if (
-      (TypesUtil.isBytesType(fromType) ||
-        TypesUtil.isDynamicBytesType(fromType)) &&
-      TypesUtil.isAddressType(toType)
+      Type.Elementary.isBytes(fromType) &&
+      Type.Elementary.isAddress(toType)
     ) {
       return true;
     }
 
     // Allow casting from bytes (including dynamic bytes) to numeric types
     if (
-      (TypesUtil.isBytesType(fromType) ||
-        TypesUtil.isDynamicBytesType(fromType)) &&
-      TypesUtil.isNumericType(toType)
+      Type.Elementary.isBytes(fromType) &&
+      Type.Elementary.isNumeric(toType)
     ) {
       return true;
     }
@@ -897,19 +897,19 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
     let type: Type | null = null;
     switch (node.kind) {
       case "msg.sender":
-        type = TypesUtil.address;
+        type = Type.Elementary.address;
         break;
       case "msg.value":
-        type = TypesUtil.uint256;
+        type = Type.Elementary.uint256;
         break;
       case "msg.data":
-        type = TypesUtil.bytes;
+        type = Type.Elementary.bytes;
         break;
       case "block.timestamp":
-        type = TypesUtil.uint256;
+        type = Type.Elementary.uint256;
         break;
       case "block.number":
-        type = TypesUtil.uint256;
+        type = Type.Elementary.uint256;
         break;
     }
     if (type) {
@@ -932,7 +932,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
       }
     }
 
-    const structType = new TypeStructType(decl.name, fields);
+    const structType = new Type.Struct(decl.name, fields);
     this.structTypes.set(decl.name, structType);
   }
 
@@ -952,7 +952,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
       : null;
 
     // Create function type
-    const functionType = new TypeFunctionType(
+    const functionType = new Type.Function(
       decl.name,
       parameterTypes,
       returnType,
@@ -977,67 +977,65 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         // Map elementary types based on kind and bits
         if (typeNode.kind === "uint") {
           const typeMap: Record<number, Type> = {
-            256: TypesUtil.uint256,
-            128: TypesUtil.uint128,
-            64: TypesUtil.uint64,
-            32: TypesUtil.uint32,
-            16: TypesUtil.uint16,
-            8: TypesUtil.uint8,
+            256: Type.Elementary.uint256,
+            128: Type.Elementary.uint128,
+            64: Type.Elementary.uint64,
+            32: Type.Elementary.uint32,
+            16: Type.Elementary.uint16,
+            8: Type.Elementary.uint8,
           };
           return (
             typeMap[typeNode.bits || 256] ||
-            new TypeErrorType(`Unknown uint size: ${typeNode.bits}`)
+            new Type.Failure(`Unknown uint size: ${typeNode.bits}`)
           );
         } else if (typeNode.kind === "int") {
           // TODO: Add proper signed integer types
           const typeMap: Record<number, Type> = {
-            256: TypesUtil.int256,
-            128: TypesUtil.int128,
-            64: TypesUtil.int64,
-            32: TypesUtil.int32,
-            16: TypesUtil.int16,
-            8: TypesUtil.int8,
+            256: Type.Elementary.int256,
+            128: Type.Elementary.int128,
+            64: Type.Elementary.int64,
+            32: Type.Elementary.int32,
+            16: Type.Elementary.int16,
+            8: Type.Elementary.int8,
           };
           return (
             typeMap[typeNode.bits || 256] ||
-            new TypeErrorType(`Unknown int size: ${typeNode.bits}`)
+            new Type.Failure(`Unknown int size: ${typeNode.bits}`)
           );
         } else if (typeNode.kind === "bytes") {
           if (!typeNode.bits) {
-            return TypesUtil.bytes; // Dynamic bytes
+            return Type.Elementary.bytes; // Dynamic bytes
           }
           const typeMap: Record<number, Type> = {
-            256: TypesUtil.bytes32,
-            128: TypesUtil.bytes16,
-            64: TypesUtil.bytes8,
-            32: TypesUtil.bytes4,
+            256: Type.Elementary.bytes32,
+            128: Type.Elementary.bytes16,
+            64: Type.Elementary.bytes8,
+            32: Type.Elementary.bytes4,
           };
           return (
             typeMap[typeNode.bits] ||
-            new TypeErrorType(`Unknown bytes size: ${typeNode.bits}`)
+            new Type.Failure(`Unknown bytes size: ${typeNode.bits}`)
           );
         } else if (typeNode.kind === "address") {
-          return TypesUtil.address;
+          return Type.Elementary.address;
         } else if (typeNode.kind === "bool") {
-          return TypesUtil.bool;
+          return Type.Elementary.bool;
         } else if (typeNode.kind === "string") {
-          return TypesUtil.string;
+          return Type.Elementary.string;
         }
-        return new TypeErrorType(`Unknown elementary type: ${typeNode.kind}`);
+        return new Type.Failure(`Unknown elementary type: ${typeNode.kind}`);
       }
 
       case "ComplexType":
         if (typeNode.kind === "array") {
           const elementType = this.resolveType(typeNode.typeArgs![0]);
-          return new TypeArrayType(elementType, typeNode.size);
+          return new Type.Array(elementType, typeNode.size);
         } else if (typeNode.kind === "mapping") {
           const keyType = this.resolveType(typeNode.typeArgs![0]);
           const valueType = this.resolveType(typeNode.typeArgs![1]);
-          return new TypeMappingType(keyType, valueType);
+          return new Type.Mapping(keyType, valueType);
         } else {
-          return new TypeErrorType(
-            `Unsupported complex type: ${typeNode.kind}`,
-          );
+          return new Type.Failure(`Unsupported complex type: ${typeNode.kind}`);
         }
 
       case "ReferenceType": {
@@ -1048,26 +1046,18 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             typeNode.loc,
             TypeErrorCode.UNDEFINED_TYPE,
           );
-          return new TypeErrorType(`Undefined struct: ${typeNode.name}`);
+          return new Type.Failure(`Undefined struct: ${typeNode.name}`);
         }
         return structType;
       }
 
       default:
-        return new TypeErrorType("Unknown type");
+        return new Type.Failure("Unknown type");
     }
   }
 
-  private isNumeric(type: Type): boolean {
-    return TypesUtil.isUintType(type);
-  }
-
-  private isBoolean(type: Type): boolean {
-    return type instanceof TypeElementaryType && type.kind === "bool";
-  }
-
   private isComparable(left: Type, right: Type): boolean {
-    if (left instanceof TypeErrorType || right instanceof TypeErrorType)
+    if (left instanceof Type.Failure || right instanceof Type.Failure)
       return true;
     if (left.equals(right)) return true;
 
@@ -1078,7 +1068,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
   }
 
   private isAssignable(target: Type, value: Type): boolean {
-    if (target instanceof TypeErrorType || value instanceof TypeErrorType)
+    if (target instanceof Type.Failure || value instanceof Type.Failure)
       return true;
     if (target.equals(value)) return true;
 
@@ -1086,14 +1076,6 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
     if (TypesUtil.areCompatible(target, value)) return true;
 
     return false;
-  }
-
-  private commonNumericType(left: Type, right: Type): Type | null {
-    return TypesUtil.commonType(left, right);
-  }
-
-  private typeToString(type: Type): string {
-    return type.toString();
   }
 }
 

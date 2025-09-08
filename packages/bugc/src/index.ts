@@ -11,17 +11,7 @@ export { parse, parser } from "#parser";
 export { TypeChecker, createTypeChecker } from "#typechecker";
 
 // Re-export type system
-export {
-  ElementaryType,
-  ArrayType,
-  MappingType,
-  StructType,
-  FunctionType,
-  ErrorType,
-  Types,
-  SymbolTable,
-} from "#types";
-export type { Type, TypeKind, BugSymbol, TypeMap } from "#types";
+export { Type, SymbolTable } from "#types";
 
 // Re-export IR generation functionality
 export { IrBuilder } from "#irgen";

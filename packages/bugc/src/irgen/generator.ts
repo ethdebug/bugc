@@ -7,16 +7,7 @@
 
 import * as Ast from "#ast";
 import * as Ir from "#ir";
-import {
-  type Type,
-  ElementaryType,
-  ArrayType,
-  MappingType,
-  StructType,
-  FunctionType,
-  ErrorType,
-  type TypeMap,
-} from "#types";
+import { Type, type TypeMap } from "#types";
 import { Result, Severity, type MessagesBySeverity } from "#result";
 
 /**
@@ -238,12 +229,11 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     // Process function parameters
     let paramCount = 0;
     const funcType = this.context.types.get(decl);
-    if (funcType && funcType instanceof FunctionType) {
-      const ft = funcType as FunctionType;
+    if (funcType && Type.isFunction(funcType)) {
       paramCount = (decl.metadata.parameters || []).length;
       for (let i = 0; i < paramCount; i++) {
         const param = decl.metadata.parameters![i];
-        const paramType = ft.parameterTypes[i];
+        const paramType = funcType.parameterTypes[i];
 
         const localVar: Ir.Function.LocalVariable = {
           name: param.name,
@@ -267,7 +257,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     // Ensure function has proper terminator
     if (!this.isTerminated(this.context.currentBlock)) {
       const declType = this.context.types.get(decl);
-      if (declType instanceof FunctionType && declType.returnType) {
+      if (declType && Type.isFunction(declType) && declType.returnType) {
         // Function should return a value but doesn't - add error
         this.errors.push(
           new Ir.Error(
@@ -797,9 +787,11 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
 
         // Verify that the object type supports .length (arrays, bytes, string)
         if (
-          objectType instanceof ArrayType ||
-          (objectType instanceof ElementaryType &&
-            (objectType.kind === "bytes" || objectType.kind === "string"))
+          objectType &&
+          (Type.isArray(objectType) ||
+            (Type.isElementary(objectType) &&
+              (Type.Elementary.isBytes(objectType) ||
+                Type.Elementary.isString(objectType))))
         ) {
           const object = this.visitExpression(node.object);
           const resultType: Ir.Type = { kind: "uint", bits: 256 };
@@ -836,7 +828,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
       const object = this.visitExpression(node.object);
       const objectType = this.context.types.get(node.object);
 
-      if (objectType instanceof StructType) {
+      if (objectType && Type.isStruct(objectType)) {
         const fieldType = objectType.fields.get(node.property as string);
         if (fieldType) {
           const fieldIndex = Array.from(objectType.fields.keys()).indexOf(
@@ -861,7 +853,11 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     } else if (node.kind === "slice") {
       // Slice access - start:end
       const objectType = this.context.types.get(node.object);
-      if (objectType instanceof ElementaryType && objectType.kind === "bytes") {
+      if (
+        objectType &&
+        Type.isElementary(objectType) &&
+        Type.Elementary.isBytes(objectType)
+      ) {
         const object = this.visitExpression(node.object);
         const start = this.visitExpression(node.property as Ast.Expression);
         const end = this.visitExpression(node.end!);
@@ -899,7 +895,11 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
       // Array/mapping/bytes index access
       // First check if we're indexing into bytes (not part of storage chain)
       const objectType = this.context.types.get(node.object);
-      if (objectType instanceof ElementaryType && objectType.kind === "bytes") {
+      if (
+        objectType &&
+        Type.isElementary(objectType) &&
+        Type.Elementary.isBytes(objectType)
+      ) {
         // Handle bytes indexing directly, not as storage chain
         const object = this.visitExpression(node.object);
         const index = this.visitExpression(node.property as Ast.Expression);
@@ -938,7 +938,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
       const object = this.visitExpression(node.object);
       const index = this.visitExpression(node.property as Ast.Expression);
 
-      if (objectType instanceof ArrayType) {
+      if (objectType && Type.isArray(objectType)) {
         const elementType = this.bugTypeToIrType(objectType.elementType);
         const temp = this.genTemp(elementType);
 
@@ -952,7 +952,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
         });
 
         return Ir.Value.temp(temp.id, elementType);
-      } else if (objectType instanceof MappingType) {
+      } else if (objectType && Type.isMapping(objectType)) {
         // Simple mapping access
         const storageVar = this.findStorageVariable(node.object);
         if (storageVar) {
@@ -1289,7 +1289,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
         const object = this.visitExpression(accessNode.object);
         const objectType = this.context.types.get(accessNode.object);
 
-        if (objectType instanceof StructType) {
+        if (objectType && Type.isStruct(objectType)) {
           const fieldName = accessNode.property as string;
           const fieldType = objectType.getFieldType(fieldName);
           if (fieldType) {
@@ -1316,8 +1316,9 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
         // First check if we're assigning to bytes (not part of storage chain)
         const objectType = this.context.types.get(accessNode.object);
         if (
-          objectType instanceof ElementaryType &&
-          objectType.kind === "bytes"
+          objectType &&
+          Type.isElementary(objectType) &&
+          Type.Elementary.isBytes(objectType)
         ) {
           // Handle bytes indexing directly
           const object = this.visitExpression(accessNode.object);
@@ -1363,7 +1364,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
           accessNode.property as Ast.Expression,
         );
 
-        if (objectType instanceof ArrayType) {
+        if (objectType && Type.isArray(objectType)) {
           this.emit({
             kind: "store_index",
             array: object,
@@ -1372,7 +1373,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
             loc: node.loc ?? undefined,
           });
           return;
-        } else if (objectType instanceof MappingType) {
+        } else if (objectType && Type.isMapping(objectType)) {
           // Simple mapping assignment
           const storageVar = this.findStorageVariable(accessNode.object);
           if (storageVar) {
@@ -1511,7 +1512,60 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
   }
 
   private bugTypeToIrType(type: Type): Ir.Type {
-    if (type instanceof ElementaryType) {
+    if (Type.isArray(type)) {
+      return {
+        kind: "array",
+        element: this.bugTypeToIrType(type.elementType),
+        size: type.size,
+      };
+    }
+
+    if (Type.isMapping(type)) {
+      return {
+        kind: "mapping",
+        key: this.bugTypeToIrType(type.keyType),
+        value: this.bugTypeToIrType(type.valueType),
+      };
+    }
+
+    if (Type.isStruct(type)) {
+      const fields: Ir.Type.StructField[] = [];
+      let offset = 0;
+      for (const [name, fieldType] of type.fields) {
+        fields.push({
+          name,
+          type: this.bugTypeToIrType(fieldType),
+          offset,
+        });
+        offset += 32; // Simple layout: 32 bytes per field
+      }
+      return {
+        kind: "struct",
+        name: type.name,
+        fields,
+      };
+    }
+
+    if (Type.isFailure(type)) {
+      // Error type should already have diagnostics added elsewhere
+      return { kind: "uint", bits: 256 }; // Default fallback for error case
+    }
+
+    if (Type.isFunction(type)) {
+      // Function types are not directly convertible to IR types
+      // This shouldn't happen in normal code generation
+      this.errors.push(
+        new Ir.Error(
+          `Cannot convert function type to IR type`,
+          undefined,
+          Severity.Error,
+          Ir.ErrorCode.UNKNOWN_TYPE,
+        ),
+      );
+      return { kind: "uint", bits: 256 }; // Default fallback
+    }
+
+    if (Type.isElementary(type)) {
       switch (type.kind) {
         case "uint":
           return { kind: "uint", bits: type.bits || 256 };
@@ -1538,60 +1592,17 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
           );
           return { kind: "uint", bits: 256 }; // Default fallback for error case
       }
-    } else if (type instanceof ArrayType) {
-      return {
-        kind: "array",
-        element: this.bugTypeToIrType(type.elementType),
-        size: type.size,
-      };
-    } else if (type instanceof MappingType) {
-      return {
-        kind: "mapping",
-        key: this.bugTypeToIrType(type.keyType),
-        value: this.bugTypeToIrType(type.valueType),
-      };
-    } else if (type instanceof StructType) {
-      const fields: Ir.Type.StructField[] = [];
-      let offset = 0;
-      for (const [name, fieldType] of type.fields) {
-        fields.push({
-          name,
-          type: this.bugTypeToIrType(fieldType),
-          offset,
-        });
-        offset += 32; // Simple layout: 32 bytes per field
-      }
-      return {
-        kind: "struct",
-        name: type.name,
-        fields,
-      };
-    } else if (type instanceof ErrorType) {
-      // Error type should already have diagnostics added elsewhere
-      return { kind: "uint", bits: 256 }; // Default fallback for error case
-    } else if (type instanceof FunctionType) {
-      // Function types are not directly convertible to IR types
-      // This shouldn't happen in normal code generation
-      this.errors.push(
-        new Ir.Error(
-          `Cannot convert function type to IR type`,
-          undefined,
-          Severity.Error,
-          Ir.ErrorCode.UNKNOWN_TYPE,
-        ),
-      );
-      return { kind: "uint", bits: 256 }; // Default fallback
-    } else {
-      this.errors.push(
-        new Ir.Error(
-          `Cannot convert type to IR: ${(type as { kind?: string }).kind || "unknown"}`,
-          undefined,
-          Severity.Error,
-          Ir.ErrorCode.UNKNOWN_TYPE,
-        ),
-      );
-      return { kind: "uint", bits: 256 }; // Default fallback for error case
     }
+
+    this.errors.push(
+      new Ir.Error(
+        `Cannot convert type to IR: ${(type as { kind?: string }).kind || "unknown"}`,
+        undefined,
+        Severity.Error,
+        Ir.ErrorCode.UNKNOWN_TYPE,
+      ),
+    );
+    return { kind: "uint", bits: 256 }; // Default fallback for error case
   }
 
   /**

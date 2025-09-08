@@ -46,7 +46,6 @@
       "#typechecker/*": ["./src/typechecker/*"],
 
       "#types": ["./src/types/index"],
-      "#types/*": ["./src/types/*"],
 
       "#test/*": ["./test/*"]
     }

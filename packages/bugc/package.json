@@ -50,7 +50,6 @@
     "#typechecker": "./dist/src/typechecker/index.js",
     "#typechecker/*": "./dist/src/typechecker/*.js",
     "#types": "./dist/src/types/index.js",
-    "#types/*": "./dist/src/types/*.js",
     "#test/*": "./dist/test/*.js"
   },
   "scripts": {
