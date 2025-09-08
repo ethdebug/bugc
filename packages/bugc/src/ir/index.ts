@@ -6,5 +6,4 @@
  */
 
 export * from "./spec/index.js";
-export * from "./errors.js";
 export * as Analysis from "./analysis/index.js";

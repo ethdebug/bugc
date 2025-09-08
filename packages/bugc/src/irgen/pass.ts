@@ -4,6 +4,7 @@ import type * as Ir from "#ir";
 import { Result } from "#result";
 import type { Pass } from "#compiler";
 
+import { Error } from "./errors.js";
 import { IrBuilder } from "./generator.js";
 import { PhiInserter } from "./phi-inserter.js";
 
@@ -11,7 +12,7 @@ import { PhiInserter } from "./phi-inserter.js";
  * IR generation pass - converts typed AST to intermediate representation
  * and inserts phi nodes for proper SSA form
  */
-export const pass: Pass<{
+const pass: Pass<{
   needs: {
     ast: Program;
     types: TypeMap;
@@ -19,7 +20,7 @@ export const pass: Pass<{
   adds: {
     ir: Ir.Module;
   };
-  error: Ir.Error;
+  error: Error;
 }> = {
   async run({ ast, types }) {
     const generator = new IrBuilder();
@@ -33,3 +34,5 @@ export const pass: Pass<{
     });
   },
 };
+
+export default pass;

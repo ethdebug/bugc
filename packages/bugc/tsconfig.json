@@ -32,7 +32,7 @@
       "#ir/analysis": ["./src/ir/analysis"],
 
       "#irgen": ["./src/irgen/index"],
-      "#irgen/*": ["./src/irgen/*"],
+      "#irgen/pass": ["./src/irgen/pass"],
 
       "#optimizer": ["./src/optimizer/index"],
       "#optimizer/*": ["./src/optimizer/*"],
@@ -43,7 +43,7 @@
       "#parser/pass": ["./src/parser/pass"],
 
       "#typechecker": ["./src/typechecker/index"],
-      "#typechecker/*": ["./src/typechecker/*"],
+      "#typechecker/pass": ["./src/typechecker/pass"],
 
       "#types": ["./src/types/index"],
 

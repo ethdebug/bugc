@@ -4,7 +4,7 @@
 
 import parsingPass from "#parser/pass";
 import typeCheckingPass from "#typechecker/pass";
-import { pass as irGenerationPass } from "#irgen/pass";
+import irGenerationPass from "#irgen/pass";
 import { pass as optimizationPass } from "#optimizer/pass";
 import { pass as evmGenerationPass } from "#evmgen/pass";
 

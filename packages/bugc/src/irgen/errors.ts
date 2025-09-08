@@ -36,7 +36,7 @@ export const ErrorMessages = {
 /**
  * IR generation errors
  */
-export class Error extends BugError {
+class IrgenError extends BugError {
   constructor(
     message: string,
     location?: SourceLocation,
@@ -46,3 +46,5 @@ export class Error extends BugError {
     super(message, code, location, severity);
   }
 }
+
+export { IrgenError as Error };

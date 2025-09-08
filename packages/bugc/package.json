@@ -50,7 +50,7 @@
 
     "#result": "./dist/src/result.js",
     "#typechecker": "./dist/src/typechecker/index.js",
-    "#typechecker/*": "./dist/src/typechecker/*.js",
+    "#typechecker/pass": "./dist/src/typechecker/pass.js",
     "#types": "./dist/src/types/index.js",
     "#test/*": "./dist/test/*.js"
   },
