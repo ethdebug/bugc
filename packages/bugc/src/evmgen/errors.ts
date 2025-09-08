@@ -27,7 +27,7 @@ export const ErrorMessages = {
   [ErrorCode.INTERNAL_ERROR]: "Internal code generation error",
 };
 
-export class Error extends BugError {
+class EvmgenError extends BugError {
   constructor(
     code: ErrorCode,
     message?: string,
@@ -39,3 +39,5 @@ export class Error extends BugError {
     super(fullMessage, code, location, severity);
   }
 }
+
+export { EvmgenError as Error };

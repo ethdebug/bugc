@@ -154,32 +154,6 @@ export const Result = {
   },
 
   /**
-   * Create a result from a legacy result with diagnostics array
-   */
-  fromLegacy<T, E extends BugError>(
-    legacyResult:
-      | { success: true; value: T; diagnostics: E[] }
-      | { success: false; diagnostics: E[] },
-  ): Result<T, E> {
-    const messages: MessagesBySeverity<E> = {};
-
-    // Group diagnostics by severity
-    for (const diagnostic of legacyResult.diagnostics) {
-      const severity = diagnostic.severity;
-      if (!messages[severity]) {
-        messages[severity] = [];
-      }
-      messages[severity]!.push(diagnostic);
-    }
-
-    if (legacyResult.success) {
-      return { success: true, value: legacyResult.value, messages };
-    } else {
-      return { success: false, messages };
-    }
-  },
-
-  /**
    * Get the first error from a result (useful for tests)
    */
   firstError<T, E extends BugError>(result: Result<T, E>): E | undefined {

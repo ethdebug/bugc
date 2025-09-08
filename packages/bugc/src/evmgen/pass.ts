@@ -25,7 +25,7 @@ export interface EvmGenerationOutput {
 /**
  * EVM code generation pass
  */
-export const pass: Pass<{
+const pass: Pass<{
   needs: {
     ir: Ir.Module;
   };
@@ -96,3 +96,5 @@ export const pass: Pass<{
     }
   },
 };
+
+export default pass;

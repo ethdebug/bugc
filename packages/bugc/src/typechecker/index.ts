@@ -3,4 +3,4 @@
  */
 
 export { checkProgram } from "./checker.js";
-export * from "./errors.js";
+export { Error, ErrorCode } from "./errors.js";
