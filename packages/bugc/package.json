@@ -44,8 +44,10 @@
     "#irgen/*": "./dist/src/irgen/*.js",
     "#optimizer": "./dist/src/optimizer/index.js",
     "#optimizer/*": "./dist/src/optimizer/*.js",
+
     "#parser": "./dist/src/parser/index.js",
-    "#parser/*": "./dist/src/parser/*.js",
+    "#parser/pass": "./dist/src/parser/pass.js",
+
     "#result": "./dist/src/result.js",
     "#typechecker": "./dist/src/typechecker/index.js",
     "#typechecker/*": "./dist/src/typechecker/*.js",

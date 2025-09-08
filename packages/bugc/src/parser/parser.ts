@@ -5,7 +5,14 @@
 import P from "parsimmon";
 import * as Ast from "#ast";
 import { Result } from "#result";
-import { ParseError } from "./errors.js";
+import { Error as ParseError } from "./errors.js";
+
+/**
+ * Parse a BUG program and return Result
+ */
+export function parse(input: string): Result<Ast.Program, ParseError> {
+  return runParser(parser, input);
+}
 
 /**
  * Parser utilities and base definitions
@@ -979,13 +986,4 @@ const program = located(
 });
 
 // Export the parser wrapped with whitespace handling
-export const parser = P.seq(Lang._, program, Lang._).map(
-  ([_, prog, __]) => prog,
-);
-
-/**
- * Parse a BUG program and return Result
- */
-export function parse(input: string): Result<Ast.Program, ParseError> {
-  return runParser(parser, input);
-}
+const parser = P.seq(Lang._, program, Lang._).map(([_, prog, __]) => prog);

@@ -3,9 +3,7 @@ export const VERSION = "0.1.0";
 export * as Ast from "#ast";
 export * as Ir from "#ir";
 export * as Evm from "#evm";
-
-// Re-export parser functionality
-export { parse, parser } from "#parser";
+export * as Parser from "#parser";
 
 // Re-export type checker functionality
 export { TypeChecker, createTypeChecker } from "#typechecker";

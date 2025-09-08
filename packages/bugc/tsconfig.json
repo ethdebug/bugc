@@ -40,7 +40,7 @@
       "#result": ["./src/result"],
 
       "#parser": ["./src/parser/index"],
-      "#parser/*": ["./src/parser/*"],
+      "#parser/pass": ["./src/parser/pass"],
 
       "#typechecker": ["./src/typechecker/index"],
       "#typechecker/*": ["./src/typechecker/*"],

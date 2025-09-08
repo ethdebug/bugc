@@ -1,20 +1,20 @@
-import type { Program } from "#ast";
+import type * as Ast from "#ast";
 import type { Pass } from "#compiler";
 import { Result } from "#result";
 
-import type { ParseError } from "./errors.js";
+import type { Error as ParseError } from "./errors.js";
 import { parse } from "./parser.js";
 
 /**
  * Parsing pass - converts source code to AST
  */
-export const pass: Pass<{
+const pass: Pass<{
   needs: {
     source: string;
     sourcePath?: string;
   };
   adds: {
-    ast: Program;
+    ast: Ast.Program;
   };
   error: ParseError;
 }> = {
@@ -23,3 +23,5 @@ export const pass: Pass<{
     return Result.map(result, (ast) => ({ ast }));
   },
 };
+
+export default pass;

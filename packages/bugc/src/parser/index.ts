@@ -4,5 +4,5 @@
  * Exports the parser implementation
  */
 
-export { parse, parser } from "./parser.js";
-export * from "./errors.js";
+export { parse } from "./parser.js";
+export { Error } from "./errors.js";

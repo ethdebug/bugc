@@ -2,7 +2,7 @@
  * Concrete compilation sequences for different targets
  */
 
-import { pass as parsingPass } from "#parser/pass";
+import parsingPass from "#parser/pass";
 import { pass as typeCheckingPass } from "#typechecker/pass";
 import { pass as irGenerationPass } from "#irgen/pass";
 import { pass as optimizationPass } from "#optimizer/pass";
