@@ -8,7 +8,6 @@
 
 // Re-export all type definitions
 export { Type } from "./definitions.js";
-export * from "./factories.js";
 export * from "./symbol-table.js";
 
 // Type alias for the mapping of AST nodes to their types

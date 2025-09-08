@@ -6,13 +6,7 @@
 
 import * as Ast from "#ast";
 
-import {
-  Type,
-  Types as TypesUtil,
-  SymbolTable,
-  type BugSymbol,
-  type TypeMap,
-} from "#types";
+import { Type, SymbolTable, type BugSymbol, type TypeMap } from "#types";
 
 import { Result, type MessagesBySeverity, Severity } from "#result";
 
@@ -207,7 +201,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           type = this.resolveType(node.declaredType);
 
           // Check that the initializer is compatible with the declared type
-          if (initType && !this.isAssignable(type, initType)) {
+          if (initType && !isAssignable(type, initType)) {
             this.error(
               ErrorMessages.TYPE_MISMATCH(type.toString(), initType.toString()),
               node.initializer.loc,
@@ -281,7 +275,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
     const targetType = this.visit(node.target);
     const valueType = this.visit(node.value);
 
-    if (targetType && valueType && !this.isAssignable(targetType, valueType)) {
+    if (targetType && valueType && !isAssignable(targetType, valueType)) {
       this.error(
         ErrorMessages.TYPE_MISMATCH(
           targetType.toString(),
@@ -338,7 +332,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         if (node.value) {
           const valueType = this.visit(node.value);
           if (valueType && this.currentReturnType) {
-            if (!this.isAssignable(this.currentReturnType, valueType)) {
+            if (!isAssignable(this.currentReturnType, valueType)) {
               this.error(
                 ErrorMessages.TYPE_MISMATCH(
                   this.currentReturnType.toString(),
@@ -501,7 +495,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
               TypeErrorCode.INVALID_OPERAND,
             );
           }
-          resultType = TypesUtil.commonType(leftType, rightType);
+          resultType = commonType(leftType, rightType);
           break;
 
         case "<":
@@ -523,7 +517,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
 
         case "==":
         case "!=":
-          if (!this.isComparable(leftType, rightType)) {
+          if (!isAssignable(leftType, rightType)) {
             this.error(
               `Cannot compare ${leftType.toString()} with ${rightType.toString()}`,
               node.loc,
@@ -672,7 +666,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         }
         resultType = objectType.elementType;
       } else if (objectType instanceof Type.Mapping) {
-        if (!this.isAssignable(objectType.keyType, indexType)) {
+        if (!isAssignable(objectType.keyType, indexType)) {
           this.error(
             `Invalid mapping key: expected ${objectType.keyType.toString()}, got ${indexType.toString()}`,
             indexExpr.loc,
@@ -685,7 +679,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         Type.Elementary.isBytes(objectType)
       ) {
         // Allow indexing into bytes types - returns uint8
-        if (!this.isAssignable(Type.Elementary.uint256, indexType)) {
+        if (!isAssignable(Type.Elementary.uint256, indexType)) {
           this.error(
             `Bytes index must be a numeric type, got ${indexType.toString()}`,
             indexExpr.loc,
@@ -786,7 +780,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         if (!argType) continue;
 
         const expectedType = funcType.parameterTypes[i];
-        if (!this.isAssignable(expectedType, argType)) {
+        if (!isAssignable(expectedType, argType)) {
           this.error(
             `Argument ${i + 1} type mismatch: expected ${expectedType.toString()}, got ${argType.toString()}`,
             node.arguments[i].loc,
@@ -1055,28 +1049,50 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         return new Type.Failure("Unknown type");
     }
   }
+}
 
-  private isComparable(left: Type, right: Type): boolean {
-    if (left instanceof Type.Failure || right instanceof Type.Failure)
-      return true;
-    if (left.equals(right)) return true;
-
-    // Allow comparison between compatible types
-    if (TypesUtil.areCompatible(left, right)) return true;
-
-    return false;
+function isAssignable(target: Type, value: Type): boolean {
+  if (Type.isFailure(target) || Type.isFailure(value)) {
+    return true;
+  }
+  if (target.equals(value)) {
+    return true;
   }
 
-  private isAssignable(target: Type, value: Type): boolean {
-    if (target instanceof Type.Failure || value instanceof Type.Failure)
+  // Numeric types can be implicitly converted (with range checks)
+  if (Type.Elementary.isNumeric(target) && Type.Elementary.isNumeric(value)) {
+    // Only allow same signedness
+    if (Type.Elementary.isUint(target) && Type.Elementary.isUint(value)) {
       return true;
-    if (target.equals(value)) return true;
-
-    // Allow compatible assignments
-    if (TypesUtil.areCompatible(target, value)) return true;
-
-    return false;
+    }
+    if (Type.Elementary.isInt(target) && Type.Elementary.isInt(value)) {
+      return true;
+    }
   }
+
+  return false;
+}
+
+function commonType(type1: Type, type2: Type): Type | null {
+  if (type1.equals(type2)) {
+    return type1;
+  }
+
+  // For numeric types, return the larger type
+  if (Type.isElementary(type1) && Type.isElementary(type2)) {
+    if (Type.Elementary.isUint(type1) && Type.Elementary.isUint(type2)) {
+      const size1 = type1.bits || 256;
+      const size2 = type2.bits || 256;
+      return size1 >= size2 ? type1 : type2;
+    }
+    if (Type.Elementary.isInt(type1) && Type.Elementary.isInt(type2)) {
+      const size1 = type1.bits || 256;
+      const size2 = type2.bits || 256;
+      return size1 >= size2 ? type1 : type2;
+    }
+  }
+
+  return null;
 }
 
 // Factory function for convenience
