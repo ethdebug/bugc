@@ -22,7 +22,7 @@ export function checkProgram(program: Ast.Program): Result<
   return new TypeChecker().check(program);
 }
 
-class TypeChecker extends Ast.BaseVisitor<Type | null> {
+class TypeChecker implements Ast.Visitor<Type | null, never> {
   private symbolTable = new SymbolTable();
   private structTypes = new Map<string, Type.Struct>();
   private currentReturnType: Type | null = null;
@@ -41,7 +41,7 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     this.structTypes.clear();
     this.nodeTypes = new WeakMap<object, Type>();
 
-    this.visit(program);
+    Ast.visit(this, program, undefined as never);
 
     // Build messages by severity
     const messages: MessagesBySeverity<TypeError> = {};
@@ -90,7 +90,7 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     );
   }
 
-  visitProgram(node: Ast.Program): Type | null {
+  program(node: Ast.Program, _context: never): Type | null {
     // First pass: collect struct and function declarations
     for (const decl of node.declarations) {
       if (decl.kind === "struct") {
@@ -103,7 +103,7 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     // Second pass: process storage declarations
     for (const decl of node.declarations) {
       if (decl.kind === "storage") {
-        this.visit(decl);
+        Ast.visit(this, decl, undefined as never);
       }
     }
 
@@ -132,7 +132,7 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
           }
 
           // Type check the function body
-          this.visit(decl.metadata.body);
+          Ast.visit(this, decl.metadata.body, undefined as never);
 
           // Exit function scope
           this.symbolTable.exitScope();
@@ -143,16 +143,16 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
 
     // Process create block if present
     if (node.create) {
-      this.visit(node.create);
+      Ast.visit(this, node.create, undefined as never);
     }
 
     // Process code block
-    this.visit(node.body);
+    Ast.visit(this, node.body, undefined as never);
 
     return null;
   }
 
-  visitDeclaration(node: Ast.Declaration): Type | null {
+  declaration(node: Ast.Declaration, _context: never): Type | null {
     switch (node.kind) {
       case "struct":
         // Already processed in first pass
@@ -198,7 +198,7 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
           return errorType;
         }
 
-        const initType = this.visit(node.initializer);
+        const initType = Ast.visit(this, node.initializer, undefined as never);
 
         // Determine the variable's type
         let type: Type;
@@ -241,34 +241,40 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     }
   }
 
-  visitBlock(node: Ast.Block): Type | null {
+  block(node: Ast.Block, _context: never): Type | null {
     if (node.kind === "program" || node.kind === "statements") {
       this.symbolTable.enterScope();
       for (const item of node.items) {
-        this.visit(item);
+        Ast.visit(this, item, undefined as never);
       }
       this.symbolTable.exitScope();
     }
     return null;
   }
 
-  visitElementaryType(node: Ast.Type.Elementary): Type | null {
+  elementaryType(node: Ast.Type.Elementary, _context: never): Type | null {
     return this.resolveType(node);
   }
 
-  visitComplexType(node: Ast.Type.Complex): Type | null {
+  complexType(node: Ast.Type.Complex, _context: never): Type | null {
     return this.resolveType(node);
   }
 
-  visitReferenceType(node: Ast.Type.Reference): Type | null {
+  referenceType(node: Ast.Type.Reference, _context: never): Type | null {
     return this.resolveType(node);
   }
 
-  visitDeclarationStatement(node: Ast.Statement.Declare): Type | null {
-    return this.visit(node.declaration);
+  declarationStatement(
+    node: Ast.Statement.Declare,
+    _context: never,
+  ): Type | null {
+    return Ast.visit(this, node.declaration, undefined as never);
   }
 
-  visitAssignmentStatement(node: Ast.Statement.Assign): Type | null {
+  assignmentStatement(
+    node: Ast.Statement.Assign,
+    _context: never,
+  ): Type | null {
     if (!Ast.Expression.isAssignable(node.target)) {
       this.error(
         "Invalid assignment target",
@@ -278,8 +284,8 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
       return null;
     }
 
-    const targetType = this.visit(node.target);
-    const valueType = this.visit(node.value);
+    const targetType = Ast.visit(this, node.target, undefined as never);
+    const valueType = Ast.visit(this, node.value, undefined as never);
 
     if (targetType && valueType && !isAssignable(targetType, valueType)) {
       this.error(
@@ -297,11 +303,14 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     return null;
   }
 
-  visitControlFlowStatement(node: Ast.Statement.ControlFlow): Type | null {
+  controlFlowStatement(
+    node: Ast.Statement.ControlFlow,
+    _context: never,
+  ): Type | null {
     switch (node.kind) {
       case "if": {
         if (node.condition) {
-          const condType = this.visit(node.condition);
+          const condType = Ast.visit(this, node.condition, undefined as never);
           if (condType && !Type.Elementary.isBool(condType)) {
             this.error(
               "If condition must be boolean",
@@ -310,16 +319,16 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
             );
           }
         }
-        if (node.body) this.visit(node.body);
-        if (node.alternate) this.visit(node.alternate);
+        if (node.body) Ast.visit(this, node.body, undefined as never);
+        if (node.alternate) Ast.visit(this, node.alternate, undefined as never);
         return null;
       }
 
       case "for": {
         this.symbolTable.enterScope();
-        if (node.init) this.visit(node.init);
+        if (node.init) Ast.visit(this, node.init, undefined as never);
         if (node.condition) {
-          const condType = this.visit(node.condition);
+          const condType = Ast.visit(this, node.condition, undefined as never);
           if (condType && !Type.Elementary.isBool(condType)) {
             this.error(
               "For condition must be boolean",
@@ -328,15 +337,15 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
             );
           }
         }
-        if (node.update) this.visit(node.update);
-        if (node.body) this.visit(node.body);
+        if (node.update) Ast.visit(this, node.update, undefined as never);
+        if (node.body) Ast.visit(this, node.body, undefined as never);
         this.symbolTable.exitScope();
         return null;
       }
 
       case "return": {
         if (node.value) {
-          const valueType = this.visit(node.value);
+          const valueType = Ast.visit(this, node.value, undefined as never);
           if (valueType && this.currentReturnType) {
             if (!isAssignable(this.currentReturnType, valueType)) {
               this.error(
@@ -375,12 +384,18 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     }
   }
 
-  visitExpressionStatement(node: Ast.Statement.Express): Type | null {
-    this.visit(node.expression);
+  expressionStatement(
+    node: Ast.Statement.Express,
+    _context: never,
+  ): Type | null {
+    Ast.visit(this, node.expression, undefined as never);
     return null;
   }
 
-  visitIdentifierExpression(node: Ast.Expression.Identifier): Type | null {
+  identifierExpression(
+    node: Ast.Expression.Identifier,
+    _context: never,
+  ): Type | null {
     const symbol = this.symbolTable.lookup(node.name);
     if (!symbol) {
       this.error(
@@ -394,7 +409,10 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     return symbol.type;
   }
 
-  visitLiteralExpression(node: Ast.Expression.Literal): Type | null {
+  literalExpression(
+    node: Ast.Expression.Literal,
+    _context: never,
+  ): Type | null {
     let type: Type | null = null;
     switch (node.kind) {
       case "number":
@@ -435,9 +453,12 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     return type;
   }
 
-  visitOperatorExpression(node: Ast.Expression.Operator): Type | null {
+  operatorExpression(
+    node: Ast.Expression.Operator,
+    _context: never,
+  ): Type | null {
     const operandTypes = node.operands
-      .map((op) => this.visit(op))
+      .map((op) => Ast.visit(this, op, undefined as never))
       .filter((t): t is Type => t !== null);
 
     if (operandTypes.length !== node.operands.length) {
@@ -571,8 +592,8 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     return resultType;
   }
 
-  visitAccessExpression(node: Ast.Expression.Access): Type | null {
-    const objectType = this.visit(node.object);
+  accessExpression(node: Ast.Expression.Access, _context: never): Type | null {
+    const objectType = Ast.visit(this, node.object, undefined as never);
     if (!objectType) return null;
 
     let resultType: Type | null = null;
@@ -623,8 +644,8 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
       // Slice access - start:end
       const startExpr = node.property as Ast.Expression;
       const endExpr = node.end!; // slice always has end
-      const startType = this.visit(startExpr);
-      const endType = this.visit(endExpr);
+      const startType = Ast.visit(this, startExpr, undefined as never);
+      const endType = Ast.visit(this, endExpr, undefined as never);
       if (!startType || !endType) return null;
 
       // Only bytes types can be sliced for now
@@ -659,7 +680,7 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     } else {
       // Index access
       const indexExpr = node.property as Ast.Expression;
-      const indexType = this.visit(indexExpr);
+      const indexType = Ast.visit(this, indexExpr, undefined as never);
       if (!indexType) return null;
 
       if (objectType instanceof Type.Array) {
@@ -710,7 +731,7 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     return resultType;
   }
 
-  visitCallExpression(node: Ast.Expression.Call): Type | null {
+  callExpression(node: Ast.Expression.Call, _context: never): Type | null {
     // Check if this is a built-in function call
     if (node.callee.type === "IdentifierExpression") {
       const functionName = node.callee.name;
@@ -726,7 +747,7 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
           return null;
         }
 
-        const argType = this.visit(node.arguments[0]);
+        const argType = Ast.visit(this, node.arguments[0], undefined as never);
         if (!argType) return null;
 
         // keccak256 accepts bytes types and strings
@@ -782,7 +803,7 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
 
       // Check argument types
       for (let i = 0; i < node.arguments.length; i++) {
-        const argType = this.visit(node.arguments[i]);
+        const argType = Ast.visit(this, node.arguments[i], undefined as never);
         if (!argType) continue;
 
         const expectedType = funcType.parameterTypes[i];
@@ -813,9 +834,9 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     return null;
   }
 
-  visitCastExpression(node: Ast.Expression.Cast): Type | null {
+  castExpression(node: Ast.Expression.Cast, _context: never): Type | null {
     // Get the type of the expression being cast
-    const exprType = this.visit(node.expression);
+    const exprType = Ast.visit(this, node.expression, undefined as never);
     if (!exprType) return null;
 
     // Resolve the target type
@@ -893,7 +914,10 @@ class TypeChecker extends Ast.BaseVisitor<Type | null> {
     return false;
   }
 
-  visitSpecialExpression(node: Ast.Expression.Special): Type | null {
+  specialExpression(
+    node: Ast.Expression.Special,
+    _context: never,
+  ): Type | null {
     let type: Type | null = null;
     switch (node.kind) {
       case "msg.sender":

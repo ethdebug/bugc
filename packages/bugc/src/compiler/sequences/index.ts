@@ -6,7 +6,7 @@ import parsingPass from "#parser/pass";
 import typeCheckingPass from "#typechecker/pass";
 import irGenerationPass from "#irgen/pass";
 import { pass as optimizationPass } from "#optimizer/pass";
-import { pass as evmGenerationPass } from "#evmgen/pass";
+import evmGenerationPass from "#evmgen/pass";
 
 // AST-only sequence (just parsing)
 export const astSequence = [parsingPass] as const;

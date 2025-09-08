@@ -1,87 +1,82 @@
 import * as Ast from "#ast/spec";
 
-export interface Visitor<T> {
-  visitProgram(node: Ast.Program): T;
-  visitDeclaration(node: Ast.Declaration): T;
-  visitBlock(node: Ast.Block): T;
-  visitElementaryType(node: Ast.Type.Elementary): T;
-  visitComplexType(node: Ast.Type.Complex): T;
-  visitReferenceType(node: Ast.Type.Reference): T;
-  visitDeclarationStatement(node: Ast.Statement.Declare): T;
-  visitAssignmentStatement(node: Ast.Statement.Assign): T;
-  visitControlFlowStatement(node: Ast.Statement.ControlFlow): T;
-  visitExpressionStatement(node: Ast.Statement.Express): T;
-  visitIdentifierExpression(node: Ast.Expression.Identifier): T;
-  visitLiteralExpression(node: Ast.Expression.Literal): T;
-  visitOperatorExpression(node: Ast.Expression.Operator): T;
-  visitAccessExpression(node: Ast.Expression.Access): T;
-  visitCallExpression(node: Ast.Expression.Call): T;
-  visitCastExpression(node: Ast.Expression.Cast): T;
-  visitSpecialExpression(node: Ast.Expression.Special): T;
+export interface Visitor<T, C = never> {
+  program(node: Ast.Program, context: C): T;
+  declaration(node: Ast.Declaration, context: C): T;
+  block(node: Ast.Block, context: C): T;
+  elementaryType(node: Ast.Type.Elementary, context: C): T;
+  complexType(node: Ast.Type.Complex, context: C): T;
+  referenceType(node: Ast.Type.Reference, context: C): T;
+  declarationStatement(node: Ast.Statement.Declare, context: C): T;
+  assignmentStatement(node: Ast.Statement.Assign, context: C): T;
+  controlFlowStatement(node: Ast.Statement.ControlFlow, context: C): T;
+  expressionStatement(node: Ast.Statement.Express, context: C): T;
+  identifierExpression(node: Ast.Expression.Identifier, context: C): T;
+  literalExpression(node: Ast.Expression.Literal, context: C): T;
+  operatorExpression(node: Ast.Expression.Operator, context: C): T;
+  accessExpression(node: Ast.Expression.Access, context: C): T;
+  callExpression(node: Ast.Expression.Call, context: C): T;
+  castExpression(node: Ast.Expression.Cast, context: C): T;
+  specialExpression(node: Ast.Expression.Special, context: C): T;
 }
 
 // Base visitor implementation
-export abstract class BaseVisitor<T> implements Visitor<T> {
-  visit(node: Ast.Node): T {
-    switch (node.type) {
-      case "Program":
-        return this.visitProgram(node as Ast.Program);
-      case "Declaration":
-        return this.visitDeclaration(node as Ast.Declaration);
-      case "Block":
-        return this.visitBlock(node as Ast.Block);
-      case "ElementaryType":
-        return this.visitElementaryType(node as Ast.Type.Elementary);
-      case "ComplexType":
-        return this.visitComplexType(node as Ast.Type.Complex);
-      case "ReferenceType":
-        return this.visitReferenceType(node as Ast.Type.Reference);
-      case "DeclarationStatement":
-        return this.visitDeclarationStatement(node as Ast.Statement.Declare);
-      case "AssignmentStatement":
-        return this.visitAssignmentStatement(node as Ast.Statement.Assign);
-      case "ControlFlowStatement":
-        return this.visitControlFlowStatement(
-          node as Ast.Statement.ControlFlow,
-        );
-      case "ExpressionStatement":
-        return this.visitExpressionStatement(node as Ast.Statement.Express);
-      case "IdentifierExpression":
-        return this.visitIdentifierExpression(
-          node as Ast.Expression.Identifier,
-        );
-      case "LiteralExpression":
-        return this.visitLiteralExpression(node as Ast.Expression.Literal);
-      case "OperatorExpression":
-        return this.visitOperatorExpression(node as Ast.Expression.Operator);
-      case "AccessExpression":
-        return this.visitAccessExpression(node as Ast.Expression.Access);
-      case "CallExpression":
-        return this.visitCallExpression(node as Ast.Expression.Call);
-      case "CastExpression":
-        return this.visitCastExpression(node as Ast.Expression.Cast);
-      case "SpecialExpression":
-        return this.visitSpecialExpression(node as Ast.Expression.Special);
-      default:
-        throw new Error(`Unknown node type: ${node.type}`);
-    }
+export function visit<T, C = never>(
+  visitor: Visitor<T, C>,
+  node: Ast.Node,
+  context: C,
+): T {
+  switch (node.type) {
+    case "Program":
+      return visitor.program(node as Ast.Program, context);
+    case "Declaration":
+      return visitor.declaration(node as Ast.Declaration, context);
+    case "Block":
+      return visitor.block(node as Ast.Block, context);
+    case "ElementaryType":
+      return visitor.elementaryType(node as Ast.Type.Elementary, context);
+    case "ComplexType":
+      return visitor.complexType(node as Ast.Type.Complex, context);
+    case "ReferenceType":
+      return visitor.referenceType(node as Ast.Type.Reference, context);
+    case "DeclarationStatement":
+      return visitor.declarationStatement(
+        node as Ast.Statement.Declare,
+        context,
+      );
+    case "AssignmentStatement":
+      return visitor.assignmentStatement(node as Ast.Statement.Assign, context);
+    case "ControlFlowStatement":
+      return visitor.controlFlowStatement(
+        node as Ast.Statement.ControlFlow,
+        context,
+      );
+    case "ExpressionStatement":
+      return visitor.expressionStatement(
+        node as Ast.Statement.Express,
+        context,
+      );
+    case "IdentifierExpression":
+      return visitor.identifierExpression(
+        node as Ast.Expression.Identifier,
+        context,
+      );
+    case "LiteralExpression":
+      return visitor.literalExpression(node as Ast.Expression.Literal, context);
+    case "OperatorExpression":
+      return visitor.operatorExpression(
+        node as Ast.Expression.Operator,
+        context,
+      );
+    case "AccessExpression":
+      return visitor.accessExpression(node as Ast.Expression.Access, context);
+    case "CallExpression":
+      return visitor.callExpression(node as Ast.Expression.Call, context);
+    case "CastExpression":
+      return visitor.castExpression(node as Ast.Expression.Cast, context);
+    case "SpecialExpression":
+      return visitor.specialExpression(node as Ast.Expression.Special, context);
+    default:
+      throw new Error(`Unknown node type: ${node.type}`);
   }
-
-  abstract visitProgram(node: Ast.Program): T;
-  abstract visitDeclaration(node: Ast.Declaration): T;
-  abstract visitBlock(node: Ast.Block): T;
-  abstract visitElementaryType(node: Ast.Type.Elementary): T;
-  abstract visitComplexType(node: Ast.Type.Complex): T;
-  abstract visitReferenceType(node: Ast.Type.Reference): T;
-  abstract visitDeclarationStatement(node: Ast.Statement.Declare): T;
-  abstract visitAssignmentStatement(node: Ast.Statement.Assign): T;
-  abstract visitControlFlowStatement(node: Ast.Statement.ControlFlow): T;
-  abstract visitExpressionStatement(node: Ast.Statement.Express): T;
-  abstract visitIdentifierExpression(node: Ast.Expression.Identifier): T;
-  abstract visitLiteralExpression(node: Ast.Expression.Literal): T;
-  abstract visitOperatorExpression(node: Ast.Expression.Operator): T;
-  abstract visitAccessExpression(node: Ast.Expression.Access): T;
-  abstract visitCallExpression(node: Ast.Expression.Call): T;
-  abstract visitCastExpression(node: Ast.Expression.Cast): T;
-  abstract visitSpecialExpression(node: Ast.Expression.Special): T;
 }

@@ -15,7 +15,7 @@ import { Error as IrgenError, ErrorCode, ErrorMessages } from "./errors.js";
 /**
  * Main IR generator - transforms AST to IR
  */
-export class IrBuilder extends Ast.BaseVisitor<void> {
+export class IrBuilder implements Ast.Visitor<void, never> {
   private context!: IrContext;
   private errors: IrgenError[] = [];
 
@@ -56,7 +56,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     this.context.currentFunction.blocks.set("entry", this.context.currentBlock);
 
     // Visit the program
-    this.visitProgram(program);
+    Ast.visit(this, program, undefined as never);
 
     // Ensure main function has proper terminator
     if (!this.isTerminated(this.context.currentBlock)) {
@@ -106,7 +106,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     };
   }
 
-  visitProgram(node: Ast.Program): void {
+  program(node: Ast.Program, _context: never): void {
     // Process storage declarations
     for (const decl of node.declarations) {
       if (decl.kind === "storage") {
@@ -158,7 +158,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
       this.context.currentFunction.blocks.set("entry", entryBlock);
 
       // Process create block statements
-      this.visitBlock(node.create);
+      Ast.visit(this, node.create, undefined as never);
 
       // Ensure constructor has proper terminator
       if (!this.isTerminated(this.context.currentBlock)) {
@@ -178,7 +178,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     }
 
     // Process code block
-    this.visitBlock(node.body);
+    Ast.visit(this, node.body, undefined as never);
   }
 
   processStorageDeclaration(decl: Ast.Declaration): void {
@@ -254,7 +254,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     }
 
     // Process function body
-    this.visitBlock(decl.metadata.body);
+    Ast.visit(this, decl.metadata.body, undefined as never);
 
     // Ensure function has proper terminator
     if (!this.isTerminated(this.context.currentBlock)) {
@@ -281,22 +281,22 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     return func;
   }
 
-  visitDeclaration(_node: Ast.Declaration): void {
+  declaration(_node: Ast.Declaration, _context: never): void {
     // Declarations are handled in context (storage, struct, etc)
   }
 
-  visitBlock(node: Ast.Block): void {
+  block(node: Ast.Block, _context: never): void {
     for (const item of node.items || []) {
-      this.visit(item);
+      Ast.visit(this, item, undefined as never);
     }
   }
 
-  visitDeclarationStatement(node: Ast.Statement.Declare): void {
+  declarationStatement(node: Ast.Statement.Declare, _context: never): void {
     const decl = node.declaration;
     if (decl.kind === "variable") {
       // This is a let statement
       if (decl.initializer) {
-        const valueTemp = this.visitExpression(decl.initializer);
+        const valueTemp = this.expression(decl.initializer);
 
         // Create local variable
         const declType = this.context.types.get(decl);
@@ -334,43 +334,43 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     }
   }
 
-  visitAssignmentStatement(node: Ast.Statement.Assign): void {
-    const value = this.visitExpression(node.value);
-    this.visitLValue(node.target, value);
+  assignmentStatement(node: Ast.Statement.Assign, _context: never): void {
+    const value = this.expression(node.value);
+    this.lValue(node.target, value);
   }
 
-  visitControlFlowStatement(node: Ast.Statement.ControlFlow): void {
+  controlFlowStatement(node: Ast.Statement.ControlFlow, _context: never): void {
     switch (node.kind) {
       case "if":
-        this.visitIfStatement(node);
+        this.ifStatement(node);
         break;
       case "while":
-        this.visitWhileStatement(node);
+        this.whileStatement(node);
         break;
       case "for":
-        this.visitForStatement(node);
+        this.forStatement(node);
         break;
       case "return":
-        this.visitReturnStatement(node);
+        this.returnStatement(node);
         break;
       case "break":
-        this.visitBreakStatement(node);
+        this.breakStatement(node);
         break;
       case "continue":
-        this.visitContinueStatement(node);
+        this.continueStatement(node);
         break;
     }
   }
 
-  visitExpressionStatement(node: Ast.Statement.Express): void {
+  expressionStatement(node: Ast.Statement.Express, _context: never): void {
     // Evaluate expression for side effects
-    this.visitExpression(node.expression);
+    this.expression(node.expression);
   }
 
-  visitIfStatement(node: Ast.Statement.ControlFlow): void {
+  ifStatement(node: Ast.Statement.ControlFlow): void {
     if (!node.condition || !node.body) return;
 
-    const condition = this.visitExpression(node.condition);
+    const condition = this.expression(node.condition);
 
     const thenBlock = this.createBlock("then");
     const elseBlock = node.alternate ? this.createBlock("else") : null;
@@ -387,7 +387,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
 
     // Build then block
     this.context.currentBlock = thenBlock;
-    this.visitBlock(node.body);
+    Ast.visit(this, node.body, undefined as never);
     if (!this.isTerminated(this.context.currentBlock)) {
       this.setTerminator(this.context.currentBlock, {
         kind: "jump",
@@ -398,7 +398,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     // Build else block if present
     if (elseBlock && node.alternate) {
       this.context.currentBlock = elseBlock;
-      this.visitBlock(node.alternate);
+      Ast.visit(this, node.alternate, undefined as never);
       if (!this.isTerminated(this.context.currentBlock)) {
         this.setTerminator(this.context.currentBlock, {
           kind: "jump",
@@ -411,7 +411,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     this.context.currentBlock = mergeBlock;
   }
 
-  visitWhileStatement(node: Ast.Statement.ControlFlow): void {
+  whileStatement(node: Ast.Statement.ControlFlow): void {
     if (!node.condition || !node.body) return;
 
     const headerBlock = this.createBlock("while_header");
@@ -426,7 +426,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
 
     // Build header (condition check)
     this.context.currentBlock = headerBlock;
-    const condition = this.visitExpression(node.condition);
+    const condition = this.expression(node.condition);
     this.setTerminator(this.context.currentBlock, {
       kind: "branch",
       condition,
@@ -443,7 +443,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
 
     // Build body
     this.context.currentBlock = bodyBlock;
-    this.visitBlock(node.body);
+    Ast.visit(this, node.body, undefined as never);
     if (!this.isTerminated(this.context.currentBlock)) {
       this.setTerminator(this.context.currentBlock, {
         kind: "jump",
@@ -458,11 +458,11 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     this.context.currentBlock = exitBlock;
   }
 
-  visitForStatement(node: Ast.Statement.ControlFlow): void {
+  forStatement(node: Ast.Statement.ControlFlow): void {
     if (!node.init || !node.condition || !node.update || !node.body) return;
 
     // Initialize
-    this.visit(node.init);
+    Ast.visit(this, node.init, undefined as never);
 
     // Create blocks
     const headerBlock = this.createBlock("for_header");
@@ -478,7 +478,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
 
     // Build header (condition check)
     this.context.currentBlock = headerBlock;
-    const condition = this.visitExpression(node.condition);
+    const condition = this.expression(node.condition);
     this.setTerminator(this.context.currentBlock, {
       kind: "branch",
       condition,
@@ -495,7 +495,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
 
     // Build body
     this.context.currentBlock = bodyBlock;
-    this.visitBlock(node.body);
+    Ast.visit(this, node.body, undefined as never);
     if (!this.isTerminated(this.context.currentBlock)) {
       this.setTerminator(this.context.currentBlock, {
         kind: "jump",
@@ -505,7 +505,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
 
     // Build update
     this.context.currentBlock = updateBlock;
-    this.visit(node.update);
+    Ast.visit(this, node.update, undefined as never);
     this.setTerminator(this.context.currentBlock, {
       kind: "jump",
       target: headerBlock.id,
@@ -518,8 +518,8 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     this.context.currentBlock = exitBlock;
   }
 
-  visitReturnStatement(node: Ast.Statement.ControlFlow): void {
-    const value = node.value ? this.visitExpression(node.value) : undefined;
+  returnStatement(node: Ast.Statement.ControlFlow): void {
+    const value = node.value ? this.expression(node.value) : undefined;
     this.setTerminator(this.context.currentBlock, {
       kind: "return",
       value,
@@ -527,7 +527,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     });
   }
 
-  visitBreakStatement(node: Ast.Statement.ControlFlow): void {
+  breakStatement(node: Ast.Statement.ControlFlow): void {
     const loop = this.context.loopStack[this.context.loopStack.length - 1];
     if (loop) {
       this.setTerminator(this.context.currentBlock, {
@@ -538,7 +538,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     }
   }
 
-  visitContinueStatement(node: Ast.Statement.ControlFlow): void {
+  continueStatement(node: Ast.Statement.ControlFlow): void {
     const loop = this.context.loopStack[this.context.loopStack.length - 1];
     if (loop) {
       this.setTerminator(this.context.currentBlock, {
@@ -549,24 +549,43 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     }
   }
 
-  visitExpression(node: Ast.Expression): Ir.Value {
+  expression(node: Ast.Expression): Ir.Value {
     switch (node.type) {
       case "IdentifierExpression":
-        return this.visitIdentifierExpression(
+        return this.identifierExpression(
           node as Ast.Expression.Identifier,
+          undefined as never,
         );
       case "LiteralExpression":
-        return this.visitLiteralExpression(node as Ast.Expression.Literal);
+        return this.literalExpression(
+          node as Ast.Expression.Literal,
+          undefined as never,
+        );
       case "OperatorExpression":
-        return this.visitOperatorExpression(node as Ast.Expression.Operator);
+        return this.operatorExpression(
+          node as Ast.Expression.Operator,
+          undefined as never,
+        );
       case "AccessExpression":
-        return this.visitAccessExpression(node as Ast.Expression.Access);
+        return this.accessExpression(
+          node as Ast.Expression.Access,
+          undefined as never,
+        );
       case "CallExpression":
-        return this.visitCallExpression(node as Ast.Expression.Call);
+        return this.callExpression(
+          node as Ast.Expression.Call,
+          undefined as never,
+        );
       case "CastExpression":
-        return this.visitCastExpression(node as Ast.Expression.Cast);
+        return this.castExpression(
+          node as Ast.Expression.Cast,
+          undefined as never,
+        );
       case "SpecialExpression":
-        return this.visitSpecialExpression(node as Ast.Expression.Special);
+        return this.specialExpression(
+          node as Ast.Expression.Special,
+          undefined as never,
+        );
       default: {
         // TypeScript exhaustiveness check
         const _exhaustiveCheck: never = node;
@@ -588,7 +607,10 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     }
   }
 
-  visitIdentifierExpression(node: Ast.Expression.Identifier): Ir.Value {
+  identifierExpression(
+    node: Ast.Expression.Identifier,
+    _context: never,
+  ): Ir.Value {
     const name = node.name;
 
     // Check if it's a local variable
@@ -636,7 +658,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     };
   }
 
-  visitLiteralExpression(node: Ast.Expression.Literal): Ir.Value {
+  literalExpression(node: Ast.Expression.Literal, _context: never): Ir.Value {
     const nodeType = this.context.types.get(node);
     if (!nodeType) {
       this.errors.push(
@@ -714,7 +736,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     return Ir.Value.temp(temp.id, type);
   }
 
-  visitOperatorExpression(node: Ast.Expression.Operator): Ir.Value {
+  operatorExpression(node: Ast.Expression.Operator, _context: never): Ir.Value {
     const nodeType = this.context.types.get(node);
     if (!nodeType) {
       this.errors.push(
@@ -738,7 +760,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
 
     if (node.operands.length === 1) {
       // Unary operator
-      const operand = this.visitExpression(node.operands[0]);
+      const operand = this.expression(node.operands[0]);
 
       this.emit({
         kind: "unary",
@@ -749,8 +771,8 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
       });
     } else if (node.operands.length === 2) {
       // Binary operator
-      const left = this.visitExpression(node.operands[0]);
-      const right = this.visitExpression(node.operands[1]);
+      const left = this.expression(node.operands[0]);
+      const right = this.expression(node.operands[1]);
 
       this.emit({
         kind: "binary",
@@ -779,7 +801,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     return Ir.Value.temp(temp.id, resultType);
   }
 
-  visitAccessExpression(node: Ast.Expression.Access): Ir.Value {
+  accessExpression(node: Ast.Expression.Access, _context: never): Ir.Value {
     if (node.kind === "member") {
       const property = node.property as string;
 
@@ -795,7 +817,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
               (Type.Elementary.isBytes(objectType) ||
                 Type.Elementary.isString(objectType))))
         ) {
-          const object = this.visitExpression(node.object);
+          const object = this.expression(node.object);
           const resultType: Ir.Type = { kind: "uint", bits: 256 };
           const temp = this.genTemp(resultType);
 
@@ -827,7 +849,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
       // Reading through local variables is allowed, no diagnostic needed
 
       // Otherwise, handle regular struct field access
-      const object = this.visitExpression(node.object);
+      const object = this.expression(node.object);
       const objectType = this.context.types.get(node.object);
 
       if (objectType && Type.isStruct(objectType)) {
@@ -860,9 +882,9 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
         Type.isElementary(objectType) &&
         Type.Elementary.isBytes(objectType)
       ) {
-        const object = this.visitExpression(node.object);
-        const start = this.visitExpression(node.property as Ast.Expression);
-        const end = this.visitExpression(node.end!);
+        const object = this.expression(node.object);
+        const start = this.expression(node.property as Ast.Expression);
+        const end = this.expression(node.end!);
 
         // Slicing bytes returns dynamic bytes
         const resultType: Ir.Type = { kind: "bytes" };
@@ -903,8 +925,8 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
         Type.Elementary.isBytes(objectType)
       ) {
         // Handle bytes indexing directly, not as storage chain
-        const object = this.visitExpression(node.object);
-        const index = this.visitExpression(node.property as Ast.Expression);
+        const object = this.expression(node.object);
+        const index = this.expression(node.property as Ast.Expression);
 
         // Bytes indexing returns uint8
         const elementType: Ir.Type = { kind: "uint", bits: 8 };
@@ -937,8 +959,8 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
       }
 
       // If no storage chain, handle regular array/mapping access
-      const object = this.visitExpression(node.object);
-      const index = this.visitExpression(node.property as Ast.Expression);
+      const object = this.expression(node.object);
+      const index = this.expression(node.property as Ast.Expression);
 
       if (objectType && Type.isArray(objectType)) {
         const elementType = this.bugTypeToIrType(objectType.elementType);
@@ -990,9 +1012,9 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     };
   }
 
-  visitCastExpression(node: Ast.Expression.Cast): Ir.Value {
+  castExpression(node: Ast.Expression.Cast, _context: never): Ir.Value {
     // Evaluate the expression being cast
-    const exprValue = this.visitExpression(node.expression);
+    const exprValue = this.expression(node.expression);
 
     // Get the target type from the type checker
     const targetType = this.context.types.get(node);
@@ -1025,7 +1047,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     return { kind: "temp", id: resultTemp, type: targetIrType };
   }
 
-  visitCallExpression(node: Ast.Expression.Call): Ir.Value {
+  callExpression(node: Ast.Expression.Call, _context: never): Ir.Value {
     // Check if this is a built-in function call
     if (
       node.callee.type === "IdentifierExpression" &&
@@ -1049,7 +1071,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
       }
 
       // Evaluate the argument
-      const argValue = this.visitExpression(node.arguments[0]);
+      const argValue = this.expression(node.arguments[0]);
 
       // Generate hash instruction
       const resultType: Ir.Type = { kind: "bytes", size: 32 }; // bytes32
@@ -1090,7 +1112,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
       // Evaluate arguments
       const argValues: Ir.Value[] = [];
       for (const arg of node.arguments) {
-        argValues.push(this.visitExpression(arg));
+        argValues.push(this.expression(arg));
       }
 
       // Generate call instruction
@@ -1140,7 +1162,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
     };
   }
 
-  visitSpecialExpression(node: Ast.Expression.Special): Ir.Value {
+  specialExpression(node: Ast.Expression.Special, _context: never): Ir.Value {
     const nodeType = this.context.types.get(node);
     if (!nodeType) {
       this.errors.push(
@@ -1206,22 +1228,22 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
   }
 
   // Required visitor methods for types
-  visitElementaryType(_node: Ast.Type.Elementary): void {
+  elementaryType(_node: Ast.Type.Elementary, _context: never): void {
     // Not used in IR generation
   }
 
-  visitComplexType(_node: Ast.Type.Complex): void {
+  complexType(_node: Ast.Type.Complex, _context: never): void {
     // Not used in IR generation
   }
 
-  visitReferenceType(_node: Ast.Type.Reference): void {
+  referenceType(_node: Ast.Type.Reference, _context: never): void {
     // Not used in IR generation
   }
 
   /**
    * Handle assignment to an lvalue
    */
-  private visitLValue(node: Ast.Expression, value: Ir.Value): void {
+  private lValue(node: Ast.Expression, value: Ir.Value): void {
     if (node.type === "IdentifierExpression") {
       const name = (node as Ast.Expression.Identifier).name;
 
@@ -1288,7 +1310,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
         }
 
         // Otherwise, handle regular struct field assignment
-        const object = this.visitExpression(accessNode.object);
+        const object = this.expression(accessNode.object);
         const objectType = this.context.types.get(accessNode.object);
 
         if (objectType && Type.isStruct(objectType)) {
@@ -1323,10 +1345,8 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
           Type.Elementary.isBytes(objectType)
         ) {
           // Handle bytes indexing directly
-          const object = this.visitExpression(accessNode.object);
-          const index = this.visitExpression(
-            accessNode.property as Ast.Expression,
-          );
+          const object = this.expression(accessNode.object);
+          const index = this.expression(accessNode.property as Ast.Expression);
 
           this.emit({
             kind: "store_index",
@@ -1361,10 +1381,8 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
         }
 
         // If no storage chain, handle regular array/mapping access
-        const object = this.visitExpression(accessNode.object);
-        const index = this.visitExpression(
-          accessNode.property as Ast.Expression,
-        );
+        const object = this.expression(accessNode.object);
+        const index = this.expression(accessNode.property as Ast.Expression);
 
         if (objectType && Type.isArray(objectType)) {
           this.emit({
@@ -1629,7 +1647,7 @@ export class IrBuilder extends Ast.BaseVisitor<void> {
 
       if (accessNode.kind === "index") {
         // For index access, we need to evaluate the key expression
-        const key = this.visitExpression(accessNode.property as Ast.Expression);
+        const key = this.expression(accessNode.property as Ast.Expression);
         accesses.unshift({ kind: "index", key });
       } else {
         // For member access on structs
