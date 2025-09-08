@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parse } from "#parser";
-import { TypeChecker } from "#typechecker";
+import * as TypeChecker from "#typechecker";
 import { IrBuilder } from "#irgen";
 
 describe("IR generation for create blocks", () => {
@@ -27,8 +27,7 @@ describe("IR generation for create blocks", () => {
     expect(parseResult.success).toBe(true);
     if (!parseResult.success) return;
 
-    const typeChecker = new TypeChecker();
-    const typeResult = typeChecker.check(parseResult.value);
+    const typeResult = TypeChecker.checkProgram(parseResult.value);
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 
@@ -86,8 +85,7 @@ describe("IR generation for create blocks", () => {
     expect(parseResult.success).toBe(true);
     if (!parseResult.success) return;
 
-    const typeChecker = new TypeChecker();
-    const typeResult = typeChecker.check(parseResult.value);
+    const typeResult = TypeChecker.checkProgram(parseResult.value);
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 
@@ -130,8 +128,7 @@ describe("IR generation for create blocks", () => {
     expect(parseResult.success).toBe(true);
     if (!parseResult.success) return;
 
-    const typeChecker = new TypeChecker();
-    const typeResult = typeChecker.check(parseResult.value);
+    const typeResult = TypeChecker.checkProgram(parseResult.value);
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 
@@ -169,8 +166,7 @@ describe("IR generation for create blocks", () => {
     expect(parseResult.success).toBe(true);
     if (!parseResult.success) return;
 
-    const typeChecker = new TypeChecker();
-    const typeResult = typeChecker.check(parseResult.value);
+    const typeResult = TypeChecker.checkProgram(parseResult.value);
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 

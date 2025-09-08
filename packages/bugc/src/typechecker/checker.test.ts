@@ -4,12 +4,12 @@ import { parse } from "#parser";
 import { Result, Severity } from "#result";
 import type { SymbolTable, TypeMap } from "#types";
 
-import { TypeChecker } from "./checker.js";
-import type { TypeError as BugTypeError } from "./errors.js";
+import { checkProgram } from "./checker.js";
+import type { Error as BugTypeError } from "./errors.js";
 
 import "#test/matchers";
 
-describe("TypeChecker", () => {
+describe("checkProgram", () => {
   function check(
     source: string,
   ): Result<{ symbolTable: SymbolTable; types: TypeMap }, BugTypeError> {
@@ -19,8 +19,7 @@ describe("TypeChecker", () => {
       throw new Error(`Parse error: ${firstError?.message || "Unknown error"}`);
     }
     const ast = parseResult.value;
-    const checker = new TypeChecker();
-    return checker.check(ast);
+    return checkProgram(ast);
   }
 
   describe("Variable Declarations", () => {

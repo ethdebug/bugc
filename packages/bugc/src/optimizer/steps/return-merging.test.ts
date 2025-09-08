@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { IrBuilder } from "#irgen";
 import { parse } from "#parser";
 import { Result } from "#result";
-import { TypeChecker } from "#typechecker";
+import * as TypeChecker from "#typechecker";
 
 import { ReturnMergingStep } from "./return-merging.js";
 import { OptimizationContextImpl } from "../optimizer.js";
@@ -43,8 +43,7 @@ describe("ReturnMergingStep", () => {
       );
     }
 
-    const typeChecker = new TypeChecker();
-    const typeResult = typeChecker.check(parseResult.value);
+    const typeResult = TypeChecker.checkProgram(parseResult.value);
     if (!typeResult.success) {
       throw new Error(
         "Type check failed: " +
@@ -149,8 +148,7 @@ describe("ReturnMergingStep", () => {
       );
     }
 
-    const typeChecker = new TypeChecker();
-    const typeResult = typeChecker.check(parseResult.value);
+    const typeResult = TypeChecker.checkProgram(parseResult.value);
     if (!typeResult.success) {
       throw new Error(
         "Type check failed: " +

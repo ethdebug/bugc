@@ -2,13 +2,13 @@ import type { Program } from "#ast";
 import type { SymbolTable, TypeMap } from "#types";
 import type { Pass } from "#compiler";
 
-import type { TypeError } from "./errors.js";
-import { TypeChecker } from "./checker.js";
+import type { Error as TypeError } from "./errors.js";
+import { checkProgram } from "./checker.js";
 
 /**
  * Type checking pass - validates types and builds symbol table
  */
-export const pass: Pass<{
+const pass: Pass<{
   needs: {
     ast: Program;
   };
@@ -19,7 +19,8 @@ export const pass: Pass<{
   error: TypeError;
 }> = {
   async run({ ast }) {
-    const checker = new TypeChecker();
-    return checker.check(ast);
+    return checkProgram(ast);
   },
 };
+
+export default pass;

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { parse } from "#parser";
-import { TypeChecker } from "#typechecker";
+import * as TypeChecker from "#typechecker";
 import { IrBuilder } from "./generator.js";
 import { Severity } from "#result";
 import "#test/matchers";
@@ -17,8 +17,7 @@ describe("IR slice generation", () => {
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Parse failed");
 
-    const checker = new TypeChecker();
-    const typeResult = checker.check(result.value);
+    const typeResult = TypeChecker.checkProgram(result.value);
     expect(typeResult.success).toBe(true);
 
     if (typeResult.success) {
@@ -64,8 +63,7 @@ describe("IR slice generation", () => {
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Parse failed");
 
-    const checker = new TypeChecker();
-    const typeResult = checker.check(result.value);
+    const typeResult = TypeChecker.checkProgram(result.value);
 
     if (typeResult.success) {
       const builder = new IrBuilder();

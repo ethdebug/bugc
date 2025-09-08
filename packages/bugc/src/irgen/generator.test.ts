@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "#parser";
-import { TypeChecker } from "#typechecker";
+import * as TypeChecker from "#typechecker";
 import { IrBuilder } from "./generator.js";
 import * as Ir from "#ir";
 import { Result, Severity } from "#result";
@@ -15,8 +15,7 @@ describe("IrBuilder", () => {
       );
     }
     const ast = parseResult.value;
-    const typeChecker = new TypeChecker();
-    const typeCheckResult = typeChecker.check(ast);
+    const typeCheckResult = TypeChecker.checkProgram(ast);
 
     if (!typeCheckResult.success) {
       throw new Error(
@@ -474,8 +473,7 @@ describe("IrBuilder", () => {
         );
       }
       const ast = parseResult.value;
-      const typeChecker = new TypeChecker();
-      const typeCheckResult = typeChecker.check(ast);
+      const typeCheckResult = TypeChecker.checkProgram(ast);
 
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
@@ -581,8 +579,7 @@ describe("IrBuilder", () => {
         );
       }
       const ast = parseResult.value;
-      const typeChecker = new TypeChecker();
-      const typeCheckResult = typeChecker.check(ast);
+      const typeCheckResult = TypeChecker.checkProgram(ast);
 
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
@@ -636,8 +633,7 @@ describe("IrBuilder", () => {
         );
       }
       const ast = parseResult.value;
-      const typeChecker = new TypeChecker();
-      const typeCheckResult = typeChecker.check(ast);
+      const typeCheckResult = TypeChecker.checkProgram(ast);
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
 

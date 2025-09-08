@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "#parser";
 import { Result, Severity } from "#result";
 
-import { TypeChecker } from "./checker.js";
+import { checkProgram } from "./checker.js";
 
 import "#test/matchers";
 
@@ -26,8 +26,7 @@ describe("TypeChecker - Length Property", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const result = checker.check(ast.value);
+    const result = checkProgram(ast.value);
     expect(result.success).toBe(true);
   });
 
@@ -48,8 +47,7 @@ describe("TypeChecker - Length Property", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const result = checker.check(ast.value);
+    const result = checkProgram(ast.value);
     expect(result.success).toBe(true);
   });
 
@@ -77,8 +75,7 @@ describe("TypeChecker - Length Property", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const result = checker.check(ast.value);
+    const result = checkProgram(ast.value);
     expect(result.success).toBe(true);
   });
 
@@ -101,8 +98,7 @@ describe("TypeChecker - Length Property", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const result = checker.check(ast.value);
+    const result = checkProgram(ast.value);
     expect(result.success).toBe(true);
   });
 
@@ -125,8 +121,7 @@ describe("TypeChecker - Length Property", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const result = checker.check(ast.value);
+    const result = checkProgram(ast.value);
     expect(result.success).toBe(true);
   });
 
@@ -147,8 +142,7 @@ describe("TypeChecker - Length Property", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const result = checker.check(ast.value);
+    const result = checkProgram(ast.value);
     expect(result.success).toBe(false);
 
     if (!result.success) {
@@ -173,8 +167,7 @@ describe("TypeChecker - Length Property", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const result = checker.check(ast.value);
+    const result = checkProgram(ast.value);
     expect(result.success).toBe(false);
 
     if (!result.success) {
@@ -203,8 +196,7 @@ describe("TypeChecker - Length Property", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const result = checker.check(ast.value);
+    const result = checkProgram(ast.value);
     expect(result.success).toBe(false);
 
     if (!result.success) {
@@ -236,8 +228,7 @@ describe("TypeChecker - Length Property", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const result = checker.check(ast.value);
+    const result = checkProgram(ast.value);
     expect(result.success).toBe(true);
   });
 
@@ -264,8 +255,7 @@ describe("TypeChecker - Length Property", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const result = checker.check(ast.value);
+    const result = checkProgram(ast.value);
     expect(result.success).toBe(true);
   });
 });

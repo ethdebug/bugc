@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { parse } from "#parser";
 import { Severity } from "#result";
 
-import { TypeChecker } from "./checker.js";
+import { checkProgram } from "./checker.js";
 
 import "#test/matchers";
 
@@ -19,15 +19,15 @@ describe("Slice type checking", () => {
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Parse failed");
 
-    const checker = new TypeChecker();
-    const typeResult = checker.check(result.value);
+    const typeResult = checkProgram(result.value);
     expect(typeResult.success).toBe(true);
 
     if (typeResult.success) {
+      const { types } = typeResult.value;
       const program = result.value;
       const decl = program.body.items[0];
       if (decl.type === "DeclarationStatement") {
-        const sliceType = checker.getType(decl.declaration.initializer!);
+        const sliceType = types.get(decl.declaration.initializer!);
         expect(sliceType?.toString()).toBe("bytes");
       }
     }
@@ -47,8 +47,7 @@ describe("Slice type checking", () => {
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Parse failed");
 
-    const checker = new TypeChecker();
-    const typeResult = checker.check(result.value);
+    const typeResult = checkProgram(result.value);
     expect(typeResult.success).toBe(false);
     expect(typeResult).toHaveMessage({
       severity: Severity.Error,
@@ -67,8 +66,7 @@ describe("Slice type checking", () => {
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Parse failed");
 
-    const checker = new TypeChecker();
-    const typeResult = checker.check(result.value);
+    const typeResult = checkProgram(result.value);
     expect(typeResult.success).toBe(false);
     expect(typeResult).toHaveMessage({
       severity: Severity.Error,

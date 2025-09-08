@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parse } from "#parser";
-import { TypeChecker } from "#typechecker";
+import * as TypeChecker from "#typechecker";
 import { IrBuilder } from "#irgen";
 import type * as Ir from "#ir";
 
@@ -32,8 +32,7 @@ code {}
     expect(parseResult.success).toBe(true);
     if (!parseResult.success) return;
 
-    const typeChecker = new TypeChecker();
-    const typeCheckResult = typeChecker.check(parseResult.value);
+    const typeCheckResult = TypeChecker.checkProgram(parseResult.value);
     expect(typeCheckResult.success).toBe(true);
     if (!typeCheckResult.success) return;
 
@@ -112,8 +111,7 @@ code {}
     expect(parseResult.success).toBe(true);
     if (!parseResult.success) return;
 
-    const typeChecker = new TypeChecker();
-    const typeCheckResult = typeChecker.check(parseResult.value);
+    const typeCheckResult = TypeChecker.checkProgram(parseResult.value);
     expect(typeCheckResult.success).toBe(true);
     if (!typeCheckResult.success) return;
 
@@ -185,8 +183,7 @@ code {}
     expect(parseResult.success).toBe(true);
     if (!parseResult.success) return;
 
-    const typeChecker = new TypeChecker();
-    const typeCheckResult = typeChecker.check(parseResult.value);
+    const typeCheckResult = TypeChecker.checkProgram(parseResult.value);
     expect(typeCheckResult.success).toBe(true);
     if (!typeCheckResult.success) return;
 

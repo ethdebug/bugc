@@ -8,7 +8,7 @@ import type { SourceLocation } from "#ast";
 /**
  * Error codes for type errors
  */
-export enum TypeErrorCode {
+export enum ErrorCode {
   TYPE_MISMATCH = "TYPE001",
   UNDEFINED_VARIABLE = "TYPE002",
   UNDEFINED_TYPE = "TYPE003",
@@ -28,7 +28,7 @@ export enum TypeErrorCode {
 /**
  * Type error message templates
  */
-export const TypeErrorMessages = {
+export const ErrorMessages = {
   TYPE_MISMATCH: (expected: string, actual: string) =>
     `Type mismatch: expected ${expected}, got ${actual}`,
   UNDEFINED_VARIABLE: (name: string) => `Undefined variable: ${name}`,
@@ -42,10 +42,7 @@ export const TypeErrorMessages = {
   CANNOT_INDEX: (type: string) => `Cannot index ${type}`,
 } as const;
 
-/**
- * Type checking errors
- */
-export class TypeError extends BugError {
+class TypeError extends BugError {
   public readonly expectedType?: string;
   public readonly actualType?: string;
 
@@ -54,10 +51,12 @@ export class TypeError extends BugError {
     location?: SourceLocation,
     expectedType?: string,
     actualType?: string,
-    code: TypeErrorCode = TypeErrorCode.GENERAL,
+    code: ErrorCode = ErrorCode.GENERAL,
   ) {
     super(message, code, location);
     this.expectedType = expectedType;
     this.actualType = actualType;
   }
 }
+
+export { TypeError as Error };

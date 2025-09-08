@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "#parser";
-import { TypeChecker } from "#typechecker";
+import * as TypeChecker from "#typechecker";
 import { IrBuilder } from "./generator.js";
 
 describe("IR Builder - Length Instructions", () => {
@@ -22,8 +22,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const checkResult = checker.check(ast.value);
+    const checkResult = TypeChecker.checkProgram(ast.value);
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
@@ -66,8 +65,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const checkResult = checker.check(ast.value);
+    const checkResult = TypeChecker.checkProgram(ast.value);
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
@@ -116,8 +114,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const checkResult = checker.check(ast.value);
+    const checkResult = TypeChecker.checkProgram(ast.value);
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
@@ -161,8 +158,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const checkResult = checker.check(ast.value);
+    const checkResult = TypeChecker.checkProgram(ast.value);
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
@@ -207,8 +203,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const checkResult = checker.check(ast.value);
+    const checkResult = TypeChecker.checkProgram(ast.value);
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
@@ -252,8 +247,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(ast.success).toBe(true);
     if (!ast.success) return;
 
-    const checker = new TypeChecker();
-    const checkResult = checker.check(ast.value);
+    const checkResult = TypeChecker.checkProgram(ast.value);
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 

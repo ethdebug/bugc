@@ -8,7 +8,7 @@ import type { SourceLocation } from "#ast";
 /**
  * Parse errors
  */
-export class Error extends BugError {
+class ParserError extends BugError {
   public readonly expected?: string[];
 
   constructor(message: string, location: SourceLocation, expected?: string[]) {
@@ -16,3 +16,5 @@ export class Error extends BugError {
     this.expected = expected;
   }
 }
+
+export { ParserError as Error };

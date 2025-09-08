@@ -10,13 +10,19 @@ import { Type, SymbolTable, type BugSymbol, type TypeMap } from "#types";
 
 import { Result, type MessagesBySeverity, Severity } from "#result";
 
-import {
-  TypeError,
-  TypeErrorCode,
-  TypeErrorMessages as ErrorMessages,
-} from "./errors.js";
+import { Error as TypeError, ErrorCode, ErrorMessages } from "./errors.js";
 
-export class TypeChecker extends Ast.BaseVisitor<Type | null> {
+export function checkProgram(program: Ast.Program): Result<
+  {
+    symbolTable: SymbolTable;
+    types: TypeMap;
+  },
+  TypeError
+> {
+  return new TypeChecker().check(program);
+}
+
+class TypeChecker extends Ast.BaseVisitor<Type | null> {
   private symbolTable = new SymbolTable();
   private structTypes = new Map<string, Type.Struct>();
   private currentReturnType: Type | null = null;
@@ -74,7 +80,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
   private error(
     message: string,
     location?: unknown,
-    code: TypeErrorCode = TypeErrorCode.GENERAL,
+    code: ErrorCode = ErrorCode.GENERAL,
     expectedType?: string,
     actualType?: string,
   ): void {
@@ -177,7 +183,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             `Variable ${node.name} must have an initializer`,
             node.loc,
-            TypeErrorCode.MISSING_INITIALIZER,
+            ErrorCode.MISSING_INITIALIZER,
           );
           // Still define the variable with error type
           const errorType = new Type.Failure("missing initializer");
@@ -205,7 +211,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             this.error(
               ErrorMessages.TYPE_MISMATCH(type.toString(), initType.toString()),
               node.initializer.loc,
-              TypeErrorCode.TYPE_MISMATCH,
+              ErrorCode.TYPE_MISMATCH,
               type.toString(),
               initType.toString(),
             );
@@ -267,7 +273,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
       this.error(
         "Invalid assignment target",
         node.target.loc,
-        TypeErrorCode.INVALID_ASSIGNMENT,
+        ErrorCode.INVALID_ASSIGNMENT,
       );
       return null;
     }
@@ -282,7 +288,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           valueType.toString(),
         ),
         node.loc,
-        TypeErrorCode.TYPE_MISMATCH,
+        ErrorCode.TYPE_MISMATCH,
         targetType.toString(),
         valueType.toString(),
       );
@@ -300,7 +306,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             this.error(
               "If condition must be boolean",
               node.condition.loc,
-              TypeErrorCode.INVALID_CONDITION,
+              ErrorCode.INVALID_CONDITION,
             );
           }
         }
@@ -318,7 +324,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             this.error(
               "For condition must be boolean",
               node.condition.loc,
-              TypeErrorCode.INVALID_CONDITION,
+              ErrorCode.INVALID_CONDITION,
             );
           }
         }
@@ -339,7 +345,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
                   valueType.toString(),
                 ),
                 node.loc,
-                TypeErrorCode.TYPE_MISMATCH,
+                ErrorCode.TYPE_MISMATCH,
                 this.currentReturnType.toString(),
                 valueType.toString(),
               );
@@ -348,14 +354,14 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             this.error(
               "Cannot return a value from a void function",
               node.loc,
-              TypeErrorCode.TYPE_MISMATCH,
+              ErrorCode.TYPE_MISMATCH,
             );
           }
         } else if (this.currentReturnType) {
           this.error(
             `Function must return a value of type ${this.currentReturnType.toString()}`,
             node.loc,
-            TypeErrorCode.TYPE_MISMATCH,
+            ErrorCode.TYPE_MISMATCH,
           );
         }
         return null;
@@ -380,7 +386,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
       this.error(
         ErrorMessages.UNDEFINED_VARIABLE(node.name),
         node.loc,
-        TypeErrorCode.UNDEFINED_VARIABLE,
+        ErrorCode.UNDEFINED_VARIABLE,
       );
       return null;
     }
@@ -451,7 +457,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             this.error(
               ErrorMessages.INVALID_UNARY_OP("!", "boolean"),
               node.loc,
-              TypeErrorCode.INVALID_OPERAND,
+              ErrorCode.INVALID_OPERAND,
             );
           }
           resultType = Type.Elementary.bool;
@@ -462,7 +468,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             this.error(
               ErrorMessages.INVALID_UNARY_OP("-", "numeric"),
               node.loc,
-              TypeErrorCode.INVALID_OPERAND,
+              ErrorCode.INVALID_OPERAND,
             );
           }
           resultType = operandType;
@@ -472,7 +478,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             `Unknown unary operator: ${node.operator}`,
             node.loc,
-            TypeErrorCode.INVALID_OPERATION,
+            ErrorCode.INVALID_OPERATION,
           );
           return null;
       }
@@ -492,7 +498,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             this.error(
               ErrorMessages.INVALID_BINARY_OP(node.operator, "numeric"),
               node.loc,
-              TypeErrorCode.INVALID_OPERAND,
+              ErrorCode.INVALID_OPERAND,
             );
           }
           resultType = commonType(leftType, rightType);
@@ -509,7 +515,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             this.error(
               ErrorMessages.INVALID_BINARY_OP(node.operator, "numeric"),
               node.loc,
-              TypeErrorCode.INVALID_OPERAND,
+              ErrorCode.INVALID_OPERAND,
             );
           }
           resultType = Type.Elementary.bool;
@@ -521,7 +527,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             this.error(
               `Cannot compare ${leftType.toString()} with ${rightType.toString()}`,
               node.loc,
-              TypeErrorCode.INVALID_OPERATION,
+              ErrorCode.INVALID_OPERATION,
             );
           }
           resultType = Type.Elementary.bool;
@@ -536,7 +542,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
             this.error(
               ErrorMessages.INVALID_BINARY_OP(node.operator, "boolean"),
               node.loc,
-              TypeErrorCode.INVALID_OPERAND,
+              ErrorCode.INVALID_OPERAND,
             );
           }
           resultType = Type.Elementary.bool;
@@ -546,7 +552,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             `Unknown binary operator: ${node.operator}`,
             node.loc,
-            TypeErrorCode.INVALID_OPERATION,
+            ErrorCode.INVALID_OPERATION,
           );
           return null;
       }
@@ -554,7 +560,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
       this.error(
         `Invalid operator arity: ${node.operands.length}`,
         node.loc,
-        TypeErrorCode.INVALID_OPERATION,
+        ErrorCode.INVALID_OPERATION,
       );
       return null;
     }
@@ -580,7 +586,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             ErrorMessages.NO_SUCH_FIELD(objectType.name, property),
             node.loc,
-            TypeErrorCode.NO_SUCH_FIELD,
+            ErrorCode.NO_SUCH_FIELD,
           );
           return null;
         }
@@ -601,7 +607,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             `Type ${objectType.toString()} does not have a length property`,
             node.loc,
-            TypeErrorCode.INVALID_OPERATION,
+            ErrorCode.INVALID_OPERATION,
           );
           return null;
         }
@@ -609,7 +615,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         this.error(
           `Cannot access member ${property} on ${objectType.toString()}`,
           node.loc,
-          TypeErrorCode.INVALID_OPERATION,
+          ErrorCode.INVALID_OPERATION,
         );
         return null;
       }
@@ -630,14 +636,14 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             "Slice start index must be numeric",
             startExpr.loc,
-            TypeErrorCode.INVALID_INDEX_TYPE,
+            ErrorCode.INVALID_INDEX_TYPE,
           );
         }
         if (!Type.Elementary.isNumeric(endType)) {
           this.error(
             "Slice end index must be numeric",
             endExpr.loc,
-            TypeErrorCode.INVALID_INDEX_TYPE,
+            ErrorCode.INVALID_INDEX_TYPE,
           );
         }
         // Slicing bytes returns dynamic bytes
@@ -646,7 +652,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         this.error(
           `Cannot slice ${objectType.toString()} - only bytes types can be sliced`,
           node.loc,
-          TypeErrorCode.INVALID_OPERATION,
+          ErrorCode.INVALID_OPERATION,
         );
         return null;
       }
@@ -661,7 +667,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             "Array index must be numeric",
             indexExpr.loc,
-            TypeErrorCode.INVALID_INDEX_TYPE,
+            ErrorCode.INVALID_INDEX_TYPE,
           );
         }
         resultType = objectType.elementType;
@@ -670,7 +676,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             `Invalid mapping key: expected ${objectType.keyType.toString()}, got ${indexType.toString()}`,
             indexExpr.loc,
-            TypeErrorCode.TYPE_MISMATCH,
+            ErrorCode.TYPE_MISMATCH,
           );
         }
         resultType = objectType.valueType;
@@ -683,7 +689,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             `Bytes index must be a numeric type, got ${indexType.toString()}`,
             indexExpr.loc,
-            TypeErrorCode.TYPE_MISMATCH,
+            ErrorCode.TYPE_MISMATCH,
           );
         }
         // Bytes indexing returns uint8
@@ -692,7 +698,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         this.error(
           ErrorMessages.CANNOT_INDEX(objectType.toString()),
           node.loc,
-          TypeErrorCode.NOT_INDEXABLE,
+          ErrorCode.NOT_INDEXABLE,
         );
         return null;
       }
@@ -715,7 +721,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             "keccak256 expects exactly 1 argument",
             node.loc,
-            TypeErrorCode.INVALID_ARGUMENT_COUNT,
+            ErrorCode.INVALID_ARGUMENT_COUNT,
           );
           return null;
         }
@@ -731,7 +737,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             "keccak256 argument must be bytes or string type",
             node.arguments[0].loc,
-            TypeErrorCode.TYPE_MISMATCH,
+            ErrorCode.TYPE_MISMATCH,
           );
           return null;
         }
@@ -748,7 +754,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         this.error(
           ErrorMessages.UNDEFINED_VARIABLE(functionName),
           node.callee.loc,
-          TypeErrorCode.UNDEFINED_VARIABLE,
+          ErrorCode.UNDEFINED_VARIABLE,
         );
         return null;
       }
@@ -757,7 +763,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         this.error(
           `${functionName} is not a function`,
           node.callee.loc,
-          TypeErrorCode.TYPE_MISMATCH,
+          ErrorCode.TYPE_MISMATCH,
         );
         return null;
       }
@@ -769,7 +775,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
         this.error(
           `Function ${funcType.name} expects ${funcType.parameterTypes.length} arguments but got ${node.arguments.length}`,
           node.loc,
-          TypeErrorCode.INVALID_ARGUMENT_COUNT,
+          ErrorCode.INVALID_ARGUMENT_COUNT,
         );
         return null;
       }
@@ -784,7 +790,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             `Argument ${i + 1} type mismatch: expected ${expectedType.toString()}, got ${argType.toString()}`,
             node.arguments[i].loc,
-            TypeErrorCode.TYPE_MISMATCH,
+            ErrorCode.TYPE_MISMATCH,
             expectedType.toString(),
             argType.toString(),
           );
@@ -802,7 +808,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
     this.error(
       "Complex function call expressions not yet supported",
       node.loc,
-      TypeErrorCode.INVALID_OPERATION,
+      ErrorCode.INVALID_OPERATION,
     );
     return null;
   }
@@ -821,7 +827,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
       this.error(
         `Cannot cast from ${exprType.toString()} to ${targetType.toString()}`,
         node.loc,
-        TypeErrorCode.INVALID_TYPE_CAST,
+        ErrorCode.INVALID_TYPE_CAST,
         targetType.toString(),
         exprType.toString(),
       );
@@ -1038,7 +1044,7 @@ export class TypeChecker extends Ast.BaseVisitor<Type | null> {
           this.error(
             ErrorMessages.UNDEFINED_TYPE(typeNode.name),
             typeNode.loc,
-            TypeErrorCode.UNDEFINED_TYPE,
+            ErrorCode.UNDEFINED_TYPE,
           );
           return new Type.Failure(`Undefined struct: ${typeNode.name}`);
         }
@@ -1093,9 +1099,4 @@ function commonType(type1: Type, type2: Type): Type | null {
   }
 
   return null;
-}
-
-// Factory function for convenience
-export function createTypeChecker(): TypeChecker {
-  return new TypeChecker();
 }

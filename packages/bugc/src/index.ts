@@ -6,7 +6,7 @@ export * as Evm from "#evm";
 export * as Parser from "#parser";
 
 // Re-export type checker functionality
-export { TypeChecker, createTypeChecker } from "#typechecker";
+export * as TypeChecker from "#typechecker";
 
 // Re-export type system
 export { Type, SymbolTable } from "#types";
