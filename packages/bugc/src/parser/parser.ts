@@ -683,7 +683,7 @@ const letStatement = located(
     Lang.semicolon,
   ).map(([_, name, declaredType, __, init, ___]) =>
     Ast.Statement.declare(
-      Ast.declaration("variable", name, declaredType, init),
+      Ast.Declaration.variable(name, declaredType, init),
     ),
   ),
 );
@@ -809,7 +809,7 @@ statement = P.alt(
 // Field declaration: name: Type
 const fieldDeclaration = located(
   P.seq(Lang.identifier, Lang.colon, typeExpression).map(
-    ([name, _, fieldType]) => Ast.declaration("field", name, fieldType),
+    ([name, _, fieldType]) => Ast.Declaration.field(name, fieldType),
   ),
 );
 
@@ -824,7 +824,7 @@ const structDeclaration = located(
       .skip(Lang.semicolon.or(P.succeed(null))),
     Lang.rbrace,
   ).map(([_, name, __, fields, ___]) =>
-    Ast.declaration("struct", name, undefined, undefined, { fields }),
+    Ast.Declaration.struct(name, undefined, undefined, { fields }),
   ),
 );
 
@@ -849,7 +849,7 @@ const functionDeclaration = P.lazy(() =>
         .fallback(undefined),
       blockStatements,
     ).map(([_, name, __, params, ___, returnType, body]) =>
-      Ast.declaration("function", name, returnType, undefined, {
+      Ast.Declaration.function_(name, returnType, undefined, {
         parameters: params,
         body,
       }),
@@ -880,7 +880,7 @@ const storageDeclaration = located(
       return P.fail(`Storage slot must be an integer, got ${slotNum}`);
     }
     return P.succeed(
-      Ast.declaration("storage", name, storageType, undefined, {
+      Ast.Declaration.storage(name, storageType, undefined, {
         slot: slotNum,
       }),
     );

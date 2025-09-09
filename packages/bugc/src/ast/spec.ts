@@ -89,35 +89,151 @@ export function program(
 // Unified Declaration pattern
 // Covers: struct declarations, field declarations, storage declarations, and variable declarations
 
-export interface Declaration extends Node.Base {
-  type: "Declaration";
-  kind: "struct" | "field" | "storage" | "variable" | "function";
-  name: string;
-  declaredType?: Type;
-  initializer?: Expression;
-  metadata?: Declaration.Metadata;
-}
+// export function declaration(
+//   kind: Declaration["kind"],
+//   name: string,
+//   declaredType?: Type,
+//   initializer?: Expression,
+//   metadata?: Declaration.Metadata,
+//   loc?: SourceLocation,
+// ): Declaration {
+//   return {
+//     type: "Declaration",
+//     kind,
+//     name,
+//     declaredType,
+//     initializer,
+//     metadata,
+//     loc: loc ?? null,
+//   };
+// }
 
-export function declaration(
-  kind: Declaration["kind"],
-  name: string,
-  declaredType?: Type,
-  initializer?: Expression,
-  metadata?: Declaration.Metadata,
-  loc?: SourceLocation,
-): Declaration {
-  return {
-    type: "Declaration",
-    kind,
-    name,
-    declaredType,
-    initializer,
-    metadata,
-    loc: loc ?? null,
-  };
-}
+export type Declaration =
+  | Declaration.Struct
+  | Declaration.Field
+  | Declaration.Storage
+  | Declaration.Variable
+  | Declaration.Function;
 
 export namespace Declaration {
+  export interface Base extends Node.Base {
+    type: "Declaration";
+    name: string;
+    declaredType?: Type;
+    initializer?: Expression;
+    metadata?: Declaration.Metadata;
+  }
+
+  export interface Struct extends Declaration.Base {
+    kind: "struct";
+  }
+
+  export function struct(
+    name: string,
+    declaredType?: Type,
+    initializer?: Expression,
+    metadata?: Declaration.Metadata,
+    loc?: SourceLocation,
+  ): Declaration.Struct {
+    return {
+      kind: "struct",
+      type: "Declaration",
+      name,
+      declaredType,
+      initializer,
+      metadata,
+      loc: loc ?? null,
+    };
+  }
+
+  export interface Field extends Declaration.Base {
+    kind: "field";
+  }
+
+  export function field(
+    name: string,
+    declaredType?: Type,
+    initializer?: Expression,
+    metadata?: Declaration.Metadata,
+    loc?: SourceLocation,
+  ): Declaration.Field {
+    return {
+      kind: "field",
+      type: "Declaration",
+      name,
+      declaredType,
+      initializer,
+      metadata,
+      loc: loc ?? null,
+    };
+  }
+
+  export interface Storage extends Declaration.Base {
+    kind: "storage";
+  }
+
+  export function storage(
+    name: string,
+    declaredType?: Type,
+    initializer?: Expression,
+    metadata?: Declaration.Metadata,
+    loc?: SourceLocation,
+  ): Declaration.Storage {
+    return {
+      kind: "storage",
+      type: "Declaration",
+      name,
+      declaredType,
+      initializer,
+      metadata,
+      loc: loc ?? null,
+    };
+  }
+
+  export interface Variable extends Declaration.Base {
+    kind: "variable";
+  }
+
+  export function variable(
+    name: string,
+    declaredType?: Type,
+    initializer?: Expression,
+    metadata?: Declaration.Metadata,
+    loc?: SourceLocation,
+  ): Declaration.Variable {
+    return {
+      kind: "variable",
+      type: "Declaration",
+      name,
+      declaredType,
+      initializer,
+      metadata,
+      loc: loc ?? null,
+    };
+  }
+
+  export interface Function extends Declaration.Base {
+    kind: "function";
+  }
+
+  export function function_(
+    name: string,
+    declaredType?: Type,
+    initializer?: Expression,
+    metadata?: Declaration.Metadata,
+    loc?: SourceLocation,
+  ): Declaration.Function {
+    return {
+      kind: "function",
+      type: "Declaration",
+      name,
+      declaredType,
+      initializer,
+      metadata,
+      loc: loc ?? null,
+    };
+  }
+
   export interface Metadata {
     slot?: number; // For storage declarations
     fields?: Declaration[]; // For struct declarations

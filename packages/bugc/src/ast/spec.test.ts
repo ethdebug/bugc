@@ -18,9 +18,8 @@ describe("Ast", () => {
       expect(program.loc).toBeNull();
     });
 
-    it("should create declaration nodes", () => {
-      const decl = Ast.declaration(
-        "variable",
+    it("should create variable declaration nodes", () => {
+      const decl = Ast.Declaration.variable(
         "x",
         Ast.Type.elementary("uint", 256),
       );
@@ -32,10 +31,10 @@ describe("Ast", () => {
 
     it("should create struct declarations with fields", () => {
       const fields = [
-        Ast.declaration("field", "x", Ast.Type.elementary("uint", 256)),
-        Ast.declaration("field", "y", Ast.Type.elementary("uint", 256)),
+        Ast.Declaration.field("x", Ast.Type.elementary("uint", 256)),
+        Ast.Declaration.field("y", Ast.Type.elementary("uint", 256)),
       ];
-      const struct = Ast.declaration("struct", "Point", undefined, undefined, {
+      const struct = Ast.Declaration.struct("Point", undefined, undefined, {
         fields,
       });
 
@@ -45,8 +44,7 @@ describe("Ast", () => {
     });
 
     it("should create storage declarations with slot", () => {
-      const storage = Ast.declaration(
-        "storage",
+      const storage = Ast.Declaration.storage(
         "balance",
         Ast.Type.elementary("uint", 256),
         undefined,
@@ -136,8 +134,7 @@ describe("Ast", () => {
 
     it("should create statement nodes", () => {
       const declStmt = Ast.Statement.declare(
-        Ast.declaration(
-          "variable",
+        Ast.Declaration.variable(
           "x",
           undefined,
           Ast.Expression.literal("number", "42"),
@@ -223,7 +220,7 @@ describe("Ast", () => {
     it("should identify statements", () => {
       expect(
         Ast.isStatement(
-          Ast.Statement.declare(Ast.declaration("variable", "x")),
+          Ast.Statement.declare(Ast.Declaration.variable("x")),
         ),
       ).toBe(true);
       expect(
@@ -313,10 +310,10 @@ describe("Ast", () => {
         const program = Ast.program(
           "Test",
           [
-            Ast.declaration("struct", "Point", undefined, undefined, {
+            Ast.Declaration.struct("Point", undefined, undefined, {
               fields: [
-                Ast.declaration("field", "x", Ast.Type.elementary("uint", 256)),
-                Ast.declaration("field", "y", Ast.Type.elementary("uint", 256)),
+                Ast.Declaration.field("x", Ast.Type.elementary("uint", 256)),
+                Ast.Declaration.field("y", Ast.Type.elementary("uint", 256)),
               ],
             }),
           ],
@@ -363,27 +360,21 @@ describe("Ast", () => {
         "SimpleStorage",
         [
           // struct User { name: string; balance: uint256; }
-          Ast.declaration("struct", "User", undefined, undefined, {
+          Ast.Declaration.struct("User", undefined, undefined, {
             fields: [
-              Ast.declaration("field", "name", Ast.Type.elementary("string")),
-              Ast.declaration(
-                "field",
-                "balance",
-                Ast.Type.elementary("uint", 256),
-              ),
+              Ast.Declaration.field("name", Ast.Type.elementary("string")),
+              Ast.Declaration.field("balance", Ast.Type.elementary("uint", 256)),
             ],
           }),
 
           // storage { 0: owner: address; 1: users: mapping<address, User>; }
-          Ast.declaration(
-            "storage",
+          Ast.Declaration.storage(
             "owner",
             Ast.Type.elementary("address"),
             undefined,
             { slot: 0 },
           ),
-          Ast.declaration(
-            "storage",
+          Ast.Declaration.storage(
             "users",
             Ast.Type.complex("mapping", {
               typeArgs: [
@@ -398,8 +389,7 @@ describe("Ast", () => {
         Ast.block("program", [
           // let sender = msg.sender;
           Ast.Statement.declare(
-            Ast.declaration(
-              "variable",
+            Ast.Declaration.variable(
               "sender",
               undefined,
               Ast.Expression.special("msg.sender"),

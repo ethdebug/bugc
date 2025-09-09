@@ -73,7 +73,7 @@ describe("Visitor Pattern", () => {
       ),
     ).toBe("Program(Test)");
     expect(
-      Ast.visit(visitor, Ast.declaration("variable", "x"), undefined as never),
+      Ast.visit(visitor, Ast.Declaration.variable("x"), undefined as never),
     ).toBe("Declaration(variable:x)");
     expect(
       Ast.visit(visitor, Ast.block("statements", []), undefined as never),
