@@ -74,9 +74,10 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const [balance, owner, flag] = result.declarations;
+      const [balance, owner, flag] =
+        result.declarations as Ast.Declaration.Storage[];
 
-      expect(balance.declaredType?.type).toBe("ElementaryType");
+      expect(balance.declaredType.type).toBe("ElementaryType");
       const balanceType = balance.declaredType as Ast.Type.Elementary;
       expect(balanceType.kind).toBe("uint");
       expect(balanceType.bits).toBe(256);
@@ -102,9 +103,9 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const [nums, fixed] = result.declarations;
+      const [nums, fixed] = result.declarations as Ast.Declaration.Storage[];
 
-      expect(nums.declaredType?.type).toBe("ComplexType");
+      expect(nums.declaredType.type).toBe("ComplexType");
       const numsType = nums.declaredType as Ast.Type.Complex;
       expect(numsType.kind).toBe("array");
       expect(numsType.size).toBeUndefined();
@@ -128,7 +129,7 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const mapping = result.declarations[0];
+      const mapping = result.declarations[0] as Ast.Declaration.Storage;
 
       const mapType = mapping.declaredType as Ast.Type.Complex;
       expect(mapType.type).toBe("ComplexType");
@@ -159,9 +160,11 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const position = result.declarations.find((d) => d.name === "position");
+      const position = result.declarations.find(
+        (d) => d.name === "position",
+      ) as Ast.Declaration.Storage;
 
-      expect(position?.declaredType?.type).toBe("ReferenceType");
+      expect(position?.declaredType.type).toBe("ReferenceType");
       expect((position?.declaredType as Ast.Type.Reference).name).toBe("Point");
     });
   });
@@ -189,9 +192,10 @@ code {}`;
       expect(struct.type).toBe("Declaration");
       expect(struct.kind).toBe("struct");
       expect(struct.name).toBe("Point");
-      expect(struct.metadata?.fields).toHaveLength(2);
+      const structDecl = struct as Ast.Declaration.Struct;
+      expect(structDecl.fields).toHaveLength(2);
 
-      const [x, y] = struct.metadata?.fields || [];
+      const [x, y] = structDecl.fields;
       expect(x.kind).toBe("field");
       expect(x.name).toBe("x");
       expect(y.name).toBe("y");
@@ -211,11 +215,11 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const [balance, data] = result.declarations;
+      const [balance, data] = result.declarations as Ast.Declaration.Storage[];
 
       expect(balance.kind).toBe("storage");
-      expect(balance.metadata?.slot).toBe(0);
-      expect(data.metadata?.slot).toBe(42);
+      expect(balance.slot).toBe(0);
+      expect(data.slot).toBe(42);
     });
 
     it("should parse variable declarations", () => {
@@ -238,13 +242,14 @@ code {}`;
       expect(letX.declaration.kind).toBe("variable");
       expect(letX.declaration.name).toBe("x");
 
-      const xInit = letX.declaration.initializer as Ast.Expression.Literal;
+      const xDecl = letX.declaration as Ast.Declaration.Variable;
+      const xInit = xDecl.initializer as Ast.Expression.Literal;
       expect(xInit.type).toBe("LiteralExpression");
       expect(xInit.kind).toBe("number");
       expect(xInit.value).toBe("42");
 
-      const flagInit = letFlag.declaration
-        .initializer as Ast.Expression.Literal;
+      const flagDecl = letFlag.declaration as Ast.Declaration.Variable;
+      const flagInit = flagDecl.initializer as Ast.Expression.Literal;
       expect(flagInit.kind).toBe("boolean");
       expect(flagInit.value).toBe("true");
     });
@@ -595,7 +600,7 @@ code {}`;
 
       const struct = result.declarations[0];
       expect(struct.kind).toBe("struct");
-      expect(struct.metadata?.fields).toHaveLength(2);
+      expect((struct as Ast.Declaration.Struct).fields).toHaveLength(2);
 
       const codeStmts = result.body.items;
       expect(codeStmts).toHaveLength(3); // let, if, return

@@ -17,6 +17,16 @@ export interface SourceLocation {
   length: number;
 }
 
+export const isSourceLocation = (loc: unknown): loc is SourceLocation =>
+  typeof loc === "object" &&
+  !!loc &&
+  "offset" in loc &&
+  typeof loc.offset === "number" &&
+  loc.offset >= 0 &&
+  "length" in loc &&
+  typeof loc.length === "number" &&
+  loc.length >= 0;
+
 export type Node =
   | Program
   | Declaration
@@ -30,6 +40,15 @@ export namespace Node {
     type: string;
     loc: SourceLocation | null;
   }
+
+  export const isBase = (node: unknown): node is Node.Base =>
+    typeof node === "object" &&
+    !!node &&
+    "type" in node &&
+    typeof node.type === "string" &&
+    !!node.type &&
+    "loc" in node &&
+    (node.loc === null || isSourceLocation(node.loc));
 
   export function clone<T extends Node>(node: T): T {
     const clone = { ...node };
@@ -115,46 +134,64 @@ export type Declaration =
   | Declaration.Variable
   | Declaration.Function;
 
+export const isDeclaration = (node: unknown): node is Declaration =>
+  Declaration.isBase(node) &&
+  [
+    Declaration.isStruct,
+    Declaration.isField,
+    Declaration.isStorage,
+    Declaration.isVariable,
+    Declaration.isFunction,
+  ].some((guard) => guard(node));
+
 export namespace Declaration {
   export interface Base extends Node.Base {
     type: "Declaration";
     name: string;
-    declaredType?: Type;
-    initializer?: Expression;
-    metadata?: Declaration.Metadata;
   }
+
+  export const isBase = (
+    declaration: unknown,
+  ): declaration is Declaration.Base =>
+    Node.isBase(declaration) &&
+    declaration.type === "Declaration" &&
+    "name" in declaration &&
+    typeof declaration.name === "string";
 
   export interface Struct extends Declaration.Base {
     kind: "struct";
+    fields: Declaration[];
   }
 
   export function struct(
     name: string,
-    declaredType?: Type,
-    initializer?: Expression,
-    metadata?: Declaration.Metadata,
+    fields: Declaration.Field[],
     loc?: SourceLocation,
   ): Declaration.Struct {
     return {
       kind: "struct",
       type: "Declaration",
       name,
-      declaredType,
-      initializer,
-      metadata,
+      fields,
       loc: loc ?? null,
     };
   }
 
+  export const isStruct = (
+    declaration: Declaration.Base,
+  ): declaration is Declaration.Struct =>
+    "kind" in declaration && declaration.kind === "struct";
+
   export interface Field extends Declaration.Base {
     kind: "field";
+    declaredType?: Type;
+    initializer?: Expression;
   }
 
   export function field(
     name: string,
     declaredType?: Type,
     initializer?: Expression,
-    metadata?: Declaration.Metadata,
     loc?: SourceLocation,
   ): Declaration.Field {
     return {
@@ -163,20 +200,25 @@ export namespace Declaration {
       name,
       declaredType,
       initializer,
-      metadata,
       loc: loc ?? null,
     };
   }
 
+  export const isField = (
+    declaration: Declaration.Base,
+  ): declaration is Declaration.Field =>
+    "kind" in declaration && declaration.kind === "field";
+
   export interface Storage extends Declaration.Base {
     kind: "storage";
+    declaredType: Type;
+    slot: number;
   }
 
   export function storage(
     name: string,
-    declaredType?: Type,
-    initializer?: Expression,
-    metadata?: Declaration.Metadata,
+    declaredType: Type,
+    slot: number,
     loc?: SourceLocation,
   ): Declaration.Storage {
     return {
@@ -184,21 +226,26 @@ export namespace Declaration {
       type: "Declaration",
       name,
       declaredType,
-      initializer,
-      metadata,
+      slot,
       loc: loc ?? null,
     };
   }
 
+  export const isStorage = (
+    declaration: Declaration.Base,
+  ): declaration is Declaration.Storage =>
+    "kind" in declaration && declaration.kind === "storage";
+
   export interface Variable extends Declaration.Base {
     kind: "variable";
+    declaredType?: Type;
+    initializer?: Expression;
   }
 
   export function variable(
     name: string,
     declaredType?: Type,
     initializer?: Expression,
-    metadata?: Declaration.Metadata,
     loc?: SourceLocation,
   ): Declaration.Variable {
     return {
@@ -207,41 +254,44 @@ export namespace Declaration {
       name,
       declaredType,
       initializer,
-      metadata,
       loc: loc ?? null,
     };
   }
 
+  export const isVariable = (
+    declaration: Declaration.Base,
+  ): declaration is Declaration.Variable =>
+    "kind" in declaration && declaration.kind === "variable";
+
   export interface Function extends Declaration.Base {
     kind: "function";
+    parameters: FunctionParameter[];
+    returnType?: Type;
+    body: Block;
   }
 
   export function function_(
     name: string,
-    declaredType?: Type,
-    initializer?: Expression,
-    metadata?: Declaration.Metadata,
+    parameters: FunctionParameter[],
+    returnType: Type | undefined,
+    body: Block,
     loc?: SourceLocation,
   ): Declaration.Function {
     return {
       kind: "function",
       type: "Declaration",
       name,
-      declaredType,
-      initializer,
-      metadata,
+      parameters,
+      returnType,
+      body,
       loc: loc ?? null,
     };
   }
 
-  export interface Metadata {
-    slot?: number; // For storage declarations
-    fields?: Declaration[]; // For struct declarations
-    parameters?: FunctionParameter[]; // For function declarations
-    body?: Block; // For function declarations
-    visibility?: "public" | "private"; // Future extension
-    location?: DataLocation; // Where the data is stored
-  }
+  export const isFunction = (
+    declaration: Declaration.Base,
+  ): declaration is Declaration.Function =>
+    "kind" in declaration && declaration.kind === "function";
 }
 
 export interface FunctionParameter {

@@ -34,25 +34,22 @@ describe("Ast", () => {
         Ast.Declaration.field("x", Ast.Type.elementary("uint", 256)),
         Ast.Declaration.field("y", Ast.Type.elementary("uint", 256)),
       ];
-      const struct = Ast.Declaration.struct("Point", undefined, undefined, {
-        fields,
-      });
+      const struct = Ast.Declaration.struct("Point", fields);
 
       expect(struct.kind).toBe("struct");
-      expect(struct.metadata?.fields).toHaveLength(2);
-      expect(struct.metadata?.fields?.[0].name).toBe("x");
+      expect(struct.fields).toHaveLength(2);
+      expect(struct.fields[0].name).toBe("x");
     });
 
     it("should create storage declarations with slot", () => {
       const storage = Ast.Declaration.storage(
         "balance",
         Ast.Type.elementary("uint", 256),
-        undefined,
-        { slot: 0 },
+        0,
       );
 
       expect(storage.kind).toBe("storage");
-      expect(storage.metadata?.slot).toBe(0);
+      expect(storage.slot).toBe(0);
     });
 
     it("should create block nodes", () => {
@@ -219,9 +216,7 @@ describe("Ast", () => {
 
     it("should identify statements", () => {
       expect(
-        Ast.isStatement(
-          Ast.Statement.declare(Ast.Declaration.variable("x")),
-        ),
+        Ast.isStatement(Ast.Statement.declare(Ast.Declaration.variable("x"))),
       ).toBe(true);
       expect(
         Ast.isStatement(
@@ -310,12 +305,10 @@ describe("Ast", () => {
         const program = Ast.program(
           "Test",
           [
-            Ast.Declaration.struct("Point", undefined, undefined, {
-              fields: [
-                Ast.Declaration.field("x", Ast.Type.elementary("uint", 256)),
-                Ast.Declaration.field("y", Ast.Type.elementary("uint", 256)),
-              ],
-            }),
+            Ast.Declaration.struct("Point", [
+              Ast.Declaration.field("x", Ast.Type.elementary("uint", 256)),
+              Ast.Declaration.field("y", Ast.Type.elementary("uint", 256)),
+            ]),
           ],
           Ast.block("program", [
             Ast.Statement.controlFlow("if", {
@@ -360,20 +353,13 @@ describe("Ast", () => {
         "SimpleStorage",
         [
           // struct User { name: string; balance: uint256; }
-          Ast.Declaration.struct("User", undefined, undefined, {
-            fields: [
-              Ast.Declaration.field("name", Ast.Type.elementary("string")),
-              Ast.Declaration.field("balance", Ast.Type.elementary("uint", 256)),
-            ],
-          }),
+          Ast.Declaration.struct("User", [
+            Ast.Declaration.field("name", Ast.Type.elementary("string")),
+            Ast.Declaration.field("balance", Ast.Type.elementary("uint", 256)),
+          ]),
 
           // storage { 0: owner: address; 1: users: mapping<address, User>; }
-          Ast.Declaration.storage(
-            "owner",
-            Ast.Type.elementary("address"),
-            undefined,
-            { slot: 0 },
-          ),
+          Ast.Declaration.storage("owner", Ast.Type.elementary("address"), 0),
           Ast.Declaration.storage(
             "users",
             Ast.Type.complex("mapping", {
@@ -382,8 +368,7 @@ describe("Ast", () => {
                 Ast.Type.reference("User"),
               ],
             }),
-            undefined,
-            { slot: 1 },
+            1,
           ),
         ],
         Ast.block("program", [
@@ -439,7 +424,7 @@ describe("Ast", () => {
       // Verify structure
       const structDecl = program.declarations[0];
       expect(structDecl.kind).toBe("struct");
-      expect(structDecl.metadata?.fields).toHaveLength(2);
+      expect((structDecl as Ast.Declaration.Struct).fields).toHaveLength(2);
 
       const ifStmt = program.body.items[1] as { type: string; kind?: string };
       expect(ifStmt.type).toBe("ControlFlowStatement");

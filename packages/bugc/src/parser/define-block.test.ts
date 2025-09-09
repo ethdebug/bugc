@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import * as Ast from "#ast";
 import { Severity } from "#result";
 import { parse } from "./parser.js";
 import "#test/matchers";
@@ -53,10 +54,13 @@ describe("Define Block Parser", () => {
       expect(result.value.declarations).toHaveLength(2);
 
       const structDecl = result.value.declarations[0];
+      if (!Ast.Declaration.isStruct(structDecl)) {
+        throw new Error("Should receive a struct declaration");
+      }
       expect(structDecl.type).toBe("Declaration");
       expect(structDecl.kind).toBe("struct");
       expect(structDecl.name).toBe("User");
-      expect(structDecl.metadata?.fields).toHaveLength(2);
+      expect(structDecl.fields).toHaveLength(2);
 
       const storageDecl = result.value.declarations[1];
       expect(storageDecl.kind).toBe("storage");
@@ -247,9 +251,15 @@ describe("Define Block Parser", () => {
       expect(result.success).toBe(true);
       if (!result.success) throw new Error("Parse failed");
 
-      expect(result.value.declarations).toHaveLength(2);
-      expect(result.value.declarations[0].metadata?.fields).toHaveLength(0);
-      expect(result.value.declarations[1].metadata?.fields).toHaveLength(0);
+      const { declarations } = result.value;
+
+      expect(declarations).toHaveLength(2);
+      if (!declarations.every(Ast.Declaration.isStruct)) {
+        throw new Error("Expected only struct declarations");
+      }
+
+      expect(declarations[0].fields).toHaveLength(0);
+      expect(declarations[1].fields).toHaveLength(0);
     });
 
     it("should handle define block with comments", () => {

@@ -682,9 +682,7 @@ const letStatement = located(
     expression,
     Lang.semicolon,
   ).map(([_, name, declaredType, __, init, ___]) =>
-    Ast.Statement.declare(
-      Ast.Declaration.variable(name, declaredType, init),
-    ),
+    Ast.Statement.declare(Ast.Declaration.variable(name, declaredType, init)),
   ),
 );
 
@@ -823,9 +821,7 @@ const structDeclaration = located(
       .sepBy(Lang.semicolon)
       .skip(Lang.semicolon.or(P.succeed(null))),
     Lang.rbrace,
-  ).map(([_, name, __, fields, ___]) =>
-    Ast.Declaration.struct(name, undefined, undefined, { fields }),
-  ),
+  ).map(([_, name, __, fields, ___]) => Ast.Declaration.struct(name, fields)),
 );
 
 // Function parameter: name: Type
@@ -849,10 +845,7 @@ const functionDeclaration = P.lazy(() =>
         .fallback(undefined),
       blockStatements,
     ).map(([_, name, __, params, ___, returnType, body]) =>
-      Ast.Declaration.function_(name, returnType, undefined, {
-        parameters: params,
-        body,
-      }),
+      Ast.Declaration.function_(name, params, returnType, body),
     ),
   ),
 );
@@ -879,11 +872,7 @@ const storageDeclaration = located(
     if (!Number.isInteger(slotNum)) {
       return P.fail(`Storage slot must be an integer, got ${slotNum}`);
     }
-    return P.succeed(
-      Ast.Declaration.storage(name, storageType, undefined, {
-        slot: slotNum,
-      }),
-    );
+    return P.succeed(Ast.Declaration.storage(name, storageType, slotNum));
   }),
 );
 

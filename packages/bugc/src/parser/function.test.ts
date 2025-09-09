@@ -34,11 +34,12 @@ describe("Function declarations", () => {
     const funcDecl = program.declarations[0];
     expect(funcDecl.kind).toBe("function");
     expect(funcDecl.name).toBe("add");
-    expect(funcDecl.metadata?.parameters).toHaveLength(2);
-    expect(funcDecl.metadata?.parameters?.[0].name).toBe("a");
-    expect(funcDecl.metadata?.parameters?.[1].name).toBe("b");
-    expect(funcDecl.declaredType?.type).toBe("ElementaryType");
-    expect((funcDecl.declaredType as Ast.Type.Elementary).kind).toBe("uint");
+    const func = funcDecl as Ast.Declaration.Function;
+    expect(func.parameters).toHaveLength(2);
+    expect(func.parameters[0].name).toBe("a");
+    expect(func.parameters[1].name).toBe("b");
+    expect(func.returnType?.type).toBe("ElementaryType");
+    expect((func.returnType as Ast.Type.Elementary).kind).toBe("uint");
   });
 
   it("parses void function without return type", () => {
@@ -65,7 +66,8 @@ describe("Function declarations", () => {
     const funcDecl = program.declarations[0];
     expect(funcDecl.kind).toBe("function");
     expect(funcDecl.name).toBe("doSomething");
-    expect(funcDecl.declaredType).toBeUndefined();
+    const func = funcDecl as Ast.Declaration.Function;
+    expect(func.returnType).toBeUndefined();
   });
 
   it("parses function calls", () => {
@@ -96,7 +98,8 @@ describe("Function declarations", () => {
 
     expect(letStmt.type).toBe("DeclarationStatement");
     if (letStmt.type === "DeclarationStatement") {
-      const init = letStmt.declaration.initializer;
+      const decl = letStmt.declaration as Ast.Declaration.Variable;
+      const init = decl.initializer;
       expect(init?.type).toBe("CallExpression");
       if (init?.type === "CallExpression") {
         expect(init.callee.type).toBe("IdentifierExpression");

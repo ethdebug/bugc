@@ -45,7 +45,7 @@ export const blockChecker: Partial<Visitor<Report, Context>> = {
 
     // Third pass: type check function bodies
     for (const decl of node.declarations) {
-      if (decl.kind === "function" && decl.metadata?.body) {
+      if (decl.kind === "function") {
         // Look up the function type
         const funcType = currentSymbols.lookup(decl.name)
           ?.type as Type.Function;
@@ -73,7 +73,7 @@ export const blockChecker: Partial<Visitor<Report, Context>> = {
           // Type check the function body
           const bodyResult = Ast.visit(
             funcContext.visitor,
-            decl.metadata.body,
+            decl.body,
             funcContext,
           );
 

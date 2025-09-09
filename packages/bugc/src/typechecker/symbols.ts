@@ -97,7 +97,7 @@ export function buildInitialSymbols(
         type,
         mutable: true,
         location: "storage",
-        slot: decl.metadata?.slot,
+        slot: decl.slot,
       };
 
       symbols = symbols.define(symbol);
@@ -116,13 +116,13 @@ export function buildInitialSymbols(
  */
 export function enterFunctionScope(
   symbols: Symbols,
-  funcDecl: Ast.Declaration,
+  funcDecl: Ast.Declaration.Function,
   funcType: Type.Function,
 ): Symbols {
   let newSymbols = symbols.enterScope();
 
   // Add parameters to the function scope
-  const parameters = funcDecl.metadata?.parameters || [];
+  const parameters = funcDecl.parameters;
   for (let i = 0; i < parameters.length; i++) {
     const param = parameters[i];
     const symbol: BugSymbol = {

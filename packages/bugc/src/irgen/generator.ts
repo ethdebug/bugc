@@ -182,11 +182,11 @@ export class IrBuilder implements Ast.Visitor<void, never> {
   }
 
   processStorageDeclaration(decl: Ast.Declaration): void {
-    if (decl.metadata?.slot !== undefined) {
+    if (decl.kind === "storage") {
       const type = this.context.types.get(decl);
       if (type) {
         this.context.storage.slots.push({
-          slot: decl.metadata.slot,
+          slot: decl.slot,
           name: decl.name,
           type: this.bugTypeToIrType(type),
           loc: decl.loc ?? undefined,
@@ -196,7 +196,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
   }
 
   processFunctionDeclaration(decl: Ast.Declaration): Ir.Function | null {
-    if (decl.kind !== "function" || !decl.metadata?.body) {
+    if (decl.kind !== "function") {
       return null;
     }
 
@@ -232,9 +232,9 @@ export class IrBuilder implements Ast.Visitor<void, never> {
     let paramCount = 0;
     const funcType = this.context.types.get(decl);
     if (funcType && Type.isFunction(funcType)) {
-      paramCount = (decl.metadata.parameters || []).length;
+      paramCount = decl.parameters.length;
       for (let i = 0; i < paramCount; i++) {
-        const param = decl.metadata.parameters![i];
+        const param = decl.parameters[i];
         const paramType = funcType.parameterTypes[i];
 
         const localVar: Ir.Function.LocalVariable = {
@@ -254,7 +254,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
     }
 
     // Process function body
-    Ast.visit(this, decl.metadata.body, undefined as never);
+    Ast.visit(this, decl.body, undefined as never);
 
     // Ensure function has proper terminator
     if (!this.isTerminated(this.context.currentBlock)) {

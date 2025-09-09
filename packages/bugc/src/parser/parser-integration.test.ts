@@ -77,7 +77,7 @@ code {
       const struct = ast.declarations[0];
       expect(struct.kind).toBe("struct");
       expect(struct.name).toBe("User");
-      expect(struct.metadata?.fields).toHaveLength(3);
+      expect((struct as Ast.Declaration.Struct).fields).toHaveLength(3);
     });
 
     it("should parse auction.bug example", () => {
@@ -148,8 +148,8 @@ code {
       const ast = parseResult.value;
       expect(ast.declarations).toHaveLength(1);
 
-      const balances = ast.declarations[0];
-      expect(balances.declaredType?.type).toBe("ComplexType");
+      const balances = ast.declarations[0] as Ast.Declaration.Storage;
+      expect(balances.declaredType.type).toBe("ComplexType");
     });
 
     it("should parse complex arithmetic expressions", () => {

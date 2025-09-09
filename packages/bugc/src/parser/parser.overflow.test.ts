@@ -159,19 +159,12 @@ code {
       if (result.success) {
         const storage = result.value.declarations.find(
           (d) => d.kind === "storage",
-        );
-        if (storage && storage.metadata?.fields) {
-          const field = storage.metadata.fields[0];
-          if (
-            field.type === "Declaration" &&
-            field.kind === "field" &&
-            field.declaredType
-          ) {
-            expect(field.declaredType.type).toBe("ReferenceType");
-            expect((field.declaredType as Ast.Type.Reference).name).toBe(
-              "uint512",
-            );
-          }
+        ) as Ast.Declaration.Storage;
+        if (storage) {
+          expect(storage.declaredType.type).toBe("ReferenceType");
+          expect((storage.declaredType as Ast.Type.Reference).name).toBe(
+            "uint512",
+          );
         }
       }
     });

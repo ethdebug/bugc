@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import * as Ast from "#ast";
 import { parse } from "#parser";
 import { Severity } from "#result";
 
@@ -27,7 +28,8 @@ describe("Slice type checking", () => {
       const program = result.value;
       const decl = program.body.items[0];
       if (decl.type === "DeclarationStatement") {
-        const sliceType = types.get(decl.declaration.initializer!);
+        const varDecl = decl.declaration as Ast.Declaration.Variable;
+        const sliceType = types.get(varDecl.initializer!);
         expect(sliceType?.toString()).toBe("bytes");
       }
     }

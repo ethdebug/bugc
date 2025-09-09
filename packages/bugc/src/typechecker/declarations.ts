@@ -57,23 +57,13 @@ export function collectDeclarations(
  * Builds a Type.Struct from a struct declaration
  */
 function buildStructType(
-  decl: Ast.Declaration,
+  decl: Ast.Declaration.Struct,
   existingStructs: Map<string, Type.Struct>,
 ): Type.Struct {
-  if (decl.kind !== "struct") {
-    throw new TypeError(
-      `Expected struct declaration, got ${decl.kind}`,
-      decl.loc || undefined,
-      undefined,
-      undefined,
-      ErrorCode.GENERAL,
-    );
-  }
-
   const fields = new Map<string, Type>();
 
-  for (const field of decl.metadata?.fields || []) {
-    if (field.declaredType) {
+  for (const field of decl.fields) {
+    if (field.kind === "field" && field.declaredType) {
       const fieldType = resolveType(field.declaredType, existingStructs);
       fields.set(field.name, fieldType);
     }
@@ -86,29 +76,19 @@ function buildStructType(
  * Builds a Type.Function from a function declaration
  */
 function buildFunctionSignature(
-  decl: Ast.Declaration,
+  decl: Ast.Declaration.Function,
   structTypes: Map<string, Type.Struct>,
 ): Type.Function {
-  if (decl.kind !== "function") {
-    throw new TypeError(
-      `Expected function declaration, got ${decl.kind}`,
-      decl.loc || undefined,
-      undefined,
-      undefined,
-      ErrorCode.GENERAL,
-    );
-  }
-
   // Resolve parameter types
   const parameterTypes: Type[] = [];
-  for (const param of decl.metadata?.parameters || []) {
+  for (const param of decl.parameters) {
     const paramType = resolveType(param.type, structTypes);
     parameterTypes.push(paramType);
   }
 
   // Resolve return type (null for void functions)
-  const returnType = decl.declaredType
-    ? resolveType(decl.declaredType, structTypes)
+  const returnType = decl.returnType
+    ? resolveType(decl.returnType, structTypes)
     : null;
 
   return new Type.Function(decl.name, parameterTypes, returnType);
