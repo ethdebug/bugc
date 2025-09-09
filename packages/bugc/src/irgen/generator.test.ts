@@ -25,7 +25,7 @@ describe("IrBuilder", () => {
     }
 
     const generator = new IrBuilder();
-    const buildResult = generator.build(ast, typeCheckResult.value.types);
+    const buildResult = generator.build(ast, typeCheckResult.value);
 
     if (!buildResult.success) {
       throw new Error(
@@ -479,7 +479,7 @@ describe("IrBuilder", () => {
       if (!typeCheckResult.success) return;
 
       const generator = new IrBuilder();
-      const buildResult = generator.build(ast, typeCheckResult.value.types);
+      const buildResult = generator.build(ast, typeCheckResult.value);
 
       expect(buildResult.success).toBe(true);
       if (!buildResult.success) return;
@@ -585,7 +585,7 @@ describe("IrBuilder", () => {
       if (!typeCheckResult.success) return;
 
       const generator = new IrBuilder();
-      const buildResult = generator.build(ast, typeCheckResult.value.types);
+      const buildResult = generator.build(ast, typeCheckResult.value);
 
       expect(buildResult.success).toBe(true);
       if (!buildResult.success) return;
@@ -638,7 +638,7 @@ describe("IrBuilder", () => {
       if (!typeCheckResult.success) return;
 
       const generator = new IrBuilder();
-      const buildResult = generator.build(ast, typeCheckResult.value.types);
+      const buildResult = generator.build(ast, typeCheckResult.value);
       expect(buildResult.success).toBe(true);
       if (!buildResult.success) return;
 

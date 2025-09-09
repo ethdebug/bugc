@@ -40,7 +40,7 @@ code {}
     const irGenerator = new IrBuilder();
     const irResult = irGenerator.build(
       parseResult.value,
-      typeCheckResult.value.types,
+      typeCheckResult.value,
     );
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
@@ -119,7 +119,7 @@ code {}
     const irGenerator = new IrBuilder();
     const irResult = irGenerator.build(
       parseResult.value,
-      typeCheckResult.value.types,
+      typeCheckResult.value,
     );
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
@@ -191,7 +191,7 @@ code {}
     const irGenerator = new IrBuilder();
     const irResult = irGenerator.build(
       parseResult.value,
-      typeCheckResult.value.types,
+      typeCheckResult.value,
     );
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;

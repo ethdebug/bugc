@@ -32,7 +32,7 @@ describe("IR generation for create blocks", () => {
     if (!typeResult.success) return;
 
     const irBuilder = new IrBuilder();
-    const irResult = irBuilder.build(parseResult.value, typeResult.value.types);
+    const irResult = irBuilder.build(parseResult.value, typeResult.value);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 
@@ -90,7 +90,7 @@ describe("IR generation for create blocks", () => {
     if (!typeResult.success) return;
 
     const irBuilder = new IrBuilder();
-    const irResult = irBuilder.build(parseResult.value, typeResult.value.types);
+    const irResult = irBuilder.build(parseResult.value, typeResult.value);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 
@@ -133,7 +133,7 @@ describe("IR generation for create blocks", () => {
     if (!typeResult.success) return;
 
     const irBuilder = new IrBuilder();
-    const irResult = irBuilder.build(parseResult.value, typeResult.value.types);
+    const irResult = irBuilder.build(parseResult.value, typeResult.value);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 
@@ -171,7 +171,7 @@ describe("IR generation for create blocks", () => {
     if (!typeResult.success) return;
 
     const irBuilder = new IrBuilder();
-    const irResult = irBuilder.build(parseResult.value, typeResult.value.types);
+    const irResult = irBuilder.build(parseResult.value, typeResult.value);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 

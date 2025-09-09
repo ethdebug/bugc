@@ -53,7 +53,7 @@ describe("ReturnMergingStep", () => {
 
     // Build IR
     const builder = new IrBuilder();
-    const irResult = builder.build(parseResult.value, typeResult.value.types);
+    const irResult = builder.build(parseResult.value, typeResult.value);
     if (!irResult.success) {
       throw new Error(
         "IR build failed: " +
@@ -158,7 +158,7 @@ describe("ReturnMergingStep", () => {
 
     // Build IR
     const builder = new IrBuilder();
-    const irResult = builder.build(parseResult.value, typeResult.value.types);
+    const irResult = builder.build(parseResult.value, typeResult.value);
     if (!irResult.success) {
       throw new Error(
         "IR build failed: " +

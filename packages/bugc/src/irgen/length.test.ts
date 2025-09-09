@@ -27,7 +27,7 @@ describe("IR Builder - Length Instructions", () => {
     if (!checkResult.success) return;
 
     const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value.types);
+    const ir = builder.build(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -70,7 +70,7 @@ describe("IR Builder - Length Instructions", () => {
     if (!checkResult.success) return;
 
     const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value.types);
+    const ir = builder.build(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -119,7 +119,7 @@ describe("IR Builder - Length Instructions", () => {
     if (!checkResult.success) return;
 
     const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value.types);
+    const ir = builder.build(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -163,7 +163,7 @@ describe("IR Builder - Length Instructions", () => {
     if (!checkResult.success) return;
 
     const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value.types);
+    const ir = builder.build(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -208,7 +208,7 @@ describe("IR Builder - Length Instructions", () => {
     if (!checkResult.success) return;
 
     const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value.types);
+    const ir = builder.build(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -252,7 +252,7 @@ describe("IR Builder - Length Instructions", () => {
     if (!checkResult.success) return;
 
     const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value.types);
+    const ir = builder.build(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {

@@ -355,7 +355,6 @@ describe("Ast", () => {
         expect(original.name).toBe("x");
       });
     });
-
   });
 
   describe("Complex Scenarios", () => {

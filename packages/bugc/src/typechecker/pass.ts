@@ -1,5 +1,6 @@
 import type { Program } from "#ast";
-import type { SymbolTable, TypeMap } from "#types";
+import { Result } from "#result";
+import type { TypeMap } from "#types";
 import type { Pass } from "#compiler";
 
 import type { Error as TypeError } from "./errors.js";
@@ -14,12 +15,11 @@ const pass: Pass<{
   };
   adds: {
     types: TypeMap;
-    symbolTable: SymbolTable;
   };
   error: TypeError;
 }> = {
   async run({ ast }) {
-    return checkProgram(ast);
+    return Result.map(checkProgram(ast), (types) => ({ types }));
   },
 };
 

@@ -1,0 +1,315 @@
+import * as Ast from "#ast";
+import { Type } from "#types";
+import type { Visitor } from "#ast";
+import type { Context, Report } from "./context.js";
+import { Error as TypeError, ErrorCode, ErrorMessages } from "./errors.js";
+import { isAssignable } from "./assignable.js";
+
+/**
+ * Type checker for statement nodes.
+ * Each statement method handles type checking for that statement type
+ * and returns an updated report.
+ */
+export const statementChecker: Partial<Visitor<Report, Context>> = {
+  declarationStatement(node: Ast.Statement.Declare, context: Context): Report {
+    // Forward to the declaration visitor method
+    return Ast.visit(context.visitor, node.declaration, context);
+  },
+
+  assignmentStatement(node: Ast.Statement.Assign, context: Context): Report {
+    const errors: TypeError[] = [];
+    let nodeTypes = new Map(context.nodeTypes);
+    let symbols = context.symbols;
+
+    if (!Ast.Expression.isAssignable(node.target)) {
+      const error = new TypeError(
+        "Invalid assignment target",
+        node.target.loc || undefined,
+        undefined,
+        undefined,
+        ErrorCode.INVALID_ASSIGNMENT,
+      );
+      errors.push(error);
+      return { symbols, nodeTypes, errors };
+    }
+
+    // Type check target
+    const targetContext: Context = {
+      ...context,
+      nodeTypes,
+      symbols,
+      pointer: context.pointer + "/target",
+    };
+    const targetResult = Ast.visit(context.visitor, node.target, targetContext);
+    nodeTypes = targetResult.nodeTypes;
+    symbols = targetResult.symbols;
+    errors.push(...targetResult.errors);
+
+    // Type check value
+    const valueContext: Context = {
+      ...context,
+      nodeTypes,
+      symbols,
+      pointer: context.pointer + "/value",
+    };
+    const valueResult = Ast.visit(context.visitor, node.value, valueContext);
+    nodeTypes = valueResult.nodeTypes;
+    symbols = valueResult.symbols;
+    errors.push(...valueResult.errors);
+
+    // Check type compatibility
+    if (
+      targetResult.type &&
+      valueResult.type &&
+      !isAssignable(targetResult.type, valueResult.type)
+    ) {
+      const error = new TypeError(
+        ErrorMessages.TYPE_MISMATCH(
+          targetResult.type.toString(),
+          valueResult.type.toString(),
+        ),
+        node.loc || undefined,
+        targetResult.type.toString(),
+        valueResult.type.toString(),
+        ErrorCode.TYPE_MISMATCH,
+      );
+      errors.push(error);
+    }
+
+    return { symbols, nodeTypes, errors };
+  },
+
+  controlFlowStatement(
+    node: Ast.Statement.ControlFlow,
+    context: Context,
+  ): Report {
+    const errors: TypeError[] = [];
+    let nodeTypes = new Map(context.nodeTypes);
+    let symbols = context.symbols;
+
+    switch (node.kind) {
+      case "if": {
+        // Type check condition
+        if (node.condition) {
+          const condContext: Context = {
+            ...context,
+            nodeTypes,
+            symbols,
+            pointer: context.pointer + "/condition",
+          };
+          const condResult = Ast.visit(
+            context.visitor,
+            node.condition,
+            condContext,
+          );
+          nodeTypes = condResult.nodeTypes;
+          symbols = condResult.symbols;
+          errors.push(...condResult.errors);
+
+          if (condResult.type && !Type.Elementary.isBool(condResult.type)) {
+            const error = new TypeError(
+              "If condition must be boolean",
+              node.condition.loc || undefined,
+              undefined,
+              undefined,
+              ErrorCode.INVALID_CONDITION,
+            );
+            errors.push(error);
+          }
+        }
+
+        // Type check body
+        if (node.body) {
+          const bodyContext: Context = {
+            ...context,
+            nodeTypes,
+            symbols,
+            pointer: context.pointer + "/body",
+          };
+          const bodyResult = Ast.visit(context.visitor, node.body, bodyContext);
+          nodeTypes = bodyResult.nodeTypes;
+          symbols = bodyResult.symbols;
+          errors.push(...bodyResult.errors);
+        }
+
+        // Type check alternate (else branch)
+        if (node.alternate) {
+          const altContext: Context = {
+            ...context,
+            nodeTypes,
+            symbols,
+            pointer: context.pointer + "/alternate",
+          };
+          const altResult = Ast.visit(
+            context.visitor,
+            node.alternate,
+            altContext,
+          );
+          nodeTypes = altResult.nodeTypes;
+          symbols = altResult.symbols;
+          errors.push(...altResult.errors);
+        }
+
+        return { symbols, nodeTypes, errors };
+      }
+
+      case "for": {
+        // Enter new scope for loop
+        symbols = symbols.enterScope();
+
+        // Type check init
+        if (node.init) {
+          const initContext: Context = {
+            ...context,
+            nodeTypes,
+            symbols,
+            pointer: context.pointer + "/init",
+          };
+          const initResult = Ast.visit(context.visitor, node.init, initContext);
+          nodeTypes = initResult.nodeTypes;
+          symbols = initResult.symbols;
+          errors.push(...initResult.errors);
+        }
+
+        // Type check condition
+        if (node.condition) {
+          const condContext: Context = {
+            ...context,
+            nodeTypes,
+            symbols,
+            pointer: context.pointer + "/condition",
+          };
+          const condResult = Ast.visit(
+            context.visitor,
+            node.condition,
+            condContext,
+          );
+          nodeTypes = condResult.nodeTypes;
+          symbols = condResult.symbols;
+          errors.push(...condResult.errors);
+
+          if (condResult.type && !Type.Elementary.isBool(condResult.type)) {
+            const error = new TypeError(
+              "For condition must be boolean",
+              node.condition.loc || undefined,
+              undefined,
+              undefined,
+              ErrorCode.INVALID_CONDITION,
+            );
+            errors.push(error);
+          }
+        }
+
+        // Type check update
+        if (node.update) {
+          const updateContext: Context = {
+            ...context,
+            nodeTypes,
+            symbols,
+            pointer: context.pointer + "/update",
+          };
+          const updateResult = Ast.visit(
+            context.visitor,
+            node.update,
+            updateContext,
+          );
+          nodeTypes = updateResult.nodeTypes;
+          symbols = updateResult.symbols;
+          errors.push(...updateResult.errors);
+        }
+
+        // Type check body
+        if (node.body) {
+          const bodyContext: Context = {
+            ...context,
+            nodeTypes,
+            symbols,
+            pointer: context.pointer + "/body",
+          };
+          const bodyResult = Ast.visit(context.visitor, node.body, bodyContext);
+          nodeTypes = bodyResult.nodeTypes;
+          symbols = bodyResult.symbols;
+          errors.push(...bodyResult.errors);
+        }
+
+        // Exit scope (don't propagate local symbols)
+        symbols = symbols.exitScope();
+
+        return { symbols, nodeTypes, errors };
+      }
+
+      case "return": {
+        if (node.value) {
+          // Type check return value
+          const valueContext: Context = {
+            ...context,
+            nodeTypes,
+            symbols,
+            pointer: context.pointer + "/value",
+          };
+          const valueResult = Ast.visit(
+            context.visitor,
+            node.value,
+            valueContext,
+          );
+          nodeTypes = valueResult.nodeTypes;
+          symbols = valueResult.symbols;
+          errors.push(...valueResult.errors);
+
+          if (valueResult.type && context.currentReturnType) {
+            if (!isAssignable(context.currentReturnType, valueResult.type)) {
+              const error = new TypeError(
+                ErrorMessages.TYPE_MISMATCH(
+                  context.currentReturnType.toString(),
+                  valueResult.type.toString(),
+                ),
+                node.loc || undefined,
+                context.currentReturnType.toString(),
+                valueResult.type.toString(),
+                ErrorCode.TYPE_MISMATCH,
+              );
+              errors.push(error);
+            }
+          } else if (valueResult.type && !context.currentReturnType) {
+            const error = new TypeError(
+              "Cannot return a value from a void function",
+              node.loc || undefined,
+              undefined,
+              undefined,
+              ErrorCode.TYPE_MISMATCH,
+            );
+            errors.push(error);
+          }
+        } else if (context.currentReturnType) {
+          const error = new TypeError(
+            `Function must return a value of type ${context.currentReturnType.toString()}`,
+            node.loc || undefined,
+            undefined,
+            undefined,
+            ErrorCode.TYPE_MISMATCH,
+          );
+          errors.push(error);
+        }
+
+        return { symbols, nodeTypes, errors };
+      }
+
+      case "break":
+        // No type checking needed for break
+        return { symbols, nodeTypes, errors };
+
+      default:
+        // Unknown control flow
+        return { symbols, nodeTypes, errors };
+    }
+  },
+
+  expressionStatement(node: Ast.Statement.Express, context: Context): Report {
+    // Type check the expression (for side effects)
+    const exprContext: Context = {
+      ...context,
+      pointer: context.pointer + "/expression",
+    };
+    return Ast.visit(context.visitor, node.expression, exprContext);
+  },
+};

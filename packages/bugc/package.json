@@ -41,7 +41,8 @@
     "#ir/analysis": "./dist/src/ir/analysis/index.js",
 
     "#irgen": "./dist/src/irgen/index.js",
-    "#irgen/*": "./dist/src/irgen/*.js",
+    "#irgen/pass": "./dist/src/irgen/pass.js",
+
     "#optimizer": "./dist/src/optimizer/index.js",
     "#optimizer/*": "./dist/src/optimizer/*.js",
 

@@ -25,7 +25,6 @@ export type Node =
   | Statement
   | Expression;
 
-
 export namespace Node {
   export interface Base {
     type: string;
@@ -39,13 +38,15 @@ export namespace Node {
     for (const [key, value] of Object.entries(clone)) {
       if (value && typeof value === "object") {
         if (Array.isArray(value)) {
-          (clone as unknown as Record<string, unknown>)[key] = value.map((item) =>
-            item && typeof item === "object" && "type" in item
-              ? Node.clone(item)
-              : item,
+          (clone as unknown as Record<string, unknown>)[key] = value.map(
+            (item) =>
+              item && typeof item === "object" && "type" in item
+                ? Node.clone(item)
+                : item,
           );
         } else if ("type" in value) {
-          (clone as unknown as Record<string, unknown>)[key] = Node.clone(value);
+          (clone as unknown as Record<string, unknown>)[key] =
+            Node.clone(value);
         }
       }
     }

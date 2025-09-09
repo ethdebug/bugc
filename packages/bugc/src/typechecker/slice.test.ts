@@ -23,7 +23,7 @@ describe("Slice type checking", () => {
     expect(typeResult.success).toBe(true);
 
     if (typeResult.success) {
-      const { types } = typeResult.value;
+      const types = typeResult.value;
       const program = result.value;
       const decl = program.body.items[0];
       if (decl.type === "DeclarationStatement") {

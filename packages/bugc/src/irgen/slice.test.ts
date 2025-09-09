@@ -22,7 +22,7 @@ describe("IR slice generation", () => {
 
     if (typeResult.success) {
       const builder = new IrBuilder();
-      const irResult = builder.build(result.value, typeResult.value.types);
+      const irResult = builder.build(result.value, typeResult.value);
       expect(irResult.success).toBe(true);
 
       if (irResult.success) {
@@ -67,7 +67,7 @@ describe("IR slice generation", () => {
 
     if (typeResult.success) {
       const builder = new IrBuilder();
-      const irResult = builder.build(result.value, typeResult.value.types);
+      const irResult = builder.build(result.value, typeResult.value);
       expect(irResult.success).toBe(false);
       expect(irResult).toHaveMessage({
         severity: Severity.Error,
