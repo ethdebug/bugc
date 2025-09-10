@@ -1,5 +1,5 @@
 import * as Ast from "#ast";
-import { Type, type BugSymbol } from "#types";
+import { Type } from "#types";
 import { Result } from "#result";
 import { resolveType, type Declarations } from "./declarations.js";
 import { Error as TypeError } from "./errors.js";
@@ -10,7 +10,7 @@ import { Error as TypeError } from "./errors.js";
  */
 export class Symbols {
   constructor(
-    private readonly scopes: readonly Map<string, BugSymbol>[] = [new Map()],
+    private readonly scopes: readonly Map<string, Symbol>[] = [new Map()],
   ) {}
 
   static empty(): Symbols {
@@ -28,7 +28,7 @@ export class Symbols {
     return new Symbols(this.scopes.slice(0, -1));
   }
 
-  define(symbol: BugSymbol): Symbols {
+  define(symbol: Symbol): Symbols {
     const newScopes = [...this.scopes];
     const lastScope = new Map(newScopes[newScopes.length - 1]);
     lastScope.set(symbol.name, symbol);
@@ -36,7 +36,7 @@ export class Symbols {
     return new Symbols(newScopes);
   }
 
-  lookup(name: string): BugSymbol | undefined {
+  lookup(name: string): Symbol | undefined {
     // Search from innermost to outermost scope
     for (let i = this.scopes.length - 1; i >= 0; i--) {
       const symbol = this.scopes[i].get(name);
@@ -57,6 +57,15 @@ export class Symbols {
   }
 }
 
+// Symbol table entry
+export interface Symbol {
+  name: string;
+  type: Type;
+  mutable: boolean;
+  location: "storage" | "memory" | "builtin";
+  slot?: number; // For storage variables
+}
+
 /**
  * Builds the initial symbol table from declarations without traversing expressions.
  * This includes:
@@ -75,7 +84,7 @@ export function buildInitialSymbols(
 
   // Add all function signatures to global scope
   for (const [name, functionType] of functions) {
-    const symbol: BugSymbol = {
+    const symbol: Symbol = {
       name,
       type: functionType,
       mutable: false,
@@ -92,7 +101,7 @@ export function buildInitialSymbols(
         ? resolveType(decl.declaredType, structs)
         : new Type.Failure("missing type");
 
-      const symbol: BugSymbol = {
+      const symbol: Symbol = {
         name: decl.name,
         type,
         mutable: true,
@@ -125,7 +134,7 @@ export function enterFunctionScope(
   const parameters = funcDecl.parameters;
   for (let i = 0; i < parameters.length; i++) {
     const param = parameters[i];
-    const symbol: BugSymbol = {
+    const symbol: Symbol = {
       name: param.name,
       type: funcType.parameterTypes[i],
       mutable: true,

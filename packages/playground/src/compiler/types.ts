@@ -1,4 +1,4 @@
-import type { Ast, Ir, SymbolTable } from "@ethdebug/bugc";
+import type { Ast, Ir } from "@ethdebug/bugc";
 
 export interface BytecodeOutput {
   runtime: Uint8Array;
@@ -8,7 +8,6 @@ export interface BytecodeOutput {
 export interface SuccessfulCompileResult {
   success: true;
   ast: Ast.Program;
-  symbolTable?: SymbolTable;
   ir: Ir.Module;
   optimizedIr: Ir.Module;
   bytecode: BytecodeOutput;

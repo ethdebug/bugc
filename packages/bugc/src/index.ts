@@ -9,7 +9,7 @@ export * as Parser from "#parser";
 export * as TypeChecker from "#typechecker";
 
 // Re-export type system
-export { Type, SymbolTable } from "#types";
+export { Type } from "#types";
 
 // Re-export IR generation functionality
 export { IrBuilder } from "#irgen";

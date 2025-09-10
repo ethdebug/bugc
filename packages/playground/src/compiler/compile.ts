@@ -86,7 +86,6 @@ export async function compile(
   return {
     success: true,
     ast,
-    symbolTable: undefined, // Not available in new interface
     ir,
     optimizedIr,
     bytecode,
