@@ -87,7 +87,7 @@ export function buildInitialSymbols(
 
   // Add all storage variables to global scope
   for (const decl of program.declarations) {
-    if (decl.kind === "storage") {
+    if (Ast.Declaration.isStorage(decl)) {
       const type = decl.declaredType
         ? resolveType(decl.declaredType, structs)
         : new Type.Failure("missing type");
@@ -135,23 +135,4 @@ export function enterFunctionScope(
   }
 
   return newSymbols;
-}
-
-/**
- * Helper to add a variable declaration to the symbol table
- */
-export function addVariableSymbol(
-  symbols: Symbols,
-  name: string,
-  type: Type,
-  mutable: boolean = true,
-): Symbols {
-  const symbol: BugSymbol = {
-    name,
-    type,
-    mutable,
-    location: "memory",
-  };
-
-  return symbols.define(symbol);
 }

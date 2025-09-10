@@ -3,23 +3,26 @@ import { type TypeMap } from "#types";
 import { Result } from "#result";
 import { collectDeclarations } from "./declarations.js";
 import { buildInitialSymbols } from "./symbols.js";
-import { composeVisitors } from "./compose.js";
 import { expressionChecker } from "./expressions.js";
 import { statementChecker } from "./statements.js";
 import { blockChecker } from "./blocks.js";
 import { typeNodeChecker } from "./type-nodes.js";
 import { Error as TypeError } from "./errors.js";
-import type { Context } from "./context.js";
+import type { Report, Context } from "./context.js";
 
 /**
  * Compose the full type checker from modular parts
  */
-const typeChecker = composeVisitors(
+const typeChecker: Ast.Visitor<Report, Context> = [
   expressionChecker,
   statementChecker,
   blockChecker,
   typeNodeChecker,
-);
+].reduce(
+  (a, b) => ({ ...a, ...b }), {}
+) as Ast.Visitor<Report, Context>;
+
+
 
 /**
  * Main type checking function.

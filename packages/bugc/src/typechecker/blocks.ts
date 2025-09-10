@@ -13,7 +13,12 @@ import { isAssignable } from "./assignable.js";
  * - blocks
  * - declarations
  */
-export const blockChecker: Partial<Visitor<Report, Context>> = {
+export const blockChecker: Pick<
+  Visitor<Report, Context>,
+  | "program"
+  | "block"
+  | "declaration"
+> = {
   program(node: Ast.Program, context: Context): Report {
     // Note: First two passes (collecting structs/functions and storage)
     // are already done in collectDeclarations() and buildInitialSymbols()
@@ -45,7 +50,7 @@ export const blockChecker: Partial<Visitor<Report, Context>> = {
 
     // Third pass: type check function bodies
     for (const decl of node.declarations) {
-      if (decl.kind === "function") {
+      if (Ast.Declaration.isFunction(decl)) {
         // Look up the function type
         const funcType = currentSymbols.lookup(decl.name)
           ?.type as Type.Function;

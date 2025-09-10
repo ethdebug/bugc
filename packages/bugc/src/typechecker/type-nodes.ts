@@ -9,7 +9,10 @@ import { Error as TypeError, ErrorCode, ErrorMessages } from "./errors.js";
  * These nodes appear in declarations and casts.
  * They resolve to Type objects.
  */
-export const typeNodeChecker: Partial<Visitor<Report, Context>> = {
+export const typeNodeChecker: Pick<
+  Visitor<Report, Context>,
+  "elementaryType" | "complexType" | "referenceType"
+> = {
   elementaryType(node: Ast.Type.Elementary, context: Context): Report {
     const errors: TypeError[] = [];
     const nodeTypes = new Map(context.nodeTypes);

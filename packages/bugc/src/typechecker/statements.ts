@@ -10,7 +10,13 @@ import { isAssignable } from "./assignable.js";
  * Each statement method handles type checking for that statement type
  * and returns an updated report.
  */
-export const statementChecker: Partial<Visitor<Report, Context>> = {
+export const statementChecker: Pick<
+  Visitor<Report, Context>,
+  | "declarationStatement"
+  | "assignmentStatement"
+  | "controlFlowStatement"
+  | "expressionStatement"
+> = {
   declarationStatement(node: Ast.Statement.Declare, context: Context): Report {
     // Forward to the declaration visitor method
     return Ast.visit(context.visitor, node.declaration, context);

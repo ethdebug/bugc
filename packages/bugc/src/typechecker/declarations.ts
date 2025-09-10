@@ -21,7 +21,7 @@ export function collectDeclarations(
 
   // First pass: collect all struct types
   for (const decl of program.declarations) {
-    if (decl.kind === "struct") {
+    if (Ast.Declaration.isStruct(decl)) {
       try {
         const structType = buildStructType(decl, structs);
         structs.set(decl.name, structType);
@@ -35,7 +35,7 @@ export function collectDeclarations(
 
   // Second pass: collect function signatures (may reference structs)
   for (const decl of program.declarations) {
-    if (decl.kind === "function") {
+    if (Ast.Declaration.isFunction(decl)) {
       try {
         const funcType = buildFunctionSignature(decl, structs);
         functions.set(decl.name, funcType);

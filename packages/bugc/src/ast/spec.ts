@@ -105,27 +105,16 @@ export function program(
   };
 }
 
-// Unified Declaration pattern
-// Covers: struct declarations, field declarations, storage declarations, and variable declarations
-
-// export function declaration(
-//   kind: Declaration["kind"],
-//   name: string,
-//   declaredType?: Type,
-//   initializer?: Expression,
-//   metadata?: Declaration.Metadata,
-//   loc?: SourceLocation,
-// ): Declaration {
-//   return {
-//     type: "Declaration",
-//     kind,
-//     name,
-//     declaredType,
-//     initializer,
-//     metadata,
-//     loc: loc ?? null,
-//   };
-// }
+export const isProgram = (program: unknown): program is Program =>
+  Node.isBase(program) &&
+  program.type === "Program" &&
+  "name" in program &&
+  typeof program.name === "string" &&
+  "declarations" in program &&
+  Array.isArray(program.declarations) &&
+  program.declarations.every(isDeclaration); //&&
+// "create" in program && isBlock(program.create) &&
+// "body" in program && isBlock(program.body);
 
 export type Declaration =
   | Declaration.Struct
@@ -536,17 +525,17 @@ export type Expression =
   | Expression.Cast
   | Expression.Special;
 
-export function isExpression(node: Node): node is Expression {
-  return [
-    "IdentifierExpression",
-    "LiteralExpression",
-    "OperatorExpression",
-    "AccessExpression",
-    "CallExpression",
-    "CastExpression",
-    "SpecialExpression",
-  ].includes(node.type);
-}
+export const isExpression = (node: unknown): node is Expression =>
+  Node.isBase(node) &&
+  [
+    Expression.isIdentifier,
+    Expression.isLiteral,
+    Expression.isOperator,
+    Expression.isAccess,
+    Expression.isCall,
+    Expression.isCast,
+    Expression.isSpecial,
+  ].some((guard) => guard(node));
 
 export namespace Expression {
   export function isAssignable(expr: Expression): boolean {
@@ -561,6 +550,13 @@ export namespace Expression {
     name: string;
   }
 
+  export const isIdentifier = (
+    expression: Node.Base,
+  ): expression is Expression.Identifier =>
+    expression.type === "IdentifierExpression" &&
+    "name" in expression &&
+    typeof expression.name === "string";
+
   export function identifier(
     name: string,
     loc?: SourceLocation,
@@ -574,6 +570,15 @@ export namespace Expression {
     value: string; // Always store as string for precision
     unit?: string; // For wei/ether/finney on numbers
   }
+
+  export const isLiteral = (
+    expression: Node.Base,
+  ): expression is Expression.Literal =>
+    expression.type === "LiteralExpression" &&
+    "kind" in expression &&
+    typeof expression.kind === "string" &&
+    "value" in expression &&
+    typeof expression.value === "string";
 
   export function literal(
     kind: Expression.Literal["kind"],
@@ -591,6 +596,15 @@ export namespace Expression {
     // Arity is implicit from operands.length
   }
 
+  export const isOperator = (
+    expression: Node.Base,
+  ): expression is Expression.Operator =>
+    expression.type === "OperatorExpression" &&
+    "operator" in expression &&
+    typeof expression.operator === "string" &&
+    "operands" in expression &&
+    Array.isArray(expression.operands);
+
   export function operator(
     operator: string,
     operands: Expression[],
@@ -606,6 +620,16 @@ export namespace Expression {
     property: Expression | string; // string for member access, expression for index
     end?: Expression; // For slice access, the end index
   }
+
+  export const isAccess = (
+    expression: Node.Base,
+  ): expression is Expression.Access =>
+    expression.type === "AccessExpression" &&
+    "kind" in expression &&
+    typeof expression.kind === "string" &&
+    "object" in expression &&
+    typeof expression.object === "object" &&
+    "property" in expression;
 
   export function access(
     kind: Expression.Access["kind"],
@@ -633,6 +657,15 @@ export namespace Expression {
     arguments: Expression[];
   }
 
+  export const isCall = (
+    expression: Node.Base,
+  ): expression is Expression.Call =>
+    expression.type === "CallExpression" &&
+    "callee" in expression &&
+    typeof expression.callee === "object" &&
+    "arguments" in expression &&
+    Array.isArray(expression.arguments);
+
   export function call(
     callee: Expression,
     args: Expression[],
@@ -651,6 +684,15 @@ export namespace Expression {
     expression: Expression;
     targetType: Type;
   }
+
+  export const isCast = (
+    expression: Node.Base,
+  ): expression is Expression.Cast =>
+    expression.type === "CastExpression" &&
+    "expression" in expression &&
+    typeof expression.expression === "object" &&
+    "targetType" in expression &&
+    typeof expression.targetType === "object";
 
   export function cast(
     expression: Expression,
@@ -675,6 +717,13 @@ export namespace Expression {
       | "block.number";
     // Extensible for other special values
   }
+
+  export const isSpecial = (
+    expression: Node.Base,
+  ): expression is Expression.Special =>
+    expression.type === "SpecialExpression" &&
+    "kind" in expression &&
+    typeof expression.kind === "string";
 
   export function special(
     kind: Expression.Special["kind"],

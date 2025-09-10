@@ -10,7 +10,16 @@ import { isAssignable, commonType } from "./assignable.js";
  * Each expression method computes the type of the expression
  * and returns it in the report.
  */
-export const expressionChecker: Partial<Visitor<Report, Context>> = {
+export const expressionChecker: Pick<
+  Visitor<Report, Context>,
+  | "identifierExpression"
+  | "callExpression"
+  | "castExpression"
+  | "accessExpression"
+  | "literalExpression"
+  | "specialExpression"
+  | "operatorExpression"
+> = {
   identifierExpression(
     node: Ast.Expression.Identifier,
     context: Context,
