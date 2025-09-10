@@ -18,11 +18,7 @@ const typeChecker: Ast.Visitor<Report, Context> = [
   statementChecker,
   blockChecker,
   typeNodeChecker,
-].reduce(
-  (a, b) => ({ ...a, ...b }), {}
-) as Ast.Visitor<Report, Context>;
-
-
+].reduce((a, b) => ({ ...a, ...b }), {}) as Ast.Visitor<Report, Context>;
 
 /**
  * Main type checking function.

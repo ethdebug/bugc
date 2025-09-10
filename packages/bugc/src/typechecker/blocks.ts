@@ -15,9 +15,7 @@ import { isAssignable } from "./assignable.js";
  */
 export const blockChecker: Pick<
   Visitor<Report, Context>,
-  | "program"
-  | "block"
-  | "declaration"
+  "program" | "block" | "declaration"
 > = {
   program(node: Ast.Program, context: Context): Report {
     // Note: First two passes (collecting structs/functions and storage)
