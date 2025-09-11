@@ -183,7 +183,7 @@ export const blockChecker: Pick<
         // We just need to set the type on the node
         const symbol = symbols.lookup(node.name);
         if (symbol) {
-          nodeTypes.set(node, symbol.type);
+          nodeTypes.set(node.id, symbol.type);
         }
         return { type: symbol?.type, symbols, nodeTypes, errors };
       }
@@ -193,7 +193,7 @@ export const blockChecker: Pick<
         // We just need to set the type on the node
         const symbol = symbols.lookup(node.name);
         if (symbol) {
-          nodeTypes.set(node, symbol.type);
+          nodeTypes.set(node.id, symbol.type);
         }
         return { type: symbol?.type, symbols, nodeTypes, errors };
       }
@@ -218,7 +218,7 @@ export const blockChecker: Pick<
             location: "memory",
           };
           symbols = symbols.define(symbol);
-          nodeTypes.set(node, errorType);
+          nodeTypes.set(node.id, errorType);
           return { type: errorType, symbols, nodeTypes, errors };
         }
 
@@ -268,7 +268,7 @@ export const blockChecker: Pick<
           location: "memory",
         };
         symbols = symbols.define(symbol);
-        nodeTypes.set(node, type);
+        nodeTypes.set(node.id, type);
         return { type, symbols, nodeTypes, errors };
       }
 

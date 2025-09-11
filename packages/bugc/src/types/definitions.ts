@@ -1,6 +1,9 @@
 /**
  * Type definitions for the BUG language
  */
+import type * as Ast from "#ast";
+
+export type Types = Map<Ast.Id, Type>;
 
 export interface Type {
   kind: Type.Kind;

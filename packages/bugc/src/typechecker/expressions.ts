@@ -45,7 +45,7 @@ export const expressionChecker: Pick<
       };
     }
 
-    nodeTypes.set(node, symbol.type);
+    nodeTypes.set(node.id, symbol.type);
     return {
       type: symbol.type,
       symbols: context.symbols,
@@ -93,7 +93,7 @@ export const expressionChecker: Pick<
     }
 
     if (type) {
-      nodeTypes.set(node, type);
+      nodeTypes.set(node.id, type);
     }
 
     return {
@@ -285,7 +285,7 @@ export const expressionChecker: Pick<
     }
 
     if (resultType) {
-      nodeTypes.set(node, resultType);
+      nodeTypes.set(node.id, resultType);
     }
 
     return {
@@ -516,7 +516,7 @@ export const expressionChecker: Pick<
     }
 
     if (resultType) {
-      nodeTypes.set(node, resultType);
+      nodeTypes.set(node.id, resultType);
     }
 
     return {
@@ -587,7 +587,7 @@ export const expressionChecker: Pick<
 
         // keccak256 returns bytes32
         const resultType = Type.Elementary.bytes32;
-        nodeTypes.set(node, resultType);
+        nodeTypes.set(node.id, resultType);
         return {
           type: resultType,
           symbols,
@@ -672,7 +672,7 @@ export const expressionChecker: Pick<
       // Return the function's return type
       const returnType =
         funcType.returnType || new Type.Failure("void function");
-      nodeTypes.set(node, returnType);
+      nodeTypes.set(node.id, returnType);
       return {
         type: returnType,
         symbols,
@@ -748,7 +748,7 @@ export const expressionChecker: Pick<
     }
 
     // Set the type of the cast expression to the target type
-    nodeTypes.set(node, targetTypeResult.type);
+    nodeTypes.set(node.id, targetTypeResult.type);
     return {
       type: targetTypeResult.type,
       symbols,
@@ -781,7 +781,7 @@ export const expressionChecker: Pick<
 
     const nodeTypes = new Map(context.nodeTypes);
     if (type) {
-      nodeTypes.set(node, type);
+      nodeTypes.set(node.id, type);
     }
 
     return {

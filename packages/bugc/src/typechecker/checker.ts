@@ -1,5 +1,5 @@
 import * as Ast from "#ast";
-import { type TypeMap } from "#types";
+import { type Types } from "#types";
 import { Result } from "#result";
 import { collectDeclarations } from "./declarations.js";
 import { buildInitialSymbols } from "./symbols.js";
@@ -29,7 +29,7 @@ const typeChecker: Ast.Visitor<Report, Context> = [
  * 3. Traverse AST with composed visitor
  * 4. Return symbols and type map, or errors
  */
-export function checkProgram(program: Ast.Program): Result<TypeMap, TypeError> {
+export function checkProgram(program: Ast.Program): Result<Types, TypeError> {
   // 1. Collect declarations (structs, functions)
   const declResult = collectDeclarations(program);
   if (!declResult.success) {

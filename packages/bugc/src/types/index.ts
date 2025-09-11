@@ -7,8 +7,4 @@
  */
 
 // Re-export all type definitions
-export { Type } from "./definitions.js";
-
-// Type alias for the mapping of AST nodes to their types
-import type { Type } from "./definitions.js";
-export type TypeMap = WeakMap<object, Type>;
+export { Type, type Types } from "./definitions.js";

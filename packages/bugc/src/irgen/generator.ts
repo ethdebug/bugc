@@ -7,7 +7,7 @@
 
 import * as Ast from "#ast";
 import * as Ir from "#ir";
-import { Type, type TypeMap } from "#types";
+import { Type, type Types } from "#types";
 import { Result, Severity, type MessagesBySeverity } from "#result";
 
 import { Error as IrgenError, ErrorCode, ErrorMessages } from "./errors.js";
@@ -22,7 +22,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
   /**
    * Build IR module from AST
    */
-  build(program: Ast.Program, types: TypeMap): Result<Ir.Module, IrgenError> {
+  build(program: Ast.Program, types: Types): Result<Ir.Module, IrgenError> {
     // Reset errors
     this.errors = [];
     // Initialize context
@@ -187,7 +187,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
 
   processStorageDeclaration(decl: Ast.Declaration): void {
     if (decl.kind === "storage") {
-      const type = this.context.types.get(decl);
+      const type = this.context.types.get(decl.id);
       if (type) {
         this.context.storage.slots.push({
           slot: decl.slot,
@@ -234,7 +234,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
 
     // Process function parameters
     let paramCount = 0;
-    const funcType = this.context.types.get(decl);
+    const funcType = this.context.types.get(decl.id);
     if (funcType && Type.isFunction(funcType)) {
       paramCount = decl.parameters.length;
       for (let i = 0; i < paramCount; i++) {
@@ -262,7 +262,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
 
     // Ensure function has proper terminator
     if (!this.isTerminated(this.context.currentBlock)) {
-      const declType = this.context.types.get(decl);
+      const declType = this.context.types.get(decl.id);
       if (declType && Type.isFunction(declType) && declType.returnType) {
         // Function should return a value but doesn't - add error
         this.errors.push(
@@ -303,7 +303,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
         const valueTemp = this.expression(decl.initializer);
 
         // Create local variable
-        const declType = this.context.types.get(decl);
+        const declType = this.context.types.get(decl.id);
         if (!declType) {
           this.errors.push(
             new IrgenError(
@@ -663,7 +663,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
   }
 
   literalExpression(node: Ast.Expression.Literal, _context: never): Ir.Value {
-    const nodeType = this.context.types.get(node);
+    const nodeType = this.context.types.get(node.id);
     if (!nodeType) {
       this.errors.push(
         new IrgenError(
@@ -741,7 +741,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
   }
 
   operatorExpression(node: Ast.Expression.Operator, _context: never): Ir.Value {
-    const nodeType = this.context.types.get(node);
+    const nodeType = this.context.types.get(node.id);
     if (!nodeType) {
       this.errors.push(
         new IrgenError(
@@ -811,7 +811,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
 
       // Check if this is a .length property access
       if (property === "length") {
-        const objectType = this.context.types.get(node.object);
+        const objectType = this.context.types.get(node.object.id);
 
         // Verify that the object type supports .length (arrays, bytes, string)
         if (
@@ -839,7 +839,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       // First check if this is accessing a storage chain (e.g., accounts[user].balance)
       const chain = this.findStorageAccessChain(node);
       if (chain) {
-        const nodeType = this.context.types.get(node);
+        const nodeType = this.context.types.get(node.id);
         if (nodeType) {
           const valueType = this.bugTypeToIrType(nodeType);
           return this.emitStorageChainLoad(
@@ -854,7 +854,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
 
       // Otherwise, handle regular struct field access
       const object = this.expression(node.object);
-      const objectType = this.context.types.get(node.object);
+      const objectType = this.context.types.get(node.object.id);
 
       if (objectType && Type.isStruct(objectType)) {
         const fieldType = objectType.fields.get(node.property as string);
@@ -880,7 +880,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       }
     } else if (node.kind === "slice") {
       // Slice access - start:end
-      const objectType = this.context.types.get(node.object);
+      const objectType = this.context.types.get(node.object.id);
       if (
         objectType &&
         Type.isElementary(objectType) &&
@@ -922,7 +922,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
     } else {
       // Array/mapping/bytes index access
       // First check if we're indexing into bytes (not part of storage chain)
-      const objectType = this.context.types.get(node.object);
+      const objectType = this.context.types.get(node.object.id);
       if (
         objectType &&
         Type.isElementary(objectType) &&
@@ -951,7 +951,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       // For non-bytes types, try to find a complete storage access chain
       const chain = this.findStorageAccessChain(node);
       if (chain) {
-        const nodeType = this.context.types.get(node);
+        const nodeType = this.context.types.get(node.id);
         if (nodeType) {
           const valueType = this.bugTypeToIrType(nodeType);
           return this.emitStorageChainLoad(
@@ -1021,7 +1021,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
     const exprValue = this.expression(node.expression);
 
     // Get the target type from the type checker
-    const targetType = this.context.types.get(node);
+    const targetType = this.context.types.get(node.id);
     if (!targetType) {
       this.errors.push(
         new IrgenError(
@@ -1096,7 +1096,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       const functionName = node.callee.name;
 
       // Get the function type from the type checker
-      const callType = this.context.types.get(node);
+      const callType = this.context.types.get(node.id);
       if (!callType) {
         this.errors.push(
           new IrgenError(
@@ -1167,7 +1167,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
   }
 
   specialExpression(node: Ast.Expression.Special, _context: never): Ir.Value {
-    const nodeType = this.context.types.get(node);
+    const nodeType = this.context.types.get(node.id);
     if (!nodeType) {
       this.errors.push(
         new IrgenError(
@@ -1315,7 +1315,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
 
         // Otherwise, handle regular struct field assignment
         const object = this.expression(accessNode.object);
-        const objectType = this.context.types.get(accessNode.object);
+        const objectType = this.context.types.get(accessNode.object.id);
 
         if (objectType && Type.isStruct(objectType)) {
           const fieldName = accessNode.property as string;
@@ -1342,7 +1342,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       } else {
         // Array/mapping/bytes assignment
         // First check if we're assigning to bytes (not part of storage chain)
-        const objectType = this.context.types.get(accessNode.object);
+        const objectType = this.context.types.get(accessNode.object.id);
         if (
           objectType &&
           Type.isElementary(objectType) &&
@@ -1675,7 +1675,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       const local = this.context.locals.get(name);
       if (local && accesses.length > 0) {
         // Get the type to provide better error message
-        const localType = this.context.types.get(current);
+        const localType = this.context.types.get(current.id);
         const typeDesc = localType
           ? (localType as Type & { name?: string; kind?: string }).name ||
             (localType as Type & { name?: string; kind?: string }).kind ||
@@ -2032,7 +2032,7 @@ export interface IrContext {
   /** Counter for generating unique local IDs */
   localCounter: number;
   /** Types mapping for type information */
-  types: TypeMap;
+  types: Types;
   /** Storage layout being built */
   storage: Ir.Module.StorageLayout;
   /** Mapping from AST variable names to IR local IDs */

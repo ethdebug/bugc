@@ -29,7 +29,7 @@ describe("Slice type checking", () => {
       const decl = program.body?.items[0];
       if (decl?.type === "DeclarationStatement") {
         const varDecl = decl.declaration as Ast.Declaration.Variable;
-        const sliceType = types.get(varDecl.initializer!);
+        const sliceType = types.get(varDecl.initializer?.id!);
         expect(sliceType?.toString()).toBe("bytes");
       }
     }

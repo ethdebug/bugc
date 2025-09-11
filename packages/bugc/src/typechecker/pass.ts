@@ -1,6 +1,6 @@
 import type { Program } from "#ast";
 import { Result } from "#result";
-import type { TypeMap } from "#types";
+import type { Types } from "#types";
 import type { Pass } from "#compiler";
 
 import type { Error as TypeError } from "./errors.js";
@@ -14,7 +14,7 @@ const pass: Pass<{
     ast: Program;
   };
   adds: {
-    types: TypeMap;
+    types: Types;
   };
   error: TypeError;
 }> = {

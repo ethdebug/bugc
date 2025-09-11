@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import { parse } from "#parser";
 import { Result, Severity } from "#result";
-import type { TypeMap } from "#types";
+import type { Types } from "#types";
 
 import { checkProgram } from "./checker.js";
 import type { Error as BugTypeError } from "./errors.js";
@@ -10,7 +10,7 @@ import type { Error as BugTypeError } from "./errors.js";
 import "#test/matchers";
 
 describe("checkProgram", () => {
-  function check(source: string): Result<TypeMap, BugTypeError> {
+  function check(source: string): Result<Types, BugTypeError> {
     const parseResult = parse(source);
     if (!parseResult.success) {
       const firstError = Result.firstError(parseResult);

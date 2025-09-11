@@ -68,7 +68,7 @@ export const typeNodeChecker: Pick<
     }
 
     if (type) {
-      nodeTypes.set(node, type);
+      nodeTypes.set(node.id, type);
     }
 
     return {
@@ -146,7 +146,7 @@ export const typeNodeChecker: Pick<
     }
 
     if (type) {
-      nodeTypes.set(node, type);
+      nodeTypes.set(node.id, type);
     }
 
     return {
@@ -178,7 +178,7 @@ export const typeNodeChecker: Pick<
     }
 
     if (type) {
-      nodeTypes.set(node, type);
+      nodeTypes.set(node.id, type);
     }
 
     return {

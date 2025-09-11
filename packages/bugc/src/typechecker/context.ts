@@ -1,4 +1,4 @@
-import { Type } from "#types";
+import { Type, type Types } from "#types";
 import type { Visitor } from "#ast";
 import { type Symbols } from "./symbols.js";
 import { type Error as TypeError } from "./errors.js";
@@ -26,7 +26,7 @@ export interface Context {
   readonly currentReturnType?: Type;
 
   /** Accumulated type information for nodes */
-  readonly nodeTypes: Map<object, Type>;
+  readonly nodeTypes: Types;
 
   /** The visitor itself for recursive calls */
   readonly visitor: Visitor<Report, Context>;
@@ -44,7 +44,7 @@ export interface Report {
   readonly symbols: Symbols;
 
   /** Updated node type map (with this node's type added) */
-  readonly nodeTypes: Map<object, Type>;
+  readonly nodeTypes: Types;
 
   /** Any type errors found in this subtree */
   readonly errors: readonly TypeError[];

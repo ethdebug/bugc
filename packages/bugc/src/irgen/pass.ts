@@ -1,5 +1,5 @@
 import type { Program } from "#ast";
-import type { TypeMap } from "#types";
+import type { Types } from "#types";
 import type * as Ir from "#ir";
 import { Result } from "#result";
 import type { Pass } from "#compiler";
@@ -15,7 +15,7 @@ import { PhiInserter } from "./phi-inserter.js";
 const pass: Pass<{
   needs: {
     ast: Program;
-    types: TypeMap;
+    types: Types;
   };
   adds: {
     ir: Ir.Module;
