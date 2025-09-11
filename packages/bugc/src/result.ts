@@ -48,10 +48,7 @@ export const Result = {
   /**
    * Create a successful result with messages
    */
-  okWith<T, E extends BugError>(
-    value: T,
-    messages: E[]
-  ): Result<T, E> {
+  okWith<T, E extends BugError>(value: T, messages: E[]): Result<T, E> {
     return Result.addMessages(Result.ok(value), messages);
   },
 

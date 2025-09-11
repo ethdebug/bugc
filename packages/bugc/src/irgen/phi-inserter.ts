@@ -536,4 +536,3 @@ interface DominanceFrontier {
 interface VariableDefinitions {
   [varName: string]: Set<string>; // Maps variable to blocks where it's defined
 }
-
