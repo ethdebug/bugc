@@ -11,23 +11,6 @@
 
 import * as Ir from "#ir";
 
-// Helper function to compare sets
-function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
-  if (a.size !== b.size) return false;
-  for (const item of a) {
-    if (!b.has(item)) return false;
-  }
-  return true;
-}
-
-interface DominanceFrontier {
-  [blockId: string]: Set<string>;
-}
-
-interface VariableDefinitions {
-  [varName: string]: Set<string>; // Maps variable to blocks where it's defined
-}
-
 interface LivenessInfo {
   /** Variables live at block entry */
   liveIn: Map<string, Set<string>>;
@@ -536,3 +519,21 @@ export class PhiInserter {
     return null;
   }
 }
+
+// Helper function to compare sets
+function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
+  if (a.size !== b.size) return false;
+  for (const item of a) {
+    if (!b.has(item)) return false;
+  }
+  return true;
+}
+
+interface DominanceFrontier {
+  [blockId: string]: Set<string>;
+}
+
+interface VariableDefinitions {
+  [varName: string]: Set<string>; // Maps variable to blocks where it's defined
+}
+

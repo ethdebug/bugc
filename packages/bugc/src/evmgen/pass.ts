@@ -4,7 +4,7 @@ import type * as Ir from "#ir";
 import type * as Evm from "#evm";
 
 import { Module } from "#evmgen/generation";
-import { Error, ErrorCode } from "#evmgen/errors";
+import { Error as EvmgenError, ErrorCode } from "#evmgen/errors";
 
 import { Layout, Liveness, Memory } from "#evmgen/analysis";
 
@@ -32,7 +32,7 @@ const pass: Pass<{
   adds: {
     bytecode: EvmGenerationOutput;
   };
-  error: Error;
+  error: EvmgenError;
 }> = {
   async run({ ir }) {
     try {
@@ -43,7 +43,7 @@ const pass: Pass<{
       const memoryResult = Memory.Module.plan(ir, liveness);
       if (!memoryResult.success) {
         return Result.err(
-          new Error(
+          new EvmgenError(
             ErrorCode.INTERNAL_ERROR,
             memoryResult.messages.error?.[0]?.message ??
               "Memory analysis failed",
@@ -55,7 +55,7 @@ const pass: Pass<{
       const blockResult = Layout.Module.perform(ir);
       if (!blockResult.success) {
         return Result.err(
-          new Error(
+          new EvmgenError(
             ErrorCode.INTERNAL_ERROR,
             blockResult.messages.error?.[0]?.message ??
               "Block layout analysis failed",
@@ -82,15 +82,15 @@ const pass: Pass<{
         { warning: result.warnings },
       );
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof EvmgenError) {
         return Result.err(error);
       }
 
       // Wrap unexpected errors
       return Result.err(
-        new Error(
+        new EvmgenError(
           ErrorCode.INTERNAL_ERROR,
-          error instanceof global.Error ? error.message : String(error),
+          error instanceof Error ? error.message : String(error),
         ),
       );
     }

@@ -18,11 +18,13 @@ export enum ErrorCode {
   INVALID_LAYOUT = "MEMORY_INVALID_LAYOUT",
 }
 
-export class Error extends BugError {
+class MemoryError extends BugError {
   constructor(code: ErrorCode, message: string, location?: SourceLocation) {
     super(message, code, location, Severity.Error);
   }
 }
+
+export { MemoryError as Error };
 
 /**
  * EVM memory layout following Solidity conventions
@@ -60,7 +62,7 @@ export namespace Module {
   export function plan(
     module: Ir.Module,
     liveness: Liveness.Module.Info,
-  ): Result<Module.Info, Error> {
+  ): Result<Module.Info, MemoryError> {
     const result: Module.Info = {
       main: {} as Function.Info,
       functions: {},
@@ -78,7 +80,7 @@ export namespace Module {
     // Process main function
     if (!liveness.main) {
       return Result.err(
-        new Error(
+        new MemoryError(
           ErrorCode.INVALID_LAYOUT,
           "Missing liveness info for main function",
         ),
@@ -95,7 +97,7 @@ export namespace Module {
       const funcLiveness = liveness.functions[name];
       if (!funcLiveness) {
         return Result.err(
-          new Error(
+          new MemoryError(
             ErrorCode.INVALID_LAYOUT,
             `Missing liveness info for function ${name}`,
           ),
@@ -126,7 +128,7 @@ export namespace Function {
   export function plan(
     func: Ir.Function,
     liveness: Liveness.Function.Info,
-  ): Result<Function.Info, Error> {
+  ): Result<Function.Info, MemoryError> {
     try {
       const allocations: Record<string, Allocation> = {};
       let nextStaticOffset = regions.STATIC_MEMORY_START;
@@ -141,7 +143,7 @@ export namespace Function {
       // Check if we have too many values for memory
       if (needsMemory.size > 1000) {
         return Result.err(
-          new Error(
+          new MemoryError(
             ErrorCode.ALLOCATION_FAILED,
             `Too many values need memory allocation: ${needsMemory.size}`,
           ),
@@ -198,9 +200,9 @@ export namespace Function {
       });
     } catch (error) {
       return Result.err(
-        new Error(
+        new MemoryError(
           ErrorCode.ALLOCATION_FAILED,
-          error instanceof global.Error ? error.message : "Unknown error",
+          error instanceof Error ? error.message : "Unknown error",
         ),
       );
     }
