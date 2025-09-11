@@ -50,9 +50,9 @@ export const Result = {
    */
   okWith<T, E extends BugError>(
     value: T,
-    messages: MessagesBySeverity<E>,
+    messages: E[]
   ): Result<T, E> {
-    return { success: true, value, messages };
+    return Result.addMessages(Result.ok(value), messages);
   },
 
   /**
@@ -296,26 +296,6 @@ export const Result = {
   },
 
   /**
-   * Check if result is clean (success with no messages)
-   */
-  isClean<T, E extends BugError>(result: Result<T, E>): boolean {
-    return result.success && !Result.hasMessages(result);
-  },
-
-  /**
-   * Assert result is successful (throws if not)
-   */
-  unwrap<T, E extends BugError>(result: Result<T, E>): T {
-    if (!result.success) {
-      const firstError = Result.firstError(result);
-      throw new Error(
-        firstError?.message ?? "Operation failed with no error message",
-      );
-    }
-    return result.value;
-  },
-
-  /**
    * Get errors only (convenience for common pattern)
    */
   errors<T, E extends BugError>(result: Result<T, E>): E[] {
@@ -334,21 +314,5 @@ export const Result = {
    */
   countErrors<T, E extends BugError>(result: Result<T, E>): number {
     return Result.errors(result).length;
-  },
-
-  /**
-   * Get unique codes for a specific severity (or all if not specified)
-   */
-  getCodes<T, E extends BugError>(
-    result: Result<T, E>,
-    severity?: Severity,
-  ): string[] {
-    const messages =
-      severity !== undefined
-        ? Result.getMessages(result, severity)
-        : Result.allMessages(result);
-
-    const codes = new Set(messages.map((m) => m.code));
-    return Array.from(codes);
   },
 };

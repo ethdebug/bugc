@@ -79,7 +79,7 @@ const pass: Pass<{
             createInstructions: result.createInstructions,
           },
         },
-        { warning: result.warnings },
+        result.warnings,
       );
     } catch (error) {
       if (error instanceof EvmgenError) {

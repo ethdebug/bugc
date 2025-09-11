@@ -83,27 +83,13 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       module.create = contextWithCreate.createFunction;
     }
 
-    // Build messages by severity
-    const messages: MessagesBySeverity<IrgenError> = {};
-    for (const error of this.errors) {
-      const severity = error.severity;
-      if (!messages[severity]) {
-        messages[severity] = [];
-      }
-      messages[severity]!.push(error);
-    }
-
     // Return result based on whether we have errors
     const hasErrors = this.errors.some((e) => e.severity === Severity.Error);
     if (hasErrors) {
-      return { success: false, messages };
+      return Result.err(this.errors);
     }
 
-    return {
-      success: true,
-      value: module,
-      messages,
-    };
+    return Result.okWith(module, this.errors);
   }
 
   program(node: Ast.Program, _context: never): void {
