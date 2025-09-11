@@ -94,10 +94,10 @@ describe("Function declarations", () => {
 
     const program = result.value;
     const codeBlock = program.body;
-    const letStmt = codeBlock.items[0];
+    const letStmt = codeBlock?.items[0];
 
-    expect(letStmt.type).toBe("DeclarationStatement");
-    if (letStmt.type === "DeclarationStatement") {
+    expect(letStmt?.type).toBe("DeclarationStatement");
+    if (letStmt?.type === "DeclarationStatement") {
       const decl = letStmt.declaration as Ast.Declaration.Variable;
       const init = decl.initializer;
       expect(init?.type).toBe("CallExpression");

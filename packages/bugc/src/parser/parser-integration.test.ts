@@ -30,9 +30,9 @@ code {
       expect(ast.type).toBe("Program");
       expect(ast.name).toBe("Counter");
       expect(ast.declarations).toHaveLength(2);
-      expect(ast.body.items).toHaveLength(2);
+      expect(ast.body?.items).toHaveLength(2);
 
-      const ifStmt = ast.body.items[0] as Ast.Statement.ControlFlow;
+      const ifStmt = ast.body?.items[0] as Ast.Statement.ControlFlow;
       expect(ifStmt.type).toBe("ControlFlowStatement");
       expect(ifStmt.kind).toBe("if");
     });
@@ -121,7 +121,7 @@ code {
       const ast = parseResult.value;
       expect(ast.type).toBe("Program");
       expect(ast.declarations).toHaveLength(5); // 1 struct + 4 storage
-      expect(ast.body.items).toHaveLength(4); // if, let, if, return
+      expect(ast.body?.items).toHaveLength(4); // if, let, if, return
     });
   });
 
@@ -174,7 +174,7 @@ code {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const ast = parseResult.value;
-      expect(ast.body.items).toHaveLength(5);
+      expect(ast.body?.items).toHaveLength(5);
     });
   });
 
@@ -213,7 +213,7 @@ code {}
       const ast = parseResult.value;
       expect(ast.name).toBe("Empty");
       expect(ast.declarations).toEqual([]);
-      expect(ast.body.items).toEqual([]);
+      expect(ast.body?.items).toEqual([]);
     });
 
     it("should parse program with only storage", () => {
@@ -233,7 +233,7 @@ code {}
       if (!parseResult.success) throw new Error("Parse failed");
       const ast = parseResult.value;
       expect(ast.declarations).toHaveLength(2);
-      expect(ast.body.items).toEqual([]);
+      expect(ast.body?.items).toEqual([]);
     });
 
     it("should parse program with complex control flow", () => {
@@ -264,7 +264,7 @@ code {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const ast = parseResult.value;
-      const forLoop = ast.body.items[0] as Ast.Statement.ControlFlow;
+      const forLoop = ast.body?.items[0] as Ast.Statement.ControlFlow;
       expect(forLoop.kind).toBe("for");
       expect(forLoop.body?.items).toHaveLength(2);
     });

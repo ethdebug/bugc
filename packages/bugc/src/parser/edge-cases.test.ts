@@ -33,7 +33,7 @@ describe("Parser Edge Cases", () => {
         expect(parseResult.success).toBe(true);
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
-        const assignment = result.body.items[0] as Ast.Statement.Assign;
+        const assignment = result.body?.items[0] as Ast.Statement.Assign;
         const literal = assignment.value as Ast.Expression.Literal;
         expect(literal.kind).toBe("hex");
         expect(literal.value).toBe(expected);
@@ -54,8 +54,8 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmt = result.body.items[0];
-      expect(stmt.type).toBe("DeclarationStatement");
+      const stmt = result.body?.items[0];
+      expect(stmt?.type).toBe("DeclarationStatement");
       const decl = (stmt as Ast.Statement.Declare).declaration;
       if (!Ast.Declaration.isVariable(decl)) {
         throw new Error("Expected variable declaration");
@@ -88,7 +88,7 @@ describe("Parser Edge Cases", () => {
         expect(parseResult.success).toBe(true);
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
-        const stmt = result.body.items[0];
+        const stmt = result.body?.items[0];
         const decl = (stmt as Ast.Statement.Declare).declaration;
         if (!Ast.Declaration.isVariable(decl)) {
           throw new Error("Expected variable declaration");
@@ -112,7 +112,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmt = result.body.items[0];
+      const stmt = result.body?.items[0];
       const decl = (stmt as Ast.Statement.Declare).declaration;
       if (!Ast.Declaration.isVariable(decl)) {
         throw new Error("Expected variable declaration");
@@ -135,7 +135,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const [addrStmt, hexStmt] = result.body.items;
+      const [addrStmt, hexStmt] = result.body?.items || [];
 
       const addrDecl = (addrStmt as Ast.Statement.Declare).declaration;
       if (!Ast.Declaration.isVariable(addrDecl)) {
@@ -176,7 +176,7 @@ describe("Parser Edge Cases", () => {
         expect(parseResult.success).toBe(true);
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
-        const stmt = result.body.items[0];
+        const stmt = result.body?.items[0];
         const decl = (stmt as Ast.Statement.Declare).declaration;
         if (!Ast.Declaration.isVariable(decl)) {
           throw new Error("Expected variable declaration");
@@ -201,7 +201,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const [xStmt, yStmt] = result.body.items;
+      const [xStmt, yStmt] = result.body?.items || [];
 
       const xDecl = (xStmt as Ast.Statement.Declare).declaration;
       const xLiteral = (xDecl as Ast.Declaration.Variable)
@@ -236,7 +236,7 @@ describe("Parser Edge Cases", () => {
         expect(parseResult.success).toBe(true);
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
-        const stmt = result.body.items[0];
+        const stmt = result.body?.items[0];
         const decl = (stmt as Ast.Statement.Declare).declaration;
         const literal = (decl as Ast.Declaration.Variable)
           .initializer as Ast.Expression.Literal;
@@ -266,7 +266,7 @@ describe("Parser Edge Cases", () => {
         expect(parseResult.success).toBe(true);
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
-        const stmt = result.body.items[0];
+        const stmt = result.body?.items[0];
         const decl = (stmt as Ast.Statement.Declare).declaration;
         const literal = (decl as Ast.Declaration.Variable)
           .initializer as Ast.Expression.Literal;
@@ -296,7 +296,7 @@ describe("Parser Edge Cases", () => {
         expect(parseResult.success).toBe(true);
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
-        const stmt = result.body.items[0];
+        const stmt = result.body?.items[0];
         const decl = (stmt as Ast.Statement.Declare).declaration;
         const literal = (decl as Ast.Declaration.Variable)
           .initializer as Ast.Expression.Literal;
@@ -324,7 +324,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(2);
+      expect(result.body?.items).toHaveLength(2);
     });
   });
 
@@ -351,7 +351,7 @@ describe("Parser Edge Cases", () => {
         expect(parseResult.success).toBe(true);
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
-        const stmt = result.body.items[0];
+        const stmt = result.body?.items[0];
         const decl = (stmt as Ast.Statement.Declare).declaration;
         const literal = (decl as Ast.Declaration.Variable)
           .initializer as Ast.Expression.Literal;
@@ -383,7 +383,7 @@ describe("Parser Edge Cases", () => {
         expect(parseResult.success).toBe(true);
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
-        const stmt = result.body.items[0];
+        const stmt = result.body?.items[0];
         const decl = (stmt as Ast.Statement.Declare).declaration;
         const literal = (decl as Ast.Declaration.Variable)
           .initializer as Ast.Expression.Literal;
@@ -413,7 +413,7 @@ describe("Parser Edge Cases", () => {
         expect(parseResult.success).toBe(true);
         if (!parseResult.success) throw new Error("Parse failed");
         const result = parseResult.value;
-        expect(result.body.items).toHaveLength(1);
+        expect(result.body?.items).toHaveLength(1);
       }
     });
 
@@ -456,7 +456,7 @@ describe("Parser Edge Cases", () => {
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
       expect(result.name).toBe("Test");
-      expect(result.body.items).toHaveLength(1);
+      expect(result.body?.items).toHaveLength(1);
     });
 
     test("parses multi-line comments", () => {
@@ -480,7 +480,7 @@ describe("Parser Edge Cases", () => {
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
       expect(result.declarations).toHaveLength(1);
-      expect(result.body.items).toHaveLength(1);
+      expect(result.body?.items).toHaveLength(1);
     });
 
     test("handles nested comment-like content", () => {
@@ -499,7 +499,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(2);
+      expect(result.body?.items).toHaveLength(2);
     });
 
     test("parses comments with special characters", () => {
@@ -518,7 +518,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(1);
+      expect(result.body?.items).toHaveLength(1);
     });
 
     test("handles unterminated multi-line comments", () => {
@@ -580,7 +580,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toEqual([]);
+      expect(result.body?.items).toEqual([]);
     });
 
     test("parses empty structs", () => {
@@ -617,7 +617,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(3);
+      expect(result.body?.items).toHaveLength(3);
     });
 
     test("parses minimal valid program", () => {
@@ -779,7 +779,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(6);
+      expect(result.body?.items).toHaveLength(6);
     });
 
     test("parses chained comparisons", () => {
@@ -797,7 +797,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(2);
+      expect(result.body?.items).toHaveLength(2);
     });
 
     test("parses nested operators", () => {
@@ -815,7 +815,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(3);
+      expect(result.body?.items).toHaveLength(3);
     });
 
     test("parses complex operator precedence", () => {
@@ -836,7 +836,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(6);
+      expect(result.body?.items).toHaveLength(6);
     });
 
     test("handles operators with whitespace variations", () => {
@@ -857,7 +857,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(4);
+      expect(result.body?.items).toHaveLength(4);
     });
 
     test("distinguishes between >= and > followed by =", () => {
@@ -877,7 +877,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(1);
+      expect(result.body?.items).toHaveLength(1);
     });
 
     test("handles operator-like sequences in strings", () => {
@@ -895,7 +895,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(3);
+      expect(result.body?.items).toHaveLength(3);
     });
 
     test("parses unary minus with numbers", () => {
@@ -913,7 +913,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(3);
+      expect(result.body?.items).toHaveLength(3);
     });
 
     test("parses boolean not operator", () => {
@@ -931,7 +931,7 @@ describe("Parser Edge Cases", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.body.items).toHaveLength(3);
+      expect(result.body?.items).toHaveLength(3);
     });
 
     test("handles invalid operator usage", () => {

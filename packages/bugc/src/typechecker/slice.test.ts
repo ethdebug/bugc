@@ -26,8 +26,8 @@ describe("Slice type checking", () => {
     if (typeResult.success) {
       const types = typeResult.value;
       const program = result.value;
-      const decl = program.body.items[0];
-      if (decl.type === "DeclarationStatement") {
+      const decl = program.body?.items[0];
+      if (decl?.type === "DeclarationStatement") {
         const varDecl = decl.declaration as Ast.Declaration.Variable;
         const sliceType = types.get(varDecl.initializer!);
         expect(sliceType?.toString()).toBe("bytes");

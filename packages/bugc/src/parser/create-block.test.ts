@@ -32,8 +32,8 @@ describe("Create block parsing", () => {
     expect(ast.create).toBeDefined();
     expect(ast.create?.kind).toBe("program");
     expect(ast.create?.items).toHaveLength(2);
-    expect(ast.body.kind).toBe("program");
-    expect(ast.body.items).toHaveLength(1);
+    expect(ast.body?.kind).toBe("program");
+    expect(ast.body?.items).toHaveLength(1);
   });
 
   it("parses program without create block", () => {
@@ -51,9 +51,9 @@ describe("Create block parsing", () => {
 
     const ast = result.value;
     expect(ast.name).toBe("SimpleProgram");
-    expect(ast.create.items).toHaveLength(0);
-    expect(ast.body.kind).toBe("program");
-    expect(ast.body.items).toHaveLength(1);
+    expect(ast).not.toHaveProperty("create");
+    expect(ast.body?.kind).toBe("program");
+    expect(ast.body?.items).toHaveLength(1);
   });
 
   it("parses create block with various statements", () => {

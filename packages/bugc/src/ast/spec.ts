@@ -27,6 +27,9 @@ export const isSourceLocation = (loc: unknown): loc is SourceLocation =>
   typeof loc.length === "number" &&
   loc.length >= 0;
 
+// ID type for AST nodes - using string type with numeric identifiers
+export type Id = string;
+
 export type Node =
   | Program
   | Declaration
@@ -37,6 +40,7 @@ export type Node =
 
 export namespace Node {
   export interface Base {
+    id: Id;
     type: string;
     loc: SourceLocation | null;
   }
@@ -44,6 +48,8 @@ export namespace Node {
   export const isBase = (node: unknown): node is Node.Base =>
     typeof node === "object" &&
     !!node &&
+    "id" in node &&
+    typeof node.id === "string" &&
     "type" in node &&
     typeof node.type === "string" &&
     !!node.type &&
@@ -84,11 +90,12 @@ export interface Program extends Node.Base {
   type: "Program";
   name: string;
   declarations: Declaration[]; // All top-level declarations
-  create: Block; // Constructor code block (may be empty)
-  body: Block; // Runtime code block (may be empty)
+  create?: Block; // Constructor code block (may be empty)
+  body?: Block; // Runtime code block (may be empty)
 }
 
 export function program(
+  id: Id,
   name: string,
   declarations: Declaration[],
   body: Block,
@@ -96,6 +103,7 @@ export function program(
   loc?: SourceLocation,
 ): Program {
   return {
+    id,
     type: "Program",
     name,
     declarations,
@@ -153,11 +161,13 @@ export namespace Declaration {
   }
 
   export function struct(
+    id: Id,
     name: string,
     fields: Declaration.Field[],
     loc?: SourceLocation,
   ): Declaration.Struct {
     return {
+      id,
       kind: "struct",
       type: "Declaration",
       name,
@@ -178,12 +188,14 @@ export namespace Declaration {
   }
 
   export function field(
+    id: Id,
     name: string,
     declaredType?: Type,
     initializer?: Expression,
     loc?: SourceLocation,
   ): Declaration.Field {
     return {
+      id,
       kind: "field",
       type: "Declaration",
       name,
@@ -205,12 +217,14 @@ export namespace Declaration {
   }
 
   export function storage(
+    id: Id,
     name: string,
     declaredType: Type,
     slot: number,
     loc?: SourceLocation,
   ): Declaration.Storage {
     return {
+      id,
       kind: "storage",
       type: "Declaration",
       name,
@@ -232,12 +246,14 @@ export namespace Declaration {
   }
 
   export function variable(
+    id: Id,
     name: string,
     declaredType?: Type,
     initializer?: Expression,
     loc?: SourceLocation,
   ): Declaration.Variable {
     return {
+      id,
       kind: "variable",
       type: "Declaration",
       name,
@@ -260,6 +276,7 @@ export namespace Declaration {
   }
 
   export function function_(
+    id: Id,
     name: string,
     parameters: FunctionParameter[],
     returnType: Type | undefined,
@@ -267,6 +284,7 @@ export namespace Declaration {
     loc?: SourceLocation,
   ): Declaration.Function {
     return {
+      id,
       kind: "function",
       type: "Declaration",
       name,
@@ -308,11 +326,12 @@ export interface Block extends Node.Base {
 }
 
 export function block(
+  id: Id,
   kind: Block["kind"],
   items: (Statement | Declaration)[],
   loc?: SourceLocation,
 ): Block {
-  return { type: "Block", kind, items, loc: loc ?? null };
+  return { id, type: "Block", kind, items, loc: loc ?? null };
 }
 
 // Type nodes - aligned with ethdebug format
@@ -332,14 +351,16 @@ export namespace Type {
   }
 
   export function elementary(
+    id: Id,
     kind: Type.Elementary.Kind,
     bits?: number,
     loc?: SourceLocation,
   ): Type.Elementary {
-    return { type: "ElementaryType", kind, bits, loc: loc ?? null };
+    return { id, type: "ElementaryType", kind, bits, loc: loc ?? null };
   }
 
   export function complex(
+    id: Id,
     kind: Type.Complex.Kind,
     options?: {
       typeArgs?: Type[];
@@ -351,14 +372,15 @@ export namespace Type {
     },
     loc?: SourceLocation,
   ): Type.Complex {
-    return { type: "ComplexType", kind, ...options, loc: loc ?? null };
+    return { id, type: "ComplexType", kind, ...options, loc: loc ?? null };
   }
 
   export function reference(
+    id: Id,
     name: string,
     loc?: SourceLocation,
   ): Type.Reference {
-    return { type: "ReferenceType", name, loc: loc ?? null };
+    return { id, type: "ReferenceType", name, loc: loc ?? null };
   }
 
   export namespace Elementary {
@@ -373,29 +395,29 @@ export namespace Type {
       | "ufixed";
   }
 
-  export function uint(bits: number = 256): Type.Elementary {
-    return Type.elementary("uint", bits);
+  export function uint(id: Id, bits: number = 256): Type.Elementary {
+    return Type.elementary(id, "uint", bits);
   }
-  export function int(bits: number = 256): Type.Elementary {
-    return Type.elementary("int", bits);
+  export function int(id: Id, bits: number = 256): Type.Elementary {
+    return Type.elementary(id, "int", bits);
   }
-  export function bool(): Type.Elementary {
-    return Type.elementary("bool");
+  export function bool(id: Id): Type.Elementary {
+    return Type.elementary(id, "bool");
   }
-  export function address(): Type.Elementary {
-    return Type.elementary("address");
+  export function address(id: Id): Type.Elementary {
+    return Type.elementary(id, "address");
   }
-  export function bytes(bits?: number): Type.Elementary {
-    return Type.elementary("bytes", bits);
+  export function bytes(id: Id, bits?: number): Type.Elementary {
+    return Type.elementary(id, "bytes", bits);
   }
-  export function string(): Type.Elementary {
-    return Type.elementary("string");
+  export function string(id: Id): Type.Elementary {
+    return Type.elementary(id, "string");
   }
-  export function fixed(bits: number = 128): Type.Elementary {
-    return Type.elementary("fixed", bits);
+  export function fixed(id: Id, bits: number = 128): Type.Elementary {
+    return Type.elementary(id, "fixed", bits);
   }
-  export function ufixed(bits: number = 128): Type.Elementary {
-    return Type.elementary("ufixed", bits);
+  export function ufixed(id: Id, bits: number = 128): Type.Elementary {
+    return Type.elementary(id, "ufixed", bits);
   }
 
   export interface Complex extends Node.Base {
@@ -451,10 +473,11 @@ export namespace Statement {
   }
 
   export function declare(
+    id: Id,
     declaration: Declaration,
     loc?: SourceLocation,
   ): Statement.Declare {
-    return { type: "DeclarationStatement", declaration, loc: loc ?? null };
+    return { id, type: "DeclarationStatement", declaration, loc: loc ?? null };
   }
 
   export interface Assign extends Node.Base {
@@ -465,12 +488,14 @@ export namespace Statement {
   }
 
   export function assign(
+    id: Id,
     target: Expression,
     value: Expression,
     operator?: string,
     loc?: SourceLocation,
   ): Statement.Assign {
     return {
+      id,
       type: "AssignmentStatement",
       target,
       value,
@@ -494,11 +519,18 @@ export namespace Statement {
   }
 
   export function controlFlow(
+    id: Id,
     kind: Statement.ControlFlow["kind"],
     options: Partial<Statement.ControlFlow>,
     loc?: SourceLocation,
   ): Statement.ControlFlow {
-    return { type: "ControlFlowStatement", kind, ...options, loc: loc ?? null };
+    return {
+      id,
+      type: "ControlFlowStatement",
+      kind,
+      ...options,
+      loc: loc ?? null,
+    };
   }
 
   export interface Express extends Node.Base {
@@ -507,10 +539,11 @@ export namespace Statement {
   }
 
   export function express(
+    id: Id,
     expression: Expression,
     loc?: SourceLocation,
   ): Statement.Express {
-    return { type: "ExpressionStatement", expression, loc: loc ?? null };
+    return { id, type: "ExpressionStatement", expression, loc: loc ?? null };
   }
 }
 
@@ -558,10 +591,11 @@ export namespace Expression {
     typeof expression.name === "string";
 
   export function identifier(
+    id: Id,
     name: string,
     loc?: SourceLocation,
   ): Expression.Identifier {
-    return { type: "IdentifierExpression", name, loc: loc ?? null };
+    return { id, type: "IdentifierExpression", name, loc: loc ?? null };
   }
 
   export interface Literal extends Node.Base {
@@ -581,12 +615,20 @@ export namespace Expression {
     typeof expression.value === "string";
 
   export function literal(
+    id: Id,
     kind: Expression.Literal["kind"],
     value: string,
     unit?: string,
     loc?: SourceLocation,
   ): Expression.Literal {
-    return { type: "LiteralExpression", kind, value, unit, loc: loc ?? null };
+    return {
+      id,
+      type: "LiteralExpression",
+      kind,
+      value,
+      unit,
+      loc: loc ?? null,
+    };
   }
 
   export interface Operator extends Node.Base {
@@ -606,11 +648,18 @@ export namespace Expression {
     Array.isArray(expression.operands);
 
   export function operator(
+    id: Id,
     operator: string,
     operands: Expression[],
     loc?: SourceLocation,
   ): Expression.Operator {
-    return { type: "OperatorExpression", operator, operands, loc: loc ?? null };
+    return {
+      id,
+      type: "OperatorExpression",
+      operator,
+      operands,
+      loc: loc ?? null,
+    };
   }
 
   export interface Access extends Node.Base {
@@ -632,6 +681,7 @@ export namespace Expression {
     "property" in expression;
 
   export function access(
+    id: Id,
     kind: Expression.Access["kind"],
     object: Expression,
     property: Expression | string,
@@ -639,6 +689,7 @@ export namespace Expression {
     loc?: SourceLocation,
   ): Expression.Access {
     const node: Expression.Access = {
+      id,
       type: "AccessExpression",
       kind,
       object,
@@ -667,11 +718,13 @@ export namespace Expression {
     Array.isArray(expression.arguments);
 
   export function call(
+    id: Id,
     callee: Expression,
     args: Expression[],
     loc?: SourceLocation,
   ): Expression.Call {
     return {
+      id,
       type: "CallExpression",
       callee,
       arguments: args,
@@ -695,11 +748,13 @@ export namespace Expression {
     typeof expression.targetType === "object";
 
   export function cast(
+    id: Id,
     expression: Expression,
     targetType: Type,
     loc?: SourceLocation,
   ): Expression.Cast {
     return {
+      id,
       type: "CastExpression",
       expression,
       targetType,
@@ -726,9 +781,10 @@ export namespace Expression {
     typeof expression.kind === "string";
 
   export function special(
+    id: Id,
     kind: Expression.Special["kind"],
     loc?: SourceLocation,
   ): Expression.Special {
-    return { type: "SpecialExpression", kind, loc: loc ?? null };
+    return { id, type: "SpecialExpression", kind, loc: loc ?? null };
   }
 }

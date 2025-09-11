@@ -2,6 +2,10 @@ import { describe, it, expect } from "vitest";
 
 import * as Ast from "#ast";
 
+// Helper to create test IDs
+let testIdCounter = 0;
+const createId = (): Ast.Id => `test-${testIdCounter++}` as Ast.Id;
+
 describe("Visitor Pattern", () => {
   class TestVisitor implements Ast.Visitor<string, never> {
     program(node: Ast.Program): string {
@@ -64,67 +68,105 @@ describe("Visitor Pattern", () => {
       Ast.visit(
         visitor,
         Ast.program(
+          createId(),
           "Test",
           [],
-          Ast.block("program", []),
-          Ast.block("program", []),
+          Ast.block(createId(), "program", []),
+          Ast.block(createId(), "program", []),
         ),
         undefined as never,
       ),
     ).toBe("Program(Test)");
     expect(
-      Ast.visit(visitor, Ast.Declaration.variable("x"), undefined as never),
+      Ast.visit(
+        visitor,
+        Ast.Declaration.variable(createId(), "x"),
+        undefined as never,
+      ),
     ).toBe("Declaration(variable:x)");
     expect(
-      Ast.visit(visitor, Ast.block("statements", []), undefined as never),
+      Ast.visit(
+        visitor,
+        Ast.block(createId(), "statements", []),
+        undefined as never,
+      ),
     ).toBe("Block(statements)");
     expect(
-      Ast.visit(visitor, Ast.Type.elementary("uint", 256), undefined as never),
+      Ast.visit(
+        visitor,
+        Ast.Type.elementary(createId(), "uint", 256),
+        undefined as never,
+      ),
     ).toBe("ElementaryType(uint256)");
     expect(
-      Ast.visit(visitor, Ast.Type.complex("array", {}), undefined as never),
+      Ast.visit(
+        visitor,
+        Ast.Type.complex(createId(), "array", {}),
+        undefined as never,
+      ),
     ).toBe("ComplexType(array)");
     expect(
-      Ast.visit(visitor, Ast.Type.reference("Point"), undefined as never),
+      Ast.visit(
+        visitor,
+        Ast.Type.reference(createId(), "Point"),
+        undefined as never,
+      ),
     ).toBe("ReferenceType(Point)");
     expect(
-      Ast.visit(visitor, Ast.Expression.identifier("x"), undefined as never),
+      Ast.visit(
+        visitor,
+        Ast.Expression.identifier(createId(), "x"),
+        undefined as never,
+      ),
     ).toBe("Identifier(x)");
     expect(
       Ast.visit(
         visitor,
-        Ast.Expression.literal("number", "42"),
+        Ast.Expression.literal(createId(), "number", "42"),
         undefined as never,
       ),
     ).toBe("Literal(number:42)");
     expect(
-      Ast.visit(visitor, Ast.Expression.operator("+", []), undefined as never),
+      Ast.visit(
+        visitor,
+        Ast.Expression.operator(createId(), "+", []),
+        undefined as never,
+      ),
     ).toBe("Operator(+)");
     expect(
       Ast.visit(
         visitor,
-        Ast.Expression.access("member", Ast.Expression.identifier("x"), "y"),
+        Ast.Expression.access(
+          createId(),
+          "member",
+          Ast.Expression.identifier(createId(), "x"),
+          "y",
+        ),
         undefined as never,
       ),
     ).toBe("Access(member)");
     expect(
       Ast.visit(
         visitor,
-        Ast.Expression.call(Ast.Expression.identifier("f"), []),
+        Ast.Expression.call(
+          createId(),
+          Ast.Expression.identifier(createId(), "f"),
+          [],
+        ),
         undefined as never,
       ),
     ).toBe("Call");
     expect(
       Ast.visit(
         visitor,
-        Ast.Expression.special("msg.sender"),
+        Ast.Expression.special(createId(), "msg.sender"),
         undefined as never,
       ),
     ).toBe("Special(msg.sender)");
     expect(
       Ast.visit(
         visitor,
-        Ast.Statement.controlFlow("if", {}),
+        Ast.Statement.controlFlow(createId(), "if", {}),
         undefined as never,
       ),
     ).toBe("ControlFlowStatement(if)");

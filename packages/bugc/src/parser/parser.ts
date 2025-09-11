@@ -8,6 +8,11 @@ import { Result } from "#result";
 import { Error as ParseError } from "./errors.js";
 
 /**
+ * Placeholder ID used for nodes before location-based IDs are assigned
+ */
+const PENDING_ID = "<pending>" as Ast.Id;
+
+/**
  * Parse a BUG program and return Result
  */
 export function parse(input: string): Result<Ast.Program, ParseError> {
@@ -284,11 +289,16 @@ const Lang = {
  */
 function located<T>(
   parser: P.Parser<T>,
-): P.Parser<T & { loc: Ast.SourceLocation }> {
-  return parser.mark().map((mark) => ({
-    ...mark.value,
-    loc: toSourceLocation(mark),
-  }));
+): P.Parser<T & { id: Ast.Id; loc: Ast.SourceLocation }> {
+  return parser.mark().map((mark) => {
+    const loc = toSourceLocation(mark);
+    const id = `${loc.offset}_${loc.length}` as Ast.Id;
+    return {
+      ...mark.value,
+      id, // Replace the pending ID with location-based ID
+      loc,
+    };
+  });
 }
 
 /**
@@ -354,22 +364,22 @@ const elementaryType = located(
     // Parse the type name to extract kind and bits
     if (name.startsWith("uint")) {
       const bits = parseInt(name.substring(4), 10);
-      return Ast.Type.elementary("uint", bits);
+      return Ast.Type.elementary(PENDING_ID, "uint", bits);
     } else if (name.startsWith("int")) {
       const bits = parseInt(name.substring(3), 10);
-      return Ast.Type.elementary("int", bits);
+      return Ast.Type.elementary(PENDING_ID, "int", bits);
     } else if (name.startsWith("bytes") && name !== "bytes") {
       const bytes = parseInt(name.substring(5), 10);
       const bits = bytes * 8; // Convert bytes to bits
-      return Ast.Type.elementary("bytes", bits);
+      return Ast.Type.elementary(PENDING_ID, "bytes", bits);
     } else if (name === "address") {
-      return Ast.Type.elementary("address");
+      return Ast.Type.elementary(PENDING_ID, "address");
     } else if (name === "bool") {
-      return Ast.Type.elementary("bool");
+      return Ast.Type.elementary(PENDING_ID, "bool");
     } else if (name === "string") {
-      return Ast.Type.elementary("string");
+      return Ast.Type.elementary(PENDING_ID, "string");
     } else if (name === "bytes") {
-      return Ast.Type.elementary("bytes");
+      return Ast.Type.elementary(PENDING_ID, "bytes");
     }
     // This should never happen as elementaryTypeName parser ensures valid names
     throw new Error(`Unknown elementary type: ${name}`);
@@ -378,7 +388,7 @@ const elementaryType = located(
 
 // Reference type (identifier in type position)
 const referenceType = located(
-  Lang.identifier.map((name: string) => Ast.Type.reference(name)),
+  Lang.identifier.map((name: string) => Ast.Type.reference(PENDING_ID, name)),
 );
 
 // Array type: array<Type> or array<Type, Size>
@@ -405,7 +415,7 @@ const arrayType = P.lazy(() =>
         }
       }
       return P.succeed(
-        Ast.Type.complex("array", {
+        Ast.Type.complex(PENDING_ID, "array", {
           typeArgs: [elementType],
           size: size ? Number(size) : undefined,
         }),
@@ -425,7 +435,9 @@ const mappingType = P.lazy(() =>
       typeExpression,
       Lang.gt,
     ).map(([_, __, keyType, ___, valueType, ____]) =>
-      Ast.Type.complex("mapping", { typeArgs: [keyType, valueType] }),
+      Ast.Type.complex(PENDING_ID, "mapping", {
+        typeArgs: [keyType, valueType],
+      }),
     ),
   ),
 );
@@ -444,7 +456,9 @@ typeExpression = P.alt(
 
 // Identifier expression
 const identifier = located(
-  Lang.identifier.map((name: string) => Ast.Expression.identifier(name)),
+  Lang.identifier.map((name: string) =>
+    Ast.Expression.identifier(PENDING_ID, name),
+  ),
 );
 
 // Number parser that returns string (not BigInt)
@@ -455,21 +469,27 @@ const hexString = Lang.lexeme(P.regexp(/0x[0-9a-fA-F]+/).desc("hex literal"));
 
 // Literal expressions
 const numberLiteral = located(
-  numberString.map((value: string) => Ast.Expression.literal("number", value)),
+  numberString.map((value: string) =>
+    Ast.Expression.literal(PENDING_ID, "number", value),
+  ),
 );
 
 const hexLiteral = located(
-  hexString.map((value: string) => Ast.Expression.literal("hex", value)),
+  hexString.map((value: string) =>
+    Ast.Expression.literal(PENDING_ID, "hex", value),
+  ),
 );
 
 const booleanLiteral = located(
   P.alt(Lang.keyword("true"), Lang.keyword("false")).map((value: string) =>
-    Ast.Expression.literal("boolean", value),
+    Ast.Expression.literal(PENDING_ID, "boolean", value),
   ),
 );
 
 const stringLiteral = located(
-  Lang.string.map((value: string) => Ast.Expression.literal("string", value)),
+  Lang.string.map((value: string) =>
+    Ast.Expression.literal(PENDING_ID, "string", value),
+  ),
 );
 
 // Address literal (0x followed by exactly 40 hex chars)
@@ -478,7 +498,7 @@ const addressLiteral = located(
     .desc("address literal")
     .notFollowedBy(P.regex(/[0-9a-fA-F]/))
     .map((value: string) =>
-      Ast.Expression.literal("address", value.toLowerCase()),
+      Ast.Expression.literal(PENDING_ID, "address", value.toLowerCase()),
     ),
 );
 
@@ -488,7 +508,9 @@ const weiLiteral = located(
     numberString,
     Lang._,
     P.alt(Lang.keyword("wei"), Lang.keyword("finney"), Lang.keyword("ether")),
-  ).map(([value, _, unit]) => Ast.Expression.literal("number", value, unit)),
+  ).map(([value, _, unit]) =>
+    Ast.Expression.literal(PENDING_ID, "number", value, unit),
+  ),
 );
 
 // msg.sender, msg.value, and msg.data as special expressions
@@ -505,6 +527,7 @@ const msgExpression = located(
           ? "msg.value"
           : "msg.data";
     return Ast.Expression.special(
+      PENDING_ID,
       kind as "msg.sender" | "msg.value" | "msg.data",
     );
   }),
@@ -518,7 +541,10 @@ const blockExpression = located(
     P.alt(Lang.keyword("timestamp"), Lang.keyword("number")),
   ).map(([_, __, property]) => {
     const kind = property === "timestamp" ? "block.timestamp" : "block.number";
-    return Ast.Expression.special(kind as "block.timestamp" | "block.number");
+    return Ast.Expression.special(
+      PENDING_ID,
+      kind as "block.timestamp" | "block.number",
+    );
   }),
 );
 
@@ -586,21 +612,50 @@ const postfixExpression = P.lazy(() => {
 
   const suffix = P.alt(memberSuffix, indexSuffix, callSuffix, castSuffix);
 
-  return P.seq(primaryExpression, suffix.many()).map(([base, suffixes]) => {
-    return suffixes.reduce((obj, suffix) => {
-      if (suffix.type === "member") {
-        return Ast.Expression.access("member", obj, suffix.property);
-      } else if (suffix.type === "slice") {
-        return Ast.Expression.access("slice", obj, suffix.property, suffix.end);
-      } else if (suffix.type === "call") {
-        return Ast.Expression.call(obj, suffix.arguments);
-      } else if (suffix.type === "cast") {
-        return Ast.Expression.cast(obj, suffix.targetType);
-      } else {
-        return Ast.Expression.access("index", obj, suffix.property);
-      }
-    }, base);
-  });
+  // Split into two parsers: inner for creating located intermediate expressions,
+  // outer for the main parsing logic
+  const innerPostfix = P.seq(primaryExpression, suffix.many()).map(
+    ([base, suffixes]) => {
+      return suffixes.reduce((obj, suffix) => {
+        // Use located for each intermediate expression
+        if (suffix.type === "member") {
+          return located(
+            P.succeed(
+              Ast.Expression.access(PENDING_ID, "member", obj, suffix.property),
+            ),
+          ).tryParse("");
+        } else if (suffix.type === "slice") {
+          return located(
+            P.succeed(
+              Ast.Expression.access(
+                PENDING_ID,
+                "slice",
+                obj,
+                suffix.property,
+                suffix.end,
+              ),
+            ),
+          ).tryParse("");
+        } else if (suffix.type === "call") {
+          return located(
+            P.succeed(Ast.Expression.call(PENDING_ID, obj, suffix.arguments)),
+          ).tryParse("");
+        } else if (suffix.type === "cast") {
+          return located(
+            P.succeed(Ast.Expression.cast(PENDING_ID, obj, suffix.targetType)),
+          ).tryParse("");
+        } else {
+          return located(
+            P.succeed(
+              Ast.Expression.access(PENDING_ID, "index", obj, suffix.property),
+            ),
+          ).tryParse("");
+        }
+      }, base);
+    },
+  );
+
+  return located(innerPostfix);
 });
 
 // Unary expressions
@@ -609,7 +664,7 @@ const unaryExpression: P.Parser<Ast.Expression> = P.lazy(() =>
     located(
       P.seq(P.alt(Lang.not, Lang.minus), unaryExpression).map(
         ([op, expr]: [string, Ast.Expression]) =>
-          Ast.Expression.operator(op, [expr]),
+          Ast.Expression.operator(PENDING_ID, op, [expr]),
       ),
     ),
     postfixExpression,
@@ -643,22 +698,29 @@ function precedenceParser(
   );
 
   return P.lazy(() =>
-    P.seq(
-      precedenceParser(precedence + 1, nextParser),
+    located(
       P.seq(
-        P.alt(...operatorParsers),
         precedenceParser(precedence + 1, nextParser),
-      ).many(),
-    ).map(([first, rest]) => {
-      return rest.reduce((left, [op, right]) => {
-        const loc = left.loc &&
-          right.loc && {
-            offset: left.loc.offset,
-            length: right.loc.offset + right.loc.length - left.loc.offset,
-          };
-        return Ast.Expression.operator(op, [left, right], loc || undefined);
-      }, first);
-    }),
+        P.seq(
+          P.alt(...operatorParsers),
+          precedenceParser(precedence + 1, nextParser),
+        ).many(),
+      ).map(([first, rest]) => {
+        return rest.reduce((left, [op, right]) => {
+          const loc = left.loc &&
+            right.loc && {
+              offset: left.loc.offset,
+              length: right.loc.offset + right.loc.length - left.loc.offset,
+            };
+          return Ast.Expression.operator(
+            PENDING_ID,
+            op,
+            [left, right],
+            loc || undefined,
+          );
+        }, first);
+      }),
+    ),
   );
 }
 
@@ -673,16 +735,22 @@ expression = precedenceParser(0, unaryExpression);
 const letStatement = located(
   P.seq(
     Lang.keyword("let"),
-    Lang.identifier,
-    // Optional type annotation
-    P.seq(Lang.colon, typeExpression)
-      .map(([_, type]) => type)
-      .fallback(undefined),
-    Lang.equals,
-    expression,
+    located(
+      P.seq(
+        Lang.identifier,
+        // Optional type annotation
+        P.seq(Lang.colon, typeExpression)
+          .map(([_, type]) => type)
+          .fallback(undefined),
+        Lang.equals,
+        expression,
+      ).map(([name, declaredType, __, init]) =>
+        Ast.Declaration.variable(PENDING_ID, name, declaredType, init),
+      ),
+    ),
     Lang.semicolon,
-  ).map(([_, name, declaredType, __, init, ___]) =>
-    Ast.Statement.declare(Ast.Declaration.variable(name, declaredType, init)),
+  ).map(([_, declaration, __]) =>
+    Ast.Statement.declare(PENDING_ID, declaration),
   ),
 );
 
@@ -690,7 +758,8 @@ const letStatement = located(
 const assignmentStatement = P.lazy(() =>
   located(
     P.seq(expression, Lang.equals, expression, Lang.semicolon).map(
-      ([target, _, value, __]) => Ast.Statement.assign(target, value),
+      ([target, _, value, __]) =>
+        Ast.Statement.assign(PENDING_ID, target, value),
     ),
   ),
 );
@@ -698,7 +767,7 @@ const assignmentStatement = P.lazy(() =>
 // Expression statement: expr;
 const expressionStatement = located(
   P.seq(expression, Lang.semicolon).map(([expr, _]) =>
-    Ast.Statement.express(expr),
+    Ast.Statement.express(PENDING_ID, expr),
   ),
 );
 
@@ -706,21 +775,25 @@ const expressionStatement = located(
 const returnStatement = located(
   P.seq(Lang.keyword("return"), expression.fallback(null), Lang.semicolon).map(
     ([_, value, __]) =>
-      Ast.Statement.controlFlow("return", { value: value || undefined }),
+      Ast.Statement.controlFlow(PENDING_ID, "return", {
+        value: value || undefined,
+      }),
   ),
 );
 
 // Break statement: break;
 const breakStatement = located(
   P.seq(Lang.keyword("break"), Lang.semicolon).map(() =>
-    Ast.Statement.controlFlow("break", {}),
+    Ast.Statement.controlFlow(PENDING_ID, "break", {}),
   ),
 );
 
 // Block of statements
-const blockStatements = P.lazy(() =>
-  P.seq(Lang.lbrace, statement.many(), Lang.rbrace).map(([_, stmts, __]) =>
-    Ast.block("statements", stmts),
+const blockStatements = located(
+  P.lazy(() =>
+    P.seq(Lang.lbrace, statement.many(), Lang.rbrace).map(([_, stmts, __]) =>
+      Ast.block(PENDING_ID, "statements", stmts),
+    ),
   ),
 );
 
@@ -737,7 +810,7 @@ const ifStatement = P.lazy(() =>
         .map(([_, block]) => block)
         .fallback(undefined),
     ).map(([_, __, condition, ___, thenBlock, elseBlock]) =>
-      Ast.Statement.controlFlow("if", {
+      Ast.Statement.controlFlow(PENDING_ID, "if", {
         condition,
         body: thenBlock,
         alternate: elseBlock,
@@ -756,8 +829,10 @@ const forStatement = P.lazy(() =>
       expression,
       Lang.semicolon,
       // Update is an assignment without semicolon
-      P.seq(expression, Lang.equals, expression).map(([target, _, value]) =>
-        Ast.Statement.assign(target, value),
+      located(
+        P.seq(expression, Lang.equals, expression).map(([target, _, value]) =>
+          Ast.Statement.assign(PENDING_ID, target, value),
+        ),
       ),
       Lang.rparen,
       blockStatements,
@@ -778,7 +853,7 @@ const forStatement = P.lazy(() =>
         const condition = parts[3];
         const update = parts[5];
         const body = parts[7];
-        return Ast.Statement.controlFlow("for", {
+        return Ast.Statement.controlFlow(PENDING_ID, "for", {
           init,
           condition,
           update,
@@ -807,7 +882,8 @@ statement = P.alt(
 // Field declaration: name: Type
 const fieldDeclaration = located(
   P.seq(Lang.identifier, Lang.colon, typeExpression).map(
-    ([name, _, fieldType]) => Ast.Declaration.field(name, fieldType),
+    ([name, _, fieldType]) =>
+      Ast.Declaration.field(PENDING_ID, name, fieldType),
   ),
 );
 
@@ -821,7 +897,9 @@ const structDeclaration = located(
       .sepBy(Lang.semicolon)
       .skip(Lang.semicolon.or(P.succeed(null))),
     Lang.rbrace,
-  ).map(([_, name, __, fields, ___]) => Ast.Declaration.struct(name, fields)),
+  ).map(([_, name, __, fields, ___]) =>
+    Ast.Declaration.struct(PENDING_ID, name, fields),
+  ),
 );
 
 // Function parameter: name: Type
@@ -845,7 +923,7 @@ const functionDeclaration = P.lazy(() =>
         .fallback(undefined),
       blockStatements,
     ).map(([_, name, __, params, ___, returnType, body]) =>
-      Ast.Declaration.function_(name, params, returnType, body),
+      Ast.Declaration.function_(PENDING_ID, name, params, returnType, body),
     ),
   ),
 );
@@ -872,24 +950,30 @@ const storageDeclaration = located(
     if (!Number.isInteger(slotNum)) {
       return P.fail(`Storage slot must be an integer, got ${slotNum}`);
     }
-    return P.succeed(Ast.Declaration.storage(name, storageType, slotNum));
+    return P.succeed(
+      Ast.Declaration.storage(PENDING_ID, name, storageType, slotNum),
+    );
   }),
 );
 
 // Define block - optional, contains user-defined types and functions
-const defineBlock = P.seq(
-  Lang.keyword("define"),
-  Lang.lbrace,
-  P.alt(
-    // Non-empty define block - each declaration must end with semicolon
-    P.alt(structDeclaration, functionDeclaration)
-      .skip(Lang.semicolon)
-      .atLeast(1),
-    // Empty define block
-    P.succeed([]),
+const defineBlock = located(
+  P.seq(
+    Lang.keyword("define"),
+    Lang.lbrace,
+    P.alt(
+      // Non-empty define block - each declaration must end with semicolon
+      P.alt(structDeclaration, functionDeclaration)
+        .skip(Lang.semicolon)
+        .atLeast(1),
+      // Empty define block
+      P.succeed([]),
+    ),
+    Lang.rbrace,
+  ).map(([_, __, declarations, ___]) =>
+    Ast.block(PENDING_ID, "define", declarations),
   ),
-  Lang.rbrace,
-).map(([_, __, declarations, ___]) => Ast.block("define", declarations));
+);
 
 // Storage block - optional
 const storageBlock = P.seq(
@@ -905,20 +989,18 @@ const storageBlock = P.seq(
 ).map(([_, __, declarations, ___]) => declarations);
 
 // Create block (constructor code)
-const createBlock = P.seq(
-  Lang.keyword("create"),
-  Lang.lbrace,
-  statement.many(),
-  Lang.rbrace,
-).map(([_, __, stmts, ___]) => Ast.block("program", stmts));
+const createBlock = located(
+  P.seq(Lang.keyword("create"), Lang.lbrace, statement.many(), Lang.rbrace).map(
+    ([_, __, stmts, ___]) => Ast.block(PENDING_ID, "program", stmts),
+  ),
+);
 
 // Code block (runtime code)
-const codeBlock = P.seq(
-  Lang.keyword("code"),
-  Lang.lbrace,
-  statement.many(),
-  Lang.rbrace,
-).map(([_, __, stmts, ___]) => Ast.block("program", stmts));
+const codeBlock = located(
+  P.seq(Lang.keyword("code"), Lang.lbrace, statement.many(), Lang.rbrace).map(
+    ([_, __, stmts, ___]) => Ast.block(PENDING_ID, "program", stmts),
+  ),
+);
 
 // Program
 const program = located(
@@ -928,23 +1010,9 @@ const program = located(
     Lang.semicolon,
     defineBlock.or(P.succeed(null)),
     storageBlock.or(P.succeed([])),
-    createBlock.or(
-      P.succeed({
-        type: "Block" as const,
-        kind: "program" as const,
-        items: [],
-        loc: null,
-      }),
-    ),
-    codeBlock.or(
-      P.succeed({
-        type: "Block" as const,
-        kind: "program" as const,
-        items: [],
-        loc: null,
-      }),
-    ),
-  ).map(([_, name, __, defineBlockNode, storageDecls, create, code]) => {
+    createBlock.or(P.succeed(null)),
+    codeBlock.or(P.succeed(null)),
+  ).map(([_, name, __, defineBlockNode, storageDecls, create, body]) => {
     // Collect all declarations
     const declarations: Ast.Declaration[] = [];
 
@@ -958,11 +1026,12 @@ const program = located(
 
     // Don't use Ast.program here as it sets loc to null
     const programNode: Omit<Ast.Program, "parent"> & { loc: null } = {
+      id: PENDING_ID,
       type: "Program" as const,
       name,
       declarations,
-      create,
-      body: code,
+      ...(create ? { create } : {}),
+      ...(body ? { body } : {}),
       loc: null, // Will be set by located
     };
 

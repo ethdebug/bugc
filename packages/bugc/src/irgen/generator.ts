@@ -130,7 +130,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
     }
 
     // Process create block (may be empty)
-    if (node.create.items.length > 0) {
+    if ((node.create?.items || []).length > 0) {
       // Save current function context
       const savedFunction = this.context.currentFunction;
       const savedBlock = this.context.currentBlock;
@@ -158,7 +158,9 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       this.context.currentFunction.blocks.set("entry", entryBlock);
 
       // Process create block statements
-      Ast.visit(this, node.create, undefined as never);
+      if (node.create) {
+        Ast.visit(this, node.create, undefined as never);
+      }
 
       // Ensure constructor has proper terminator
       if (!this.isTerminated(this.context.currentBlock)) {
@@ -178,7 +180,9 @@ export class IrBuilder implements Ast.Visitor<void, never> {
     }
 
     // Process code block
-    Ast.visit(this, node.body, undefined as never);
+    if (node.body) {
+      Ast.visit(this, node.body, undefined as never);
+    }
   }
 
   processStorageDeclaration(decl: Ast.Declaration): void {

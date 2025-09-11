@@ -19,7 +19,7 @@ describe("Optional Storage Block", () => {
 
     expect(result.value.name).toBe("NoStorage");
     expect(result.value.declarations).toHaveLength(0);
-    expect(result.value.body.items).toHaveLength(2);
+    expect(result.value.body?.items).toHaveLength(2);
   });
 
   it("should parse program with define but no storage", () => {
@@ -98,7 +98,7 @@ describe("Optional Storage Block", () => {
 
     expect(result.value.name).toBe("Minimal");
     expect(result.value.declarations).toHaveLength(0);
-    expect(result.value.body.items).toHaveLength(0);
+    expect(result.value.body?.items).toHaveLength(0);
   });
 
   it("should parse program with all optional blocks", () => {

@@ -18,11 +18,12 @@ describe("Slice expressions", () => {
       throw new Error("Parse failed");
     }
     const program = result.value;
-    const exprStmt = program.body.items[0];
-    expect(exprStmt.type).toBe("ExpressionStatement");
+    const exprStmt = program.body?.items[0];
+    expect(exprStmt?.type).toBe("ExpressionStatement");
 
-    if (exprStmt.type === "ExpressionStatement") {
-      const slice = exprStmt.expression as Ast.Expression.Access;
+    if (exprStmt?.type === "ExpressionStatement") {
+      const slice = (exprStmt as Ast.Statement.Express)
+        .expression as Ast.Expression.Access;
       expect(slice.type).toBe("AccessExpression");
       expect(slice.kind).toBe("slice");
       expect(slice.property).toMatchObject({
@@ -47,10 +48,11 @@ describe("Slice expressions", () => {
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Parse failed");
     const program = result.value;
-    const exprStmt = program.body.items[0];
+    const exprStmt = program.body?.items[0];
 
-    if (exprStmt.type === "ExpressionStatement") {
-      const slice = exprStmt.expression as Ast.Expression.Access;
+    if (exprStmt?.type === "ExpressionStatement") {
+      const slice = (exprStmt as Ast.Statement.Express)
+        .expression as Ast.Expression.Access;
       expect(slice.kind).toBe("slice");
       expect(slice.object).toMatchObject({
         type: "SpecialExpression",
@@ -72,15 +74,17 @@ describe("Slice expressions", () => {
     if (!result.success) throw new Error("Parse failed");
     const program = result.value;
 
-    const indexedStmt = program.body.items[0];
-    const slicedStmt = program.body.items[1];
+    const indexedStmt = program.body?.items[0];
+    const slicedStmt = program.body?.items[1];
 
     if (
-      indexedStmt.type === "ExpressionStatement" &&
-      slicedStmt.type === "ExpressionStatement"
+      indexedStmt?.type === "ExpressionStatement" &&
+      slicedStmt?.type === "ExpressionStatement"
     ) {
-      const indexed = indexedStmt.expression as Ast.Expression.Access;
-      const sliced = slicedStmt.expression as Ast.Expression.Access;
+      const indexed = (indexedStmt as Ast.Statement.Express)
+        .expression as Ast.Expression.Access;
+      const sliced = (slicedStmt as Ast.Statement.Express)
+        .expression as Ast.Expression.Access;
 
       expect(indexed.kind).toBe("index");
       expect(indexed.end).toBeUndefined();

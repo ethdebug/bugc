@@ -114,12 +114,14 @@ export const blockChecker: Pick<
       nodeTypes: currentNodeTypes,
       pointer: context.pointer + "/body",
     };
-    const bodyResult = Ast.visit(bodyContext.visitor, node.body, bodyContext);
+    const bodyResult = node.body
+      ? Ast.visit(bodyContext.visitor, node.body, bodyContext)
+      : undefined;
 
     return {
-      symbols: bodyResult.symbols,
-      nodeTypes: bodyResult.nodeTypes,
-      errors: [...allErrors, ...bodyResult.errors],
+      symbols: bodyResult?.symbols || currentSymbols,
+      nodeTypes: bodyResult?.nodeTypes || currentNodeTypes,
+      errors: bodyResult ? [...allErrors, ...bodyResult.errors] : allErrors,
     };
   },
 

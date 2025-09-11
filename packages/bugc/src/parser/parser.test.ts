@@ -20,9 +20,9 @@ describe("Normalized Parser", () => {
       expect(result.type).toBe("Program");
       expect(result.name).toBe("Test");
       expect(result.declarations).toEqual([]);
-      expect(result.body.type).toBe("Block");
-      expect(result.body.kind).toBe("program");
-      expect(result.body.items).toEqual([]);
+      expect(result.body?.type).toBe("Block");
+      expect(result.body?.kind).toBe("program");
+      expect(result.body?.items).toEqual([]);
     });
 
     it("should include source locations", () => {
@@ -54,7 +54,7 @@ code {}`;
       expect(result.type).toBe("Program");
       expect(result.name).toBe("NoStorage");
       expect(result.declarations).toEqual([]);
-      expect(result.body.items).toHaveLength(1);
+      expect(result.body?.items).toHaveLength(1);
     });
   });
 
@@ -236,7 +236,7 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const [letX, letFlag] = result.body.items as Ast.Statement.Declare[];
+      const [letX, letFlag] = result.body?.items as Ast.Statement.Declare[];
 
       expect(letX.type).toBe("DeclarationStatement");
       expect(letX.declaration.kind).toBe("variable");
@@ -275,7 +275,7 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.Statement.Express[];
+      const stmts = result.body?.items as Ast.Statement.Express[];
       const exprs = stmts.map((s) => s.expression as Ast.Expression.Literal);
 
       expect(exprs[0].kind).toBe("number");
@@ -315,7 +315,7 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.Statement.Express[];
+      const stmts = result.body?.items as Ast.Statement.Express[];
       const [x, balance] = stmts.map(
         (s) => s.expression as Ast.Expression.Identifier,
       );
@@ -341,7 +341,7 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.Statement.Express[];
+      const stmts = result.body?.items as Ast.Statement.Express[];
       const exprs = stmts.map((s) => s.expression as Ast.Expression.Operator);
 
       expect(exprs[0].operator).toBe("+");
@@ -372,7 +372,7 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.Statement.Express[];
+      const stmts = result.body?.items as Ast.Statement.Express[];
       const exprs = stmts.map((s) => s.expression as Ast.Expression.Access);
 
       expect(exprs[0].kind).toBe("member");
@@ -409,7 +409,7 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.Statement.Express[];
+      const stmts = result.body?.items as Ast.Statement.Express[];
       const [sender, value, data] = stmts.map(
         (s) => s.expression as Ast.Expression.Special,
       );
@@ -439,7 +439,7 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.Statement.Express[];
+      const stmts = result.body?.items as Ast.Statement.Express[];
 
       // a + b * c should be a + (b * c)
       const expr1 = stmts[0].expression as Ast.Expression.Operator;
@@ -473,7 +473,7 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.Statement.Assign[];
+      const stmts = result.body?.items as Ast.Statement.Assign[];
 
       expect(stmts[0].type).toBe("AssignmentStatement");
       expect((stmts[0].target as Ast.Expression.Identifier).name).toBe("x");
@@ -509,7 +509,7 @@ code {}`;
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
       const [if1, if2, forLoop] = result.body
-        .items as Ast.Statement.ControlFlow[];
+        ?.items as Ast.Statement.ControlFlow[];
 
       expect(if1.kind).toBe("if");
       expect(if1.condition).toBeDefined();
@@ -545,7 +545,7 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const stmts = result.body.items as Ast.Statement.ControlFlow[];
+      const stmts = result.body?.items as Ast.Statement.ControlFlow[];
 
       expect(stmts[0].kind).toBe("return");
       expect(stmts[0].value).toBeUndefined();
@@ -602,10 +602,10 @@ code {}`;
       expect(struct.kind).toBe("struct");
       expect((struct as Ast.Declaration.Struct).fields).toHaveLength(2);
 
-      const codeStmts = result.body.items;
+      const codeStmts = result.body?.items;
       expect(codeStmts).toHaveLength(3); // let, if, return
 
-      const ifStmt = codeStmts[1] as Ast.Statement.ControlFlow;
+      const ifStmt = codeStmts?.[1] as Ast.Statement.ControlFlow;
       expect(ifStmt.body?.items).toHaveLength(2); // two assignments
       expect(ifStmt.alternate?.items).toHaveLength(1); // one return
     });
