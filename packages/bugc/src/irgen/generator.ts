@@ -8,7 +8,7 @@
 import * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Type, type Types } from "#types";
-import { Result, Severity, type MessagesBySeverity } from "#result";
+import { Result, Severity } from "#result";
 
 import { Error as IrgenError, ErrorCode, ErrorMessages } from "./errors.js";
 
@@ -44,7 +44,6 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       },
       tempCounter: 0,
       blockCounter: 1,
-      localCounter: 0,
       types,
       storage: { slots: [] },
       locals: new Map(),
@@ -2015,8 +2014,6 @@ export interface IrContext {
   tempCounter: number;
   /** Counter for generating unique block IDs */
   blockCounter: number;
-  /** Counter for generating unique local IDs */
-  localCounter: number;
   /** Types mapping for type information */
   types: Types;
   /** Storage layout being built */
