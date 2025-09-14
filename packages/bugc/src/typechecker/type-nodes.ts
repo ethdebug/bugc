@@ -21,50 +21,50 @@ export const typeNodeChecker: Pick<
     // Map elementary types based on kind and bits
     if (node.kind === "uint") {
       const typeMap: Record<number, Type> = {
-        256: Type.Elementary.uint256,
-        128: Type.Elementary.uint128,
-        64: Type.Elementary.uint64,
-        32: Type.Elementary.uint32,
-        16: Type.Elementary.uint16,
-        8: Type.Elementary.uint8,
+        256: Type.Elementary.uint(256),
+        128: Type.Elementary.uint(128),
+        64: Type.Elementary.uint(64),
+        32: Type.Elementary.uint(32),
+        16: Type.Elementary.uint(16),
+        8: Type.Elementary.uint(8),
       };
       type =
         typeMap[node.bits || 256] ||
-        new Type.Failure(`Unknown uint size: ${node.bits}`);
+        Type.failure(`Unknown uint size: ${node.bits}`);
     } else if (node.kind === "int") {
       const typeMap: Record<number, Type> = {
-        256: Type.Elementary.int256,
-        128: Type.Elementary.int128,
-        64: Type.Elementary.int64,
-        32: Type.Elementary.int32,
-        16: Type.Elementary.int16,
-        8: Type.Elementary.int8,
+        256: Type.Elementary.int(256),
+        128: Type.Elementary.int(128),
+        64: Type.Elementary.int(64),
+        32: Type.Elementary.int(32),
+        16: Type.Elementary.int(16),
+        8: Type.Elementary.int(8),
       };
       type =
         typeMap[node.bits || 256] ||
-        new Type.Failure(`Unknown int size: ${node.bits}`);
+        Type.failure(`Unknown int size: ${node.bits}`);
     } else if (node.kind === "bytes") {
       if (!node.bits) {
-        type = Type.Elementary.bytes; // Dynamic bytes
+        type = Type.Elementary.bytes(); // Dynamic bytes
       } else {
         const typeMap: Record<number, Type> = {
-          256: Type.Elementary.bytes32,
-          128: Type.Elementary.bytes16,
-          64: Type.Elementary.bytes8,
-          32: Type.Elementary.bytes4,
+          256: Type.Elementary.bytes(32),
+          128: Type.Elementary.bytes(16),
+          64: Type.Elementary.bytes(8),
+          32: Type.Elementary.bytes(4),
         };
         type =
           typeMap[node.bits] ||
-          new Type.Failure(`Unknown bytes size: ${node.bits}`);
+          Type.failure(`Unknown bytes size: ${node.bits}`);
       }
     } else if (node.kind === "address") {
-      type = Type.Elementary.address;
+      type = Type.Elementary.address();
     } else if (node.kind === "bool") {
-      type = Type.Elementary.bool;
+      type = Type.Elementary.bool();
     } else if (node.kind === "string") {
-      type = Type.Elementary.string;
+      type = Type.Elementary.string();
     } else {
-      type = new Type.Failure(`Unknown elementary type: ${node.kind}`);
+      type = Type.failure(`Unknown elementary type: ${node.kind}`);
     }
 
     if (type) {
@@ -103,7 +103,7 @@ export const typeNodeChecker: Pick<
       errors.push(...elementResult.errors);
 
       if (elementResult.type) {
-        type = new Type.Array(elementResult.type, node.size);
+        type = Type.array(elementResult.type, node.size);
       }
     } else if (node.kind === "mapping") {
       // Resolve key type
@@ -139,10 +139,10 @@ export const typeNodeChecker: Pick<
       errors.push(...valueResult.errors);
 
       if (keyResult.type && valueResult.type) {
-        type = new Type.Mapping(keyResult.type, valueResult.type);
+        type = Type.mapping(keyResult.type, valueResult.type);
       }
     } else {
-      type = new Type.Failure(`Unsupported complex type: ${node.kind}`);
+      type = Type.failure(`Unsupported complex type: ${node.kind}`);
     }
 
     if (type) {
@@ -172,7 +172,7 @@ export const typeNodeChecker: Pick<
         ErrorCode.UNDEFINED_TYPE,
       );
       errors.push(error);
-      type = new Type.Failure(`Undefined struct: ${node.name}`);
+      type = Type.failure(`Undefined struct: ${node.name}`);
     } else {
       type = structType;
     }

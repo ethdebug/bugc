@@ -5,79 +5,252 @@ import type * as Ast from "#ast";
 
 export type Types = Map<Ast.Id, Type>;
 
-export interface Type {
-  kind: Type.Kind;
-  bits?: number; // For numeric and bytes types
-  toString(): string;
-  equals(other: Type): boolean;
-}
+export type Type =
+  | Type.Elementary
+  | Type.Array
+  | Type.Struct
+  | Type.Mapping
+  | Type.Function
+  | Type.Failure;
+
+export const isType = (type: unknown): type is Type =>
+  Type.isBase(type) &&
+  [
+    Type.isElementary,
+    Type.isArray,
+    Type.isStruct,
+    Type.isMapping,
+    Type.isFunction,
+    Type.isFailure,
+  ].some((guard) => guard(type));
+
+const Array_ = Array;
 
 export namespace Type {
-  export type Kind =
-    | Type.Elementary.Kind
-    | Type.Array.Kind
-    | Type.Mapping.Kind
-    | Type.Struct.Kind
-    | Type.Function.Kind
-    | Type.Failure.Kind;
-
-  // Elementary types
-  export class Elementary implements Type {
-    constructor(
-      public kind: Type.Kind,
-      public bits?: number,
-    ) {}
-
-    toString(): string {
-      if (this.kind === "uint" || this.kind === "int") {
-        return `${this.kind}${this.bits || 256}`;
-      }
-      if (this.kind === "bytes" && this.bits) {
-        return `bytes${this.bits / 8}`;
-      }
-      return this.kind;
-    }
-
-    equals(other: Type): boolean {
-      return (
-        other instanceof Type.Elementary &&
-        other.kind === this.kind &&
-        other.bits === this.bits
-      );
-    }
+  export interface Base {
+    kind: string;
   }
 
-  export const isElementary = (type: Type): type is Type.Elementary =>
-    type instanceof Type.Elementary;
+  export const equals = (a: Type, b: Type): boolean => {
+    if (a.kind !== b.kind) {
+      return false;
+    }
+
+    if (Type.isElementary(a) && Type.isElementary(b)) {
+      return Type.Elementary.equals(a, b);
+    }
+
+    const map = {
+      array: Type.Array.equals,
+      struct: Type.Struct.equals,
+      mapping: Type.Mapping.equals,
+      function: Type.Function.equals,
+      failure: Type.Failure.equals,
+    } as const;
+
+    // @ts-expect-error typing this is too tricky
+    return map[a.kind](a, b);
+  };
+
+  export const format = (type: Type): string => {
+    if (Type.isElementary(type)) {
+      return Type.Elementary.format(type);
+    }
+
+    const map = {
+      array: Type.Array,
+      struct: Type.Struct,
+      mapping: Type.Mapping,
+      function: Type.Function,
+      failure: Type.Failure,
+    } as const;
+
+    // @ts-expect-error typing this is too tricky
+    return map[type.kind].format(type);
+  };
+
+  export const isBase = (type: unknown): type is Type.Base =>
+    typeof type === "object" &&
+    !!type &&
+    "kind" in type &&
+    typeof type.kind === "string" &&
+    !!type.kind;
+
+  export type Elementary =
+    | Type.Elementary.Uint
+    | Type.Elementary.Int
+    | Type.Elementary.Address
+    | Type.Elementary.Bool
+    | Type.Elementary.Bytes
+    | Type.Elementary.String;
+
+  export const isElementary = (type: Type.Base): type is Type.Elementary =>
+    [
+      Type.Elementary.isUint,
+      Type.Elementary.isInt,
+      Type.Elementary.isAddress,
+      Type.Elementary.isBool,
+      Type.Elementary.isBytes,
+      Type.Elementary.isString,
+    ].some((guard) => guard(type));
 
   export namespace Elementary {
-    export type Kind = "uint" | "int" | "address" | "bool" | "bytes" | "string";
+    export const equals = (a: Type.Elementary, b: Type.Elementary): boolean => {
+      if (a.kind !== b.kind) {
+        return false;
+      }
 
-    // Singleton instances for elementary types
-    export const uint256 = new Type.Elementary("uint", 256);
-    export const uint128 = new Type.Elementary("uint", 128);
-    export const uint64 = new Type.Elementary("uint", 64);
-    export const uint32 = new Type.Elementary("uint", 32);
-    export const uint16 = new Type.Elementary("uint", 16);
-    export const uint8 = new Type.Elementary("uint", 8);
-    export const int256 = new Type.Elementary("int", 256);
-    export const int128 = new Type.Elementary("int", 128);
-    export const int64 = new Type.Elementary("int", 64);
-    export const int32 = new Type.Elementary("int", 32);
-    export const int16 = new Type.Elementary("int", 16);
-    export const int8 = new Type.Elementary("int", 8);
-    export const address = new Type.Elementary("address");
-    export const bool = new Type.Elementary("bool");
-    export const bytes = new Type.Elementary("bytes"); // Dynamic bytes
-    export const bytes32 = new Type.Elementary("bytes", 256);
-    export const bytes16 = new Type.Elementary("bytes", 128);
-    export const bytes8 = new Type.Elementary("bytes", 64);
-    export const bytes4 = new Type.Elementary("bytes", 32);
-    export const string = new Type.Elementary("string");
+      const map = {
+        uint: Type.Elementary.Uint.equals,
+        int: Type.Elementary.Int.equals,
+        address: Type.Elementary.Address.equals,
+        bytes: Type.Elementary.Bytes.equals,
+        bool: Type.Elementary.Bool.equals,
+        string: Type.Elementary.String.equals,
+      } as const;
+
+      // @ts-expect-error typing this is too tricky
+      return map[a.kind](a, b);
+    };
+
+    export const format = <T extends Type.Elementary>(type: T): string => {
+      const map = {
+        uint: Type.Elementary.Uint,
+        int: Type.Elementary.Int,
+        address: Type.Elementary.Address,
+        bytes: Type.Elementary.Bytes,
+        bool: Type.Elementary.Bool,
+        string: Type.Elementary.String,
+      } as const;
+
+      // @ts-expect-error typing this is needlessly tricky
+      return map[type.kind].format(type);
+    };
+
+    export interface Uint {
+      kind: "uint";
+      bits: number;
+    }
+
+    export const uint = (bits: number): Type.Elementary.Uint => ({
+      kind: "uint",
+      bits,
+    });
+
+    export namespace Uint {
+      export const equals = (
+        a: Type.Elementary.Uint,
+        b: Type.Elementary.Uint,
+      ): boolean => a.bits === b.bits;
+
+      export const format = (type: Type.Elementary.Uint): string =>
+        `uint${type.bits}`;
+    }
+
+    export interface Int {
+      kind: "int";
+      bits: number;
+    }
+
+    export const int = (bits: number): Type.Elementary.Int => ({
+      kind: "int",
+      bits,
+    });
+
+    export namespace Int {
+      export const equals = (
+        a: Type.Elementary.Int,
+        b: Type.Elementary.Int,
+      ): boolean => a.bits === b.bits;
+
+      export const format = (type: Type.Elementary.Int): string =>
+        `int${type.bits}`;
+    }
+
+    export interface Address {
+      kind: "address";
+    }
+
+    export const address = (): Type.Elementary.Address => ({
+      kind: "address",
+    });
+
+    export namespace Address {
+      export const equals = (
+        _a: Type.Elementary.Address,
+        _b: Type.Elementary.Address,
+      ): boolean => true;
+
+      export const format = (_type: Type.Elementary.Address): string =>
+        `address`;
+    }
+
+    export interface Bool {
+      kind: "bool";
+    }
+
+    export const bool = (): Type.Elementary.Bool => ({
+      kind: "bool",
+    });
+
+    export namespace Bool {
+      export const equals = (
+        _a: Type.Elementary.Bool,
+        _b: Type.Elementary.Bool,
+      ): boolean => true;
+
+      export const format = (_type: Type.Elementary.Bool): string => `bool`;
+    }
+
+    export interface Bytes {
+      kind: "bytes";
+      bits?: number;
+    }
+
+    export const bytes = (bits?: number): Type.Elementary.Bytes => ({
+      kind: "bytes",
+      bits,
+    });
+
+    export namespace Bytes {
+      export const isDynamic = (
+        type: Type.Elementary.Bytes,
+      ): type is Type.Elementary.Bytes & { bits?: undefined } =>
+        !("bits" in type) || type.bits === undefined;
+
+      export const equals = (
+        a: Type.Elementary.Bytes,
+        b: Type.Elementary.Bytes,
+      ): boolean => a.bits == b.bits;
+
+      export const format = (type: Type.Elementary.Bytes) =>
+        `bytes${
+          "bits" in type && typeof type.bits === "number"
+            ? (type.bits / 8).toString()
+            : ""
+        }`;
+    }
+
+    export interface String {
+      kind: "string";
+    }
+
+    export const string = (): Type.Elementary.String => ({
+      kind: "string",
+    });
+
+    export namespace String {
+      export const equals = (
+        _a: Type.Elementary.String,
+        _b: Type.Elementary.String,
+      ): boolean => true;
+
+      export const format = (_type: Type.Elementary.String): string => `string`;
+    }
 
     const makeIsKind =
-      <K extends Type.Elementary.Kind>(kind: K) =>
-      (type: Type.Elementary): type is Type.Elementary & { kind: K } =>
+      <K extends string>(kind: K) =>
+      (type: Type.Base): type is Type.Base & { kind: K } =>
         type.kind === kind;
 
     export const isUint = makeIsKind("uint" as const);
@@ -89,186 +262,162 @@ export namespace Type {
 
     export const isNumeric = (type: Type.Elementary) =>
       Type.Elementary.isUint(type) || Type.Elementary.isInt(type);
-
-    export namespace Bytes {
-      export const isDynamic = (
-        type: Type.Elementary & { kind: "bytes" },
-      ): type is Type.Elementary & { kind: "bytes" } & { bits?: undefined } =>
-        !("bits" in type) || type.bits === undefined;
-    }
   }
 
-  export class Array implements Type {
-    kind = "array" as const;
-
-    constructor(
-      public elementType: Type,
-      public size?: number, // undefined for dynamic arrays
-    ) {}
-
-    toString(): string {
-      return this.size !== undefined
-        ? `array<${this.elementType.toString()}, ${this.size}>`
-        : `array<${this.elementType.toString()}>`;
-    }
-
-    equals(other: Type): boolean {
-      return (
-        other instanceof Type.Array &&
-        this.elementType.equals(other.elementType) &&
-        this.size === other.size
-      );
-    }
+  export interface Array {
+    kind: "array";
+    element: Type;
+    size?: number;
   }
 
-  export const isArray = (type: Type): type is Type.Array =>
-    type instanceof Type.Array;
+  export const isArray = (type: Type.Base): type is Type.Array =>
+    type.kind === "array" && "element" in type && isType(type.element);
+
+  export const array = (element: Type, size?: number): Type.Array => ({
+    kind: "array",
+    element,
+    size,
+  });
 
   export namespace Array {
-    export type Kind = "array";
+    export const equals = (a: Type.Array, b: Type.Array): boolean =>
+      Type.equals(a.element, b.element) && a.size === b.size;
+
+    export const format = (type: Type.Array): string =>
+      `array<${Type.format(type.element)}${
+        "size" in type && typeof type.size === "number" ? `, ${type.size}` : ""
+      }>`;
   }
 
-  // Mapping type
-  export class Mapping implements Type {
-    kind = "mapping" as const;
-
-    constructor(
-      public keyType: Type,
-      public valueType: Type,
-    ) {}
-
-    toString(): string {
-      return `mapping<${this.keyType.toString()}, ${this.valueType.toString()}>`;
-    }
-
-    equals(other: Type): boolean {
-      return (
-        other instanceof Type.Mapping &&
-        this.keyType.equals(other.keyType) &&
-        this.valueType.equals(other.valueType)
-      );
-    }
+  export interface Mapping {
+    kind: "mapping";
+    key: Type;
+    value: Type;
   }
 
-  export const isMapping = (type: Type): type is Type.Mapping =>
-    type instanceof Type.Mapping;
+  export const mapping = (key: Type, value: Type): Type.Mapping => ({
+    kind: "mapping",
+    key,
+    value,
+  });
+
+  export const isMapping = (type: Type.Base): type is Type.Mapping =>
+    type.kind === "mapping" &&
+    "key" in type &&
+    "value" in type &&
+    isType(type.key) &&
+    isType(type.value);
 
   export namespace Mapping {
-    export type Kind = "mapping";
+    export const equals = (a: Type.Mapping, b: Type.Mapping): boolean =>
+      Type.equals(a.key, b.key) && Type.equals(a.value, b.value);
+
+    export const format = (type: Type.Mapping): string =>
+      `mapping<${Type.format(type.key)}, ${Type.format(type.value)}>`;
   }
 
-  export class Struct implements Type {
-    kind = "struct" as const;
-
-    constructor(
-      public name: string,
-      public fields: Map<string, Type>,
-    ) {}
-
-    toString(): string {
-      return this.name;
-    }
-
-    equals(other: Type): boolean {
-      if (!(other instanceof Type.Struct) || other.name !== this.name) {
-        return false;
-      }
-
-      if (this.fields.size !== other.fields.size) {
-        return false;
-      }
-
-      for (const [name, type] of this.fields) {
-        const otherType = other.fields.get(name);
-        if (!otherType || !type.equals(otherType)) {
-          return false;
-        }
-      }
-
-      return true;
-    }
-
-    hasField(name: string): boolean {
-      return this.fields.has(name);
-    }
-
-    getFieldType(name: string): Type | undefined {
-      return this.fields.get(name);
-    }
+  export interface Struct {
+    kind: "struct";
+    name: string;
+    fields: Map<string, Type>;
   }
 
-  export const isStruct = (type: Type): type is Type.Struct =>
-    type instanceof Type.Struct;
+  export const isStruct = (type: Type.Base): type is Type.Struct =>
+    type.kind === "struct" &&
+    "name" in type &&
+    typeof type.name === "string" &&
+    "fields" in type &&
+    type.fields instanceof Map &&
+    [...type.fields.values()].every(isType);
+
+  export const struct = (
+    name: string,
+    fields: Map<string, Type>,
+  ): Type.Struct => ({
+    kind: "struct",
+    name,
+    fields,
+  });
 
   export namespace Struct {
-    export type Kind = "struct";
+    export const equals = (a: Type.Struct, b: Type.Struct): boolean =>
+      a.name === b.name &&
+      a.fields.size == b.fields.size &&
+      a.fields
+        .entries()
+        .every(
+          ([keyA, valueA], index) =>
+            [...b.fields.keys()][index] === keyA &&
+            [...b.fields.values()][index] === valueA,
+        );
+
+    export const format = (type: Type.Struct): string => type.name;
   }
 
-  // Function type
-  export class Function implements Type {
-    kind = "function" as const;
-
-    constructor(
-      public name: string,
-      public parameterTypes: Type[],
-      public returnType: Type | null, // null for void functions
-    ) {}
-
-    toString(): string {
-      const params = this.parameterTypes.map((t) => t.toString()).join(", ");
-      const ret = this.returnType ? ` -> ${this.returnType.toString()}` : "";
-      return `function(${params})${ret}`;
-    }
-
-    equals(other: Type): boolean {
-      if (!(other instanceof Type.Function)) {
-        return false;
-      }
-
-      if (this.parameterTypes.length !== other.parameterTypes.length) {
-        return false;
-      }
-
-      for (let i = 0; i < this.parameterTypes.length; i++) {
-        if (!this.parameterTypes[i].equals(other.parameterTypes[i])) {
-          return false;
-        }
-      }
-
-      if (this.returnType && other.returnType) {
-        return this.returnType.equals(other.returnType);
-      }
-
-      return this.returnType === other.returnType;
-    }
+  export interface Function {
+    kind: "function";
+    name?: string;
+    parameters: Type[];
+    return: Type | null; // null for void functions
   }
 
-  export const isFunction = (type: Type): type is Type.Function =>
-    type instanceof Type.Function;
+  export const function_ = (
+    parameters: Type[],
+    return_: Type | null,
+    name?: string,
+  ): Type.Function => ({
+    kind: "function",
+    parameters,
+    return: return_,
+    name,
+  });
+
+  export const isFunction = (type: Type.Base): type is Type.Function =>
+    type.kind === "function" &&
+    "parameters" in type &&
+    type.parameters instanceof Array_ &&
+    type.parameters.every(isType) &&
+    "return" in type &&
+    (type.return === null || isType(type.return));
 
   export namespace Function {
-    export type Kind = "function";
+    export const equals = (a: Type.Function, b: Type.Function): boolean =>
+      a.parameters.length === b.parameters.length &&
+      a.parameters.every((type, index) => type == b.parameters[index]) &&
+      ((a.return === null && b.return === null) ||
+        (a.return !== null &&
+          b.return !== null &&
+          Type.equals(a.return, b.return)));
+
+    export const format = (type: Type.Function): string =>
+      `function ${"name" in type ? type.name : ""}(${type.parameters
+        .map((parameter) => Type.format(parameter))
+        .join(", ")})${
+        type.return !== null ? `-> ${Type.format(type.return)}` : ""
+      }`;
   }
 
-  // Error type for type checking failures
-  export class Failure implements Type {
-    kind = "fail" as const;
-
-    constructor(public message: string) {}
-
-    toString(): string {
-      return `<error: ${this.message}>`;
-    }
-
-    equals(other: Type): boolean {
-      return other instanceof Type.Failure;
-    }
+  export interface Failure {
+    kind: "fail";
+    reason: string;
   }
 
-  export const isFailure = (type: Type): type is Type.Failure =>
-    type instanceof Type.Failure;
+  export const failure = (reason: string): Type.Failure => ({
+    kind: "fail",
+    reason,
+  });
+
+  export const isFailure = (type: Type.Base): type is Type.Failure =>
+    type.kind === "fail" &&
+    "reason" in type &&
+    typeof type.reason === "string" &&
+    !!type.reason;
 
   export namespace Failure {
-    export type Kind = "fail";
+    export const equals = (a: Type.Failure, b: Type.Failure): boolean =>
+      a.reason === b.reason;
+
+    export const format = (type: Type.Failure): string =>
+      `fail<"${type.reason}">`;
   }
 }

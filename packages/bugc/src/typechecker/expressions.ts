@@ -60,16 +60,16 @@ export const expressionChecker: Pick<
 
     switch (node.kind) {
       case "number":
-        type = Type.Elementary.uint256;
+        type = Type.Elementary.uint(256);
         break;
       case "boolean":
-        type = Type.Elementary.bool;
+        type = Type.Elementary.bool();
         break;
       case "string":
-        type = Type.Elementary.string;
+        type = Type.Elementary.string();
         break;
       case "address":
-        type = Type.Elementary.address;
+        type = Type.Elementary.address();
         break;
       case "hex": {
         // Determine bytes type based on hex literal length
@@ -83,10 +83,10 @@ export const expressionChecker: Pick<
 
         // For fixed-size bytes types (bytes1 to bytes32)
         if (byteCount > 0 && byteCount <= 32) {
-          type = new Type.Elementary("bytes", byteCount * 8);
+          type = Type.Elementary.bytes(byteCount * 8);
         } else {
           // For larger hex literals, use dynamic bytes
-          type = Type.Elementary.bytes;
+          type = Type.Elementary.bytes();
         }
         break;
       }
@@ -154,11 +154,14 @@ export const expressionChecker: Pick<
             );
             errors.push(error);
           }
-          resultType = Type.Elementary.bool;
+          resultType = Type.Elementary.bool();
           break;
 
         case "-":
-          if (!Type.Elementary.isNumeric(operandType)) {
+          if (
+            !Type.isElementary(operandType) ||
+            !Type.Elementary.isNumeric(operandType)
+          ) {
             const error = new TypeError(
               ErrorMessages.INVALID_UNARY_OP("-", "numeric"),
               node.loc || undefined,
@@ -193,6 +196,8 @@ export const expressionChecker: Pick<
         case "*":
         case "/":
           if (
+            !Type.isElementary(leftType) ||
+            !Type.isElementary(rightType) ||
             !Type.Elementary.isNumeric(leftType) ||
             !Type.Elementary.isNumeric(rightType)
           ) {
@@ -213,6 +218,8 @@ export const expressionChecker: Pick<
         case "<=":
         case ">=":
           if (
+            !Type.isElementary(leftType) ||
+            !Type.isElementary(rightType) ||
             !Type.Elementary.isNumeric(leftType) ||
             !Type.Elementary.isNumeric(rightType)
           ) {
@@ -225,14 +232,14 @@ export const expressionChecker: Pick<
             );
             errors.push(error);
           }
-          resultType = Type.Elementary.bool;
+          resultType = Type.Elementary.bool();
           break;
 
         case "==":
         case "!=":
           if (!isAssignable(leftType, rightType)) {
             const error = new TypeError(
-              `Cannot compare ${leftType.toString()} with ${rightType.toString()}`,
+              `Cannot compare ${Type.format(leftType)} with ${Type.format(rightType)}`,
               node.loc || undefined,
               undefined,
               undefined,
@@ -240,7 +247,7 @@ export const expressionChecker: Pick<
             );
             errors.push(error);
           }
-          resultType = Type.Elementary.bool;
+          resultType = Type.Elementary.bool();
           break;
 
         case "&&":
@@ -258,7 +265,7 @@ export const expressionChecker: Pick<
             );
             errors.push(error);
           }
-          resultType = Type.Elementary.bool;
+          resultType = Type.Elementary.bool();
           break;
 
         default: {
@@ -323,8 +330,8 @@ export const expressionChecker: Pick<
     if (node.kind === "member") {
       const property = node.property as string;
 
-      if (objectType instanceof Type.Struct) {
-        const fieldType = objectType.getFieldType(property);
+      if (Type.isStruct(objectType)) {
+        const fieldType = objectType.fields.get(property);
         if (!fieldType) {
           const error = new TypeError(
             ErrorMessages.NO_SUCH_FIELD(objectType.name, property),
@@ -339,19 +346,19 @@ export const expressionChecker: Pick<
         resultType = fieldType;
       } else if (property === "length") {
         // Handle .length property for arrays and bytes types
-        if (objectType instanceof Type.Array) {
+        if (Type.isArray(objectType)) {
           // Array length is always uint256
-          resultType = Type.Elementary.uint256;
+          resultType = Type.Elementary.uint(256);
         } else if (
           Type.isElementary(objectType) &&
           (Type.Elementary.isBytes(objectType) ||
             Type.Elementary.isString(objectType))
         ) {
           // bytes and string length is uint256
-          resultType = Type.Elementary.uint256;
+          resultType = Type.Elementary.uint(256);
         } else {
           const error = new TypeError(
-            `Type ${objectType.toString()} does not have a length property`,
+            `Type ${Type.format(objectType)} does not have a length property`,
             node.loc || undefined,
             undefined,
             undefined,
@@ -362,7 +369,7 @@ export const expressionChecker: Pick<
         }
       } else {
         const error = new TypeError(
-          `Cannot access member ${property} on ${objectType.toString()}`,
+          `Cannot access member ${property} on ${Type.format(objectType)}`,
           node.loc || undefined,
           undefined,
           undefined,
@@ -407,7 +414,10 @@ export const expressionChecker: Pick<
         Type.isElementary(objectType) &&
         Type.Elementary.isBytes(objectType)
       ) {
-        if (!Type.Elementary.isNumeric(startResult.type)) {
+        if (
+          !Type.isElementary(startResult.type) ||
+          !Type.Elementary.isNumeric(startResult.type)
+        ) {
           const error = new TypeError(
             "Slice start index must be numeric",
             startExpr.loc || undefined,
@@ -417,7 +427,10 @@ export const expressionChecker: Pick<
           );
           errors.push(error);
         }
-        if (!Type.Elementary.isNumeric(endResult.type)) {
+        if (
+          !Type.isElementary(endResult.type) ||
+          !Type.Elementary.isNumeric(endResult.type)
+        ) {
           const error = new TypeError(
             "Slice end index must be numeric",
             endExpr.loc || undefined,
@@ -428,10 +441,10 @@ export const expressionChecker: Pick<
           errors.push(error);
         }
         // Slicing bytes returns dynamic bytes
-        resultType = Type.Elementary.bytes;
+        resultType = Type.Elementary.bytes();
       } else {
         const error = new TypeError(
-          `Cannot slice ${objectType.toString()} - only bytes types can be sliced`,
+          `Cannot slice ${Type.format(objectType)} - only bytes types can be sliced`,
           node.loc || undefined,
           undefined,
           undefined,
@@ -461,8 +474,11 @@ export const expressionChecker: Pick<
 
       const indexType = indexResult.type;
 
-      if (objectType instanceof Type.Array) {
-        if (!Type.Elementary.isNumeric(indexType)) {
+      if (Type.isArray(objectType)) {
+        if (
+          !Type.isElementary(indexType) ||
+          !Type.Elementary.isNumeric(indexType)
+        ) {
           const error = new TypeError(
             "Array index must be numeric",
             indexExpr.loc || undefined,
@@ -472,11 +488,11 @@ export const expressionChecker: Pick<
           );
           errors.push(error);
         }
-        resultType = objectType.elementType;
-      } else if (objectType instanceof Type.Mapping) {
-        if (!isAssignable(objectType.keyType, indexType)) {
+        resultType = objectType.element;
+      } else if (Type.isMapping(objectType)) {
+        if (!isAssignable(objectType.key, indexType)) {
           const error = new TypeError(
-            `Invalid mapping key: expected ${objectType.keyType.toString()}, got ${indexType.toString()}`,
+            `Invalid mapping key: expected ${Type.format(objectType.key)}, got ${Type.format(indexType)}`,
             indexExpr.loc || undefined,
             undefined,
             undefined,
@@ -484,15 +500,15 @@ export const expressionChecker: Pick<
           );
           errors.push(error);
         }
-        resultType = objectType.valueType;
+        resultType = objectType.value;
       } else if (
         Type.isElementary(objectType) &&
         Type.Elementary.isBytes(objectType)
       ) {
         // Allow indexing into bytes types - returns uint8
-        if (!isAssignable(Type.Elementary.uint256, indexType)) {
+        if (!isAssignable(Type.Elementary.uint(8), indexType)) {
           const error = new TypeError(
-            `Bytes index must be a numeric type, got ${indexType.toString()}`,
+            `Bytes index must be a numeric type, got ${Type.format(indexType)}`,
             indexExpr.loc || undefined,
             undefined,
             undefined,
@@ -501,10 +517,10 @@ export const expressionChecker: Pick<
           errors.push(error);
         }
         // Bytes indexing returns uint8
-        resultType = Type.Elementary.uint8;
+        resultType = Type.Elementary.uint(8);
       } else {
         const error = new TypeError(
-          ErrorMessages.CANNOT_INDEX(objectType.toString()),
+          ErrorMessages.CANNOT_INDEX(Type.format(objectType)),
           node.loc || undefined,
           undefined,
           undefined,
@@ -586,7 +602,7 @@ export const expressionChecker: Pick<
         }
 
         // keccak256 returns bytes32
-        const resultType = Type.Elementary.bytes32;
+        const resultType = Type.Elementary.bytes(32);
         nodeTypes.set(node.id, resultType);
         return {
           type: resultType,
@@ -610,7 +626,7 @@ export const expressionChecker: Pick<
         return { symbols, nodeTypes, errors };
       }
 
-      if (!(symbol.type instanceof Type.Function)) {
+      if (!Type.isFunction(symbol.type)) {
         const error = new TypeError(
           `${functionName} is not a function`,
           node.callee.loc || undefined,
@@ -625,9 +641,9 @@ export const expressionChecker: Pick<
       const funcType = symbol.type;
 
       // Check argument count
-      if (node.arguments.length !== funcType.parameterTypes.length) {
+      if (node.arguments.length !== funcType.parameters.length) {
         const error = new TypeError(
-          `Function ${funcType.name} expects ${funcType.parameterTypes.length} arguments but got ${node.arguments.length}`,
+          `Function ${funcType.name} expects ${funcType.parameters.length} arguments but got ${node.arguments.length}`,
           node.loc || undefined,
           undefined,
           undefined,
@@ -656,13 +672,13 @@ export const expressionChecker: Pick<
 
         if (!argResult.type) continue;
 
-        const expectedType = funcType.parameterTypes[i];
+        const expectedType = funcType.parameters[i];
         if (!isAssignable(expectedType, argResult.type)) {
           const error = new TypeError(
-            `Argument ${i + 1} type mismatch: expected ${expectedType.toString()}, got ${argResult.type.toString()}`,
+            `Argument ${i + 1} type mismatch: expected ${Type.format(expectedType)}, got ${Type.format(argResult.type)}`,
             node.arguments[i].loc || undefined,
-            expectedType.toString(),
-            argResult.type.toString(),
+            Type.format(expectedType),
+            Type.format(argResult.type),
             ErrorCode.TYPE_MISMATCH,
           );
           errors.push(error);
@@ -670,8 +686,7 @@ export const expressionChecker: Pick<
       }
 
       // Return the function's return type
-      const returnType =
-        funcType.returnType || new Type.Failure("void function");
+      const returnType = funcType.return || Type.failure("void function");
       nodeTypes.set(node.id, returnType);
       return {
         type: returnType,
@@ -737,10 +752,10 @@ export const expressionChecker: Pick<
     // Check if the cast is valid
     if (!isValidCast(exprResult.type, targetTypeResult.type)) {
       const error = new TypeError(
-        `Cannot cast from ${exprResult.type.toString()} to ${targetTypeResult.type.toString()}`,
+        `Cannot cast from ${Type.format(exprResult.type)} to ${Type.format(targetTypeResult.type)}`,
         node.loc || undefined,
-        targetTypeResult.type.toString(),
-        exprResult.type.toString(),
+        Type.format(targetTypeResult.type),
+        Type.format(exprResult.type),
         ErrorCode.INVALID_TYPE_CAST,
       );
       errors.push(error);
@@ -763,19 +778,19 @@ export const expressionChecker: Pick<
 
     switch (node.kind) {
       case "msg.sender":
-        type = Type.Elementary.address;
+        type = Type.Elementary.address();
         break;
       case "msg.value":
-        type = Type.Elementary.uint256;
+        type = Type.Elementary.uint(256);
         break;
       case "msg.data":
-        type = Type.Elementary.bytes;
+        type = Type.Elementary.bytes();
         break;
       case "block.timestamp":
-        type = Type.Elementary.uint256;
+        type = Type.Elementary.uint(256);
         break;
       case "block.number":
-        type = Type.Elementary.uint256;
+        type = Type.Elementary.uint(256);
         break;
     }
 
@@ -799,6 +814,8 @@ export const expressionChecker: Pick<
 function isValidCast(fromType: Type, toType: Type): boolean {
   // Allow casting between numeric types
   if (
+    Type.isElementary(fromType) &&
+    Type.isElementary(toType) &&
     Type.Elementary.isNumeric(fromType) &&
     Type.Elementary.isNumeric(toType)
   ) {
@@ -836,7 +853,12 @@ function isValidCast(fromType: Type, toType: Type): boolean {
   }
 
   // Allow casting from bytes (including dynamic bytes) to numeric types
-  if (Type.Elementary.isBytes(fromType) && Type.Elementary.isNumeric(toType)) {
+  if (
+    Type.isElementary(fromType) &&
+    Type.isElementary(toType) &&
+    Type.Elementary.isBytes(fromType) &&
+    Type.Elementary.isNumeric(toType)
+  ) {
     return true;
   }
 

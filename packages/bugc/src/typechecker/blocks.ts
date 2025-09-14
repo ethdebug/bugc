@@ -65,7 +65,7 @@ export const blockChecker: Pick<
           const funcContext: Context = {
             ...context,
             symbols: funcSymbols,
-            currentReturnType: funcType.returnType || undefined,
+            currentReturnType: funcType.return || undefined,
             nodeTypes: currentNodeTypes,
             pointer:
               context.pointer +
@@ -210,7 +210,7 @@ export const blockChecker: Pick<
           errors.push(error);
 
           // Still define the variable with error type
-          const errorType = new Type.Failure("missing initializer");
+          const errorType = Type.failure("missing initializer");
           const symbol: Symbol = {
             name: node.name,
             type: errorType,
@@ -246,19 +246,19 @@ export const blockChecker: Pick<
           if (initResult.type && !isAssignable(type, initResult.type)) {
             const error = new TypeError(
               ErrorMessages.TYPE_MISMATCH(
-                type.toString(),
-                initResult.type.toString(),
+                Type.format(type),
+                Type.format(initResult.type),
               ),
               node.initializer.loc || undefined,
-              type.toString(),
-              initResult.type.toString(),
+              Type.format(type),
+              Type.format(initResult.type),
               ErrorCode.TYPE_MISMATCH,
             );
             errors.push(error);
           }
         } else {
           // Otherwise, infer the type from the initializer
-          type = initResult.type || new Type.Failure("invalid initializer");
+          type = initResult.type || Type.failure("invalid initializer");
         }
 
         const symbol: Symbol = {

@@ -71,12 +71,12 @@ export const statementChecker: Pick<
     ) {
       const error = new TypeError(
         ErrorMessages.TYPE_MISMATCH(
-          targetResult.type.toString(),
-          valueResult.type.toString(),
+          Type.format(targetResult.type),
+          Type.format(valueResult.type),
         ),
         node.loc || undefined,
-        targetResult.type.toString(),
-        valueResult.type.toString(),
+        Type.format(targetResult.type),
+        Type.format(valueResult.type),
         ErrorCode.TYPE_MISMATCH,
       );
       errors.push(error);
@@ -266,12 +266,12 @@ export const statementChecker: Pick<
             if (!isAssignable(context.currentReturnType, valueResult.type)) {
               const error = new TypeError(
                 ErrorMessages.TYPE_MISMATCH(
-                  context.currentReturnType.toString(),
-                  valueResult.type.toString(),
+                  Type.format(context.currentReturnType),
+                  Type.format(valueResult.type),
                 ),
                 node.loc || undefined,
-                context.currentReturnType.toString(),
-                valueResult.type.toString(),
+                Type.format(context.currentReturnType),
+                Type.format(valueResult.type),
                 ErrorCode.TYPE_MISMATCH,
               );
               errors.push(error);
@@ -288,7 +288,7 @@ export const statementChecker: Pick<
           }
         } else if (context.currentReturnType) {
           const error = new TypeError(
-            `Function must return a value of type ${context.currentReturnType.toString()}`,
+            `Function must return a value of type ${Type.format(context.currentReturnType)}`,
             node.loc || undefined,
             undefined,
             undefined,

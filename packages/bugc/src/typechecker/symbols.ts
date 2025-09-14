@@ -99,7 +99,7 @@ export function buildInitialSymbols(
     if (Ast.Declaration.isStorage(decl)) {
       const type = decl.declaredType
         ? resolveType(decl.declaredType, structs)
-        : new Type.Failure("missing type");
+        : Type.failure("missing type");
 
       const symbol: Symbol = {
         name: decl.name,
@@ -136,7 +136,7 @@ export function enterFunctionScope(
     const param = parameters[i];
     const symbol: Symbol = {
       name: param.name,
-      type: funcType.parameterTypes[i],
+      type: funcType.parameters[i],
       mutable: true,
       location: "memory",
     };

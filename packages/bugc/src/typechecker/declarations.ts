@@ -69,7 +69,7 @@ function buildStructType(
     }
   }
 
-  return new Type.Struct(decl.name, fields);
+  return Type.struct(decl.name, fields);
 }
 
 /**
@@ -91,7 +91,7 @@ function buildFunctionSignature(
     ? resolveType(decl.returnType, structTypes)
     : null;
 
-  return new Type.Function(decl.name, parameterTypes, returnType);
+  return Type.function_(parameterTypes, returnType, decl.name);
 }
 
 /**
@@ -106,64 +106,64 @@ export function resolveType(
       // Map elementary types based on kind and bits
       if (typeNode.kind === "uint") {
         const typeMap: Record<number, Type> = {
-          256: Type.Elementary.uint256,
-          128: Type.Elementary.uint128,
-          64: Type.Elementary.uint64,
-          32: Type.Elementary.uint32,
-          16: Type.Elementary.uint16,
-          8: Type.Elementary.uint8,
+          256: Type.Elementary.uint(256),
+          128: Type.Elementary.uint(128),
+          64: Type.Elementary.uint(64),
+          32: Type.Elementary.uint(32),
+          16: Type.Elementary.uint(16),
+          8: Type.Elementary.uint(8),
         };
         return (
           typeMap[typeNode.bits || 256] ||
-          new Type.Failure(`Unknown uint size: ${typeNode.bits}`)
+          Type.failure(`Unknown uint size: ${typeNode.bits}`)
         );
       } else if (typeNode.kind === "int") {
         const typeMap: Record<number, Type> = {
-          256: Type.Elementary.int256,
-          128: Type.Elementary.int128,
-          64: Type.Elementary.int64,
-          32: Type.Elementary.int32,
-          16: Type.Elementary.int16,
-          8: Type.Elementary.int8,
+          256: Type.Elementary.int(256),
+          128: Type.Elementary.int(128),
+          64: Type.Elementary.int(64),
+          32: Type.Elementary.int(32),
+          16: Type.Elementary.int(16),
+          8: Type.Elementary.int(8),
         };
         return (
           typeMap[typeNode.bits || 256] ||
-          new Type.Failure(`Unknown int size: ${typeNode.bits}`)
+          Type.failure(`Unknown int size: ${typeNode.bits}`)
         );
       } else if (typeNode.kind === "bytes") {
         if (!typeNode.bits) {
-          return Type.Elementary.bytes; // Dynamic bytes
+          return Type.Elementary.bytes(); // Dynamic bytes
         }
         const typeMap: Record<number, Type> = {
-          256: Type.Elementary.bytes32,
-          128: Type.Elementary.bytes16,
-          64: Type.Elementary.bytes8,
-          32: Type.Elementary.bytes4,
+          256: Type.Elementary.bytes(32),
+          128: Type.Elementary.bytes(16),
+          64: Type.Elementary.bytes(8),
+          32: Type.Elementary.bytes(4),
         };
         return (
           typeMap[typeNode.bits] ||
-          new Type.Failure(`Unknown bytes size: ${typeNode.bits}`)
+          Type.failure(`Unknown bytes size: ${typeNode.bits}`)
         );
       } else if (typeNode.kind === "address") {
-        return Type.Elementary.address;
+        return Type.Elementary.address();
       } else if (typeNode.kind === "bool") {
-        return Type.Elementary.bool;
+        return Type.Elementary.bool();
       } else if (typeNode.kind === "string") {
-        return Type.Elementary.string;
+        return Type.Elementary.string();
       }
-      return new Type.Failure(`Unknown elementary type: ${typeNode.kind}`);
+      return Type.failure(`Unknown elementary type: ${typeNode.kind}`);
     }
 
     case "ComplexType":
       if (typeNode.kind === "array") {
         const elementType = resolveType(typeNode.typeArgs![0], structTypes);
-        return new Type.Array(elementType, typeNode.size);
+        return Type.array(elementType, typeNode.size);
       } else if (typeNode.kind === "mapping") {
         const keyType = resolveType(typeNode.typeArgs![0], structTypes);
         const valueType = resolveType(typeNode.typeArgs![1], structTypes);
-        return new Type.Mapping(keyType, valueType);
+        return Type.mapping(keyType, valueType);
       } else {
-        return new Type.Failure(`Unsupported complex type: ${typeNode.kind}`);
+        return Type.failure(`Unsupported complex type: ${typeNode.kind}`);
       }
 
     case "ReferenceType": {
@@ -181,6 +181,6 @@ export function resolveType(
     }
 
     default:
-      return new Type.Failure("Unknown type");
+      return Type.failure("Unknown type");
   }
 }

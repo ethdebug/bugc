@@ -224,7 +224,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       paramCount = decl.parameters.length;
       for (let i = 0; i < paramCount; i++) {
         const param = decl.parameters[i];
-        const paramType = funcType.parameterTypes[i];
+        const paramType = funcType.parameters[i];
 
         const localVar: Ir.Function.LocalVariable = {
           name: param.name,
@@ -248,7 +248,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
     // Ensure function has proper terminator
     if (!this.isTerminated(this.context.currentBlock)) {
       const declType = this.context.types.get(decl.id);
-      if (declType && Type.isFunction(declType) && declType.returnType) {
+      if (declType && Type.isFunction(declType) && declType.return) {
         // Function should return a value but doesn't - add error
         this.errors.push(
           new IrgenError(
@@ -952,7 +952,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       const index = this.expression(node.property as Ast.Expression);
 
       if (objectType && Type.isArray(objectType)) {
-        const elementType = this.bugTypeToIrType(objectType.elementType);
+        const elementType = this.bugTypeToIrType(objectType.element);
         const temp = this.genTemp(elementType);
 
         this.emit({
@@ -969,7 +969,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
         // Simple mapping access
         const storageVar = this.findStorageVariable(node.object);
         if (storageVar) {
-          const valueType = this.bugTypeToIrType(objectType.valueType);
+          const valueType = this.bugTypeToIrType(objectType.value);
           const temp = this.genTemp(valueType);
 
           this.emit({
@@ -1109,7 +1109,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
       let dest: string | undefined;
 
       // Only create a destination if the function returns a value
-      if (callType.toString() !== "<error: void function>") {
+      if (!Type.equals(callType, Type.failure("void function"))) {
         const temp = this.genTemp(irType);
         dest = temp.id;
       }
@@ -1304,7 +1304,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
 
         if (objectType && Type.isStruct(objectType)) {
           const fieldName = accessNode.property as string;
-          const fieldType = objectType.getFieldType(fieldName);
+          const fieldType = objectType.fields.get(fieldName);
           if (fieldType) {
             // Find field index
             let fieldIndex = 0;
@@ -1524,7 +1524,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
     if (Type.isArray(type)) {
       return {
         kind: "array",
-        element: this.bugTypeToIrType(type.elementType),
+        element: this.bugTypeToIrType(type.element),
         size: type.size,
       };
     }
@@ -1532,8 +1532,8 @@ export class IrBuilder implements Ast.Visitor<void, never> {
     if (Type.isMapping(type)) {
       return {
         kind: "mapping",
-        key: this.bugTypeToIrType(type.keyType),
-        value: this.bugTypeToIrType(type.valueType),
+        key: this.bugTypeToIrType(type.key),
+        value: this.bugTypeToIrType(type.value),
       };
     }
 
@@ -1593,6 +1593,7 @@ export class IrBuilder implements Ast.Visitor<void, never> {
         default:
           this.errors.push(
             new IrgenError(
+              // @ts-expect-error switch is exhaustive
               `Unknown elementary type: ${type.kind}`,
               undefined,
               Severity.Error,

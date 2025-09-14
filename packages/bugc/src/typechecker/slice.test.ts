@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import * as Ast from "#ast";
+import { Type } from "#types";
 import { parse } from "#parser";
 import { Severity } from "#result";
 
@@ -30,7 +31,10 @@ describe("Slice type checking", () => {
       if (decl?.type === "DeclarationStatement") {
         const varDecl = decl.declaration as Ast.Declaration.Variable;
         const sliceType = types.get(varDecl.initializer?.id!);
-        expect(sliceType?.toString()).toBe("bytes");
+        if (!sliceType) {
+          throw new Error("Unexpected missing slice type");
+        }
+        expect(Type.format(sliceType)).toBe("bytes");
       }
     }
   });

@@ -8,12 +8,17 @@ export function isAssignable(target: Type, value: Type): boolean {
   if (Type.isFailure(target) || Type.isFailure(value)) {
     return true;
   }
-  if (target.equals(value)) {
+  if (Type.equals(target, value)) {
     return true;
   }
 
   // Numeric types can be implicitly converted (with range checks)
-  if (Type.Elementary.isNumeric(target) && Type.Elementary.isNumeric(value)) {
+  if (
+    Type.isElementary(target) &&
+    Type.isElementary(value) &&
+    Type.Elementary.isNumeric(target) &&
+    Type.Elementary.isNumeric(value)
+  ) {
     // Only allow same signedness
     if (Type.Elementary.isUint(target) && Type.Elementary.isUint(value)) {
       return true;
@@ -31,7 +36,7 @@ export function isAssignable(target: Type, value: Type): boolean {
  * Returns the larger of two compatible types.
  */
 export function commonType(type1: Type, type2: Type): Type | null {
-  if (type1.equals(type2)) {
+  if (Type.equals(type1, type2)) {
     return type1;
   }
 
