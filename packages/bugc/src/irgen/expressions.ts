@@ -13,205 +13,190 @@ import { type IrGen, gen, lift, runGen } from "./irgen.js";
  * Build an expression and return the resulting IR value
  */
 export function buildExpression(expr: Ast.Expression): Transition<Ir.Value> {
-  switch (expr.type) {
-    case "IdentifierExpression":
-      return buildIdentifier(expr as Ast.Expression.Identifier);
-    case "LiteralExpression":
-      return buildLiteral(expr as Ast.Expression.Literal);
-    case "OperatorExpression":
-      return buildOperator(expr as Ast.Expression.Operator);
-    case "AccessExpression":
-      return buildAccess(expr as Ast.Expression.Access);
-    case "CallExpression":
-      return buildCall(expr as Ast.Expression.Call);
-    case "CastExpression":
-      return buildCast(expr as Ast.Expression.Cast);
-    case "SpecialExpression":
-      return buildSpecial(expr as Ast.Expression.Special);
-    default:
-      return (state) => ({
-        state: addError(
-          state,
-          new IrgenError(
-            // @ts-expect-error switch statement is exhaustive; expr is never
-            `Unsupported expression type: ${expr.type}`,
-            // @ts-expect-error switch statement is exhaustive; expr is never
-            expr.loc ?? undefined,
-            Severity.Error,
-          ),
-        ),
-        value: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-      });
-  }
+  return runGen(
+    (function* () {
+      switch (expr.type) {
+        case "IdentifierExpression":
+          return yield* buildIdentifier(expr as Ast.Expression.Identifier);
+        case "LiteralExpression":
+          return yield* buildLiteral(expr as Ast.Expression.Literal);
+        case "OperatorExpression":
+          return yield* buildOperator(expr as Ast.Expression.Operator);
+        case "AccessExpression":
+          return yield* buildAccess(expr as Ast.Expression.Access);
+        case "CallExpression":
+          return yield* buildCall(expr as Ast.Expression.Call);
+        case "CastExpression":
+          return yield* buildCast(expr as Ast.Expression.Cast);
+        case "SpecialExpression":
+          return yield* buildSpecial(expr as Ast.Expression.Special);
+        default:
+          yield* gen.addError(
+            new IrgenError(
+              // @ts-expect-error switch statement is exhaustive; expr is never
+              `Unsupported expression type: ${expr.type}`,
+              // @ts-expect-error switch statement is exhaustive; expr is never
+              expr.loc ?? undefined,
+              Severity.Error,
+            ),
+          );
+          return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+      }
+    })(),
+  );
 }
 
 /**
  * Build an identifier expression
  */
-function buildIdentifier(
-  expr: Ast.Expression.Identifier,
-): Transition<Ir.Value> {
-  return runGen(
-    (function* () {
-      const local = yield* gen.lookupVariable(expr.name);
+function* buildIdentifier(expr: Ast.Expression.Identifier): IrGen<Ir.Value> {
+  const local = yield* gen.lookupVariable(expr.name);
 
-      if (local) {
-        // Load the local variable
-        const tempId = yield* gen.genTemp();
+  if (local) {
+    // Load the local variable
+    const tempId = yield* gen.genTemp();
 
-        yield* gen.emit({
-          kind: "load_local",
-          local: local.id,
-          dest: tempId,
-          loc: expr.loc ?? undefined,
-        } as Ir.Instruction.LoadLocal);
+    yield* gen.emit({
+      kind: "load_local",
+      local: local.id,
+      dest: tempId,
+      loc: expr.loc ?? undefined,
+    } as Ir.Instruction.LoadLocal);
 
-        return Ir.Value.temp(tempId, local.type);
-      }
+    return Ir.Value.temp(tempId, local.type);
+  }
 
-      // Check if it's a storage variable
-      const state = yield* gen.peek();
-      const storageSlot = state.module.storage.slots.find(
-        ({ name }) => name === expr.name,
-      );
-
-      if (storageSlot) {
-        return yield* lift(buildStorageLoad(storageSlot, expr));
-      }
-
-      // Unknown identifier - add error and return default value
-      yield* gen.addError(
-        new IrgenError(
-          ErrorMessages.UNKNOWN_IDENTIFIER(expr.name),
-          expr.loc ?? undefined,
-          Severity.Error,
-        ),
-      );
-
-      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-    })(),
+  // Check if it's a storage variable
+  const state = yield* gen.peek();
+  const storageSlot = state.module.storage.slots.find(
+    ({ name }) => name === expr.name,
   );
+
+  if (storageSlot) {
+    return yield* lift(buildStorageLoad(storageSlot, expr));
+  }
+
+  // Unknown identifier - add error and return default value
+  yield* gen.addError(
+    new IrgenError(
+      ErrorMessages.UNKNOWN_IDENTIFIER(expr.name),
+      expr.loc ?? undefined,
+      Severity.Error,
+    ),
+  );
+
+  return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
 }
 
 /**
  * Build a literal expression
  */
-function buildLiteral(expr: Ast.Expression.Literal): Transition<Ir.Value> {
-  return runGen(
-    (function* () {
-      // Get the type from the context
-      const state = yield* gen.peek();
-      const nodeType = state.types.get(expr.id);
+function* buildLiteral(expr: Ast.Expression.Literal): IrGen<Ir.Value> {
+  // Get the type from the context
+  const state = yield* gen.peek();
+  const nodeType = state.types.get(expr.id);
 
-      if (!nodeType) {
-        yield* gen.addError(
-          new IrgenError(
-            `Cannot determine type for literal: ${expr.value}`,
-            expr.loc ?? undefined,
-            Severity.Error,
-          ),
-        );
-        // Return a default value to allow compilation to continue
-        return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+  if (!nodeType) {
+    yield* gen.addError(
+      new IrgenError(
+        `Cannot determine type for literal: ${expr.value}`,
+        expr.loc ?? undefined,
+        Severity.Error,
+      ),
+    );
+    // Return a default value to allow compilation to continue
+    return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+  }
+
+  const type = mapTypeToIrType(nodeType);
+
+  // Parse the literal value based on its kind
+  let value: bigint | string | boolean;
+  switch (expr.kind) {
+    case "number":
+      value = BigInt(expr.value);
+      break;
+    case "hex": {
+      // For hex literals, check if they fit in a BigInt (up to 32 bytes / 256 bits)
+      const hexValue = expr.value.startsWith("0x")
+        ? expr.value.slice(2)
+        : expr.value;
+
+      // If the hex value is longer than 64 characters (32 bytes),
+      // store it as a string with 0x prefix
+      if (hexValue.length > 64) {
+        value = expr.value.startsWith("0x") ? expr.value : `0x${expr.value}`;
+      } else {
+        value = BigInt(expr.value);
       }
+      break;
+    }
+    case "address":
+    case "string":
+      value = expr.value;
+      break;
+    case "boolean":
+      value = expr.value === "true";
+      break;
+    default:
+      yield* gen.addError(
+        new IrgenError(
+          `Unknown literal kind: ${expr.kind}`,
+          expr.loc || undefined,
+          Severity.Error,
+        ),
+      );
+      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+  }
 
-      const type = mapTypeToIrType(nodeType);
+  const tempId = yield* gen.genTemp();
 
-      // Parse the literal value based on its kind
-      let value: bigint | string | boolean;
-      switch (expr.kind) {
-        case "number":
-          value = BigInt(expr.value);
-          break;
-        case "hex": {
-          // For hex literals, check if they fit in a BigInt (up to 32 bytes / 256 bits)
-          const hexValue = expr.value.startsWith("0x")
-            ? expr.value.slice(2)
-            : expr.value;
+  yield* gen.emit({
+    kind: "const",
+    dest: tempId,
+    value,
+    type,
+    loc: expr.loc || undefined,
+  } as Ir.Instruction.Const);
 
-          // If the hex value is longer than 64 characters (32 bytes),
-          // store it as a string with 0x prefix
-          if (hexValue.length > 64) {
-            value = expr.value.startsWith("0x")
-              ? expr.value
-              : `0x${expr.value}`;
-          } else {
-            value = BigInt(expr.value);
-          }
-          break;
-        }
-        case "address":
-        case "string":
-          value = expr.value;
-          break;
-        case "boolean":
-          value = expr.value === "true";
-          break;
-        default:
-          yield* gen.addError(
-            new IrgenError(
-              `Unknown literal kind: ${expr.kind}`,
-              expr.loc || undefined,
-              Severity.Error,
-            ),
-          );
-          return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-      }
-
-      const tempId = yield* gen.genTemp();
-
-      yield* gen.emit({
-        kind: "const",
-        dest: tempId,
-        value,
-        type,
-        loc: expr.loc || undefined,
-      } as Ir.Instruction.Const);
-
-      return Ir.Value.temp(tempId, type);
-    })(),
-  );
+  return Ir.Value.temp(tempId, type);
 }
 
 /**
  * Build an operator expression (unary or binary)
  */
-function buildOperator(expr: Ast.Expression.Operator): Transition<Ir.Value> {
-  return runGen(
-    (function* () {
-      // Get the type from the context
-      const state = yield* gen.peek();
-      const nodeType = state.types.get(expr.id);
+function* buildOperator(expr: Ast.Expression.Operator): IrGen<Ir.Value> {
+  // Get the type from the context
+  const state = yield* gen.peek();
+  const nodeType = state.types.get(expr.id);
 
-      if (!nodeType) {
-        yield* gen.addError(
-          new IrgenError(
-            `Cannot determine type for operator expression: ${expr.operator}`,
-            expr.loc ?? undefined,
-            Severity.Error,
-          ),
-        );
-        return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-      }
+  if (!nodeType) {
+    yield* gen.addError(
+      new IrgenError(
+        `Cannot determine type for operator expression: ${expr.operator}`,
+        expr.loc ?? undefined,
+        Severity.Error,
+      ),
+    );
+    return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+  }
 
-      switch (expr.operands.length) {
-        case 1:
-          return yield* buildUnaryOperator(expr);
-        case 2:
-          return yield* buildBinaryOperator(expr);
-        default: {
-          yield* gen.addError(
-            new IrgenError(
-              `Invalid operator arity: ${expr.operands.length}`,
-              expr.loc || undefined,
-              Severity.Error,
-            ),
-          );
-          return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-        }
-      }
-    })(),
-  );
+  switch (expr.operands.length) {
+    case 1:
+      return yield* buildUnaryOperator(expr);
+    case 2:
+      return yield* buildBinaryOperator(expr);
+    default: {
+      yield* gen.addError(
+        new IrgenError(
+          `Invalid operator arity: ${expr.operands.length}`,
+          expr.loc || undefined,
+          Severity.Error,
+        ),
+      );
+      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+    }
+  }
 }
 
 /**
@@ -300,433 +285,415 @@ function* buildBinaryOperator(expr: Ast.Expression.Operator): IrGen<Ir.Value> {
 /**
  * Build an access expression (array/member access)
  */
-function buildAccess(expr: Ast.Expression.Access): Transition<Ir.Value> {
-  return runGen(
-    (function* () {
-      if (expr.kind === "member") {
-        const property = expr.property as string;
+function* buildAccess(expr: Ast.Expression.Access): IrGen<Ir.Value> {
+  if (expr.kind === "member") {
+    const property = expr.property as string;
 
-        // Check if this is a .length property access
-        if (property === "length") {
-          const state = yield* gen.peek();
-          const objectType = state.types.get(expr.object.id);
+    // Check if this is a .length property access
+    if (property === "length") {
+      const state = yield* gen.peek();
+      const objectType = state.types.get(expr.object.id);
 
-          // Verify that the object type supports .length (arrays, bytes, string)
-          if (
-            objectType &&
-            (Type.isArray(objectType) ||
-              (Type.isElementary(objectType) &&
-                (Type.Elementary.isBytes(objectType) ||
-                  Type.Elementary.isString(objectType))))
-          ) {
-            const object = yield* lift(buildExpression(expr.object));
-            const resultType: Ir.Type = { kind: "uint", bits: 256 };
-            const tempId = yield* gen.genTemp();
-
-            yield* gen.emit({
-              kind: "length",
-              object,
-              dest: tempId,
-              loc: expr.loc ?? undefined,
-            } as Ir.Instruction);
-
-            return Ir.Value.temp(tempId, resultType);
-          }
-        }
-
-        // First check if this is accessing a storage chain (e.g., accounts[user].balance)
-        const chain = yield* lift(findStorageAccessChain(expr));
-        if (chain) {
-          const state = yield* gen.peek();
-          const nodeType = state.types.get(expr.id);
-          if (nodeType) {
-            const valueType = mapTypeToIrType(nodeType);
-            return yield* lift(
-              emitStorageChainLoad(chain, valueType, expr.loc ?? undefined),
-            );
-          }
-        }
-
-        // Reading through local variables is allowed, no diagnostic needed
-
-        // Otherwise, handle regular struct field access
+      // Verify that the object type supports .length (arrays, bytes, string)
+      if (
+        objectType &&
+        (Type.isArray(objectType) ||
+          (Type.isElementary(objectType) &&
+            (Type.Elementary.isBytes(objectType) ||
+              Type.Elementary.isString(objectType))))
+      ) {
         const object = yield* lift(buildExpression(expr.object));
-        const state = yield* gen.peek();
-        const objectType = state.types.get(expr.object.id);
+        const resultType: Ir.Type = { kind: "uint", bits: 256 };
+        const tempId = yield* gen.genTemp();
 
-        if (objectType && Type.isStruct(objectType)) {
-          const fieldType = objectType.fields.get(property);
-          if (fieldType) {
-            const fieldIndex = Array.from(objectType.fields.keys()).indexOf(
-              property,
-            );
-            const irFieldType = mapTypeToIrType(fieldType);
-            const tempId = yield* gen.genTemp();
+        yield* gen.emit({
+          kind: "length",
+          object,
+          dest: tempId,
+          loc: expr.loc ?? undefined,
+        } as Ir.Instruction);
 
-            yield* gen.emit({
-              kind: "load_field",
-              object,
-              field: property,
-              fieldIndex,
-              type: irFieldType,
-              dest: tempId,
-              loc: expr.loc ?? undefined,
-            } as Ir.Instruction);
-
-            return Ir.Value.temp(tempId, irFieldType);
-          }
-        }
-      } else if (expr.kind === "slice") {
-        // Slice access - start:end
-        const state = yield* gen.peek();
-        const objectType = state.types.get(expr.object.id);
-        if (
-          objectType &&
-          Type.isElementary(objectType) &&
-          Type.Elementary.isBytes(objectType)
-        ) {
-          const object = yield* lift(buildExpression(expr.object));
-          const start = yield* lift(
-            buildExpression(expr.property as Ast.Expression),
-          );
-          const end = yield* lift(buildExpression(expr.end!));
-
-          // Slicing bytes returns dynamic bytes
-          const resultType: Ir.Type = { kind: "bytes" };
-          const tempId = yield* gen.genTemp();
-
-          yield* gen.emit({
-            kind: "slice",
-            object,
-            start,
-            end,
-            dest: tempId,
-            loc: expr.loc ?? undefined,
-          } as Ir.Instruction);
-
-          return Ir.Value.temp(tempId, resultType);
-        }
-
-        yield* gen.addError(
-          new IrgenError(
-            "Only bytes types can be sliced",
-            expr.loc ?? undefined,
-            Severity.Error,
-          ),
-        );
-        return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-      } else {
-        // Array/mapping/bytes index access
-        // First check if we're indexing into bytes (not part of storage chain)
-        const state = yield* gen.peek();
-        const objectType = state.types.get(expr.object.id);
-        if (
-          objectType &&
-          Type.isElementary(objectType) &&
-          Type.Elementary.isBytes(objectType)
-        ) {
-          // Handle bytes indexing directly, not as storage chain
-          const object = yield* lift(buildExpression(expr.object));
-          const index = yield* lift(
-            buildExpression(expr.property as Ast.Expression),
-          );
-
-          // Bytes indexing returns uint8
-          const elementType: Ir.Type = { kind: "uint", bits: 8 };
-          const tempId = yield* gen.genTemp();
-
-          yield* gen.emit({
-            kind: "load_index",
-            array: object,
-            index,
-            elementType,
-            dest: tempId,
-            loc: expr.loc ?? undefined,
-          } as Ir.Instruction);
-
-          return Ir.Value.temp(tempId, elementType);
-        }
-
-        // For non-bytes types, try to find a complete storage access chain
-        const chain = yield* lift(findStorageAccessChain(expr));
-        if (chain) {
-          const nodeType = state.types.get(expr.id);
-          if (nodeType) {
-            const valueType = mapTypeToIrType(nodeType);
-            return yield* lift(
-              emitStorageChainLoad(chain, valueType, expr.loc ?? undefined),
-            );
-          }
-        }
-
-        // If no storage chain, handle regular array/mapping access
-        const object = yield* lift(buildExpression(expr.object));
-        const index = yield* lift(
-          buildExpression(expr.property as Ast.Expression),
-        );
-
-        if (objectType && Type.isArray(objectType)) {
-          const elementType = mapTypeToIrType(objectType.element);
-          const tempId = yield* gen.genTemp();
-
-          yield* gen.emit({
-            kind: "load_index",
-            array: object,
-            index,
-            elementType,
-            dest: tempId,
-            loc: expr.loc ?? undefined,
-          } as Ir.Instruction);
-
-          return Ir.Value.temp(tempId, elementType);
-        } else if (objectType && Type.isMapping(objectType)) {
-          // Simple mapping access
-          const storageVar = yield* lift(findStorageVariable(expr.object));
-          if (storageVar) {
-            const valueType = mapTypeToIrType(objectType.value);
-            const tempId = yield* gen.genTemp();
-
-            yield* gen.emit({
-              kind: "load_mapping",
-              slot: storageVar.slot,
-              key: index,
-              valueType,
-              dest: tempId,
-              loc: expr.loc ?? undefined,
-            } as Ir.Instruction);
-
-            return Ir.Value.temp(tempId, valueType);
-          }
-        }
+        return Ir.Value.temp(tempId, resultType);
       }
+    }
 
-      yield* gen.addError(
-        new IrgenError(
-          "Invalid access expression",
-          expr.loc ?? undefined,
-          Severity.Error,
-        ),
+    // First check if this is accessing a storage chain (e.g., accounts[user].balance)
+    const chain = yield* lift(findStorageAccessChain(expr));
+    if (chain) {
+      const state = yield* gen.peek();
+      const nodeType = state.types.get(expr.id);
+      if (nodeType) {
+        const valueType = mapTypeToIrType(nodeType);
+        return yield* lift(
+          emitStorageChainLoad(chain, valueType, expr.loc ?? undefined),
+        );
+      }
+    }
+
+    // Reading through local variables is allowed, no diagnostic needed
+
+    // Otherwise, handle regular struct field access
+    const object = yield* lift(buildExpression(expr.object));
+    const state = yield* gen.peek();
+    const objectType = state.types.get(expr.object.id);
+
+    if (objectType && Type.isStruct(objectType)) {
+      const fieldType = objectType.fields.get(property);
+      if (fieldType) {
+        const fieldIndex = Array.from(objectType.fields.keys()).indexOf(
+          property,
+        );
+        const irFieldType = mapTypeToIrType(fieldType);
+        const tempId = yield* gen.genTemp();
+
+        yield* gen.emit({
+          kind: "load_field",
+          object,
+          field: property,
+          fieldIndex,
+          type: irFieldType,
+          dest: tempId,
+          loc: expr.loc ?? undefined,
+        } as Ir.Instruction);
+
+        return Ir.Value.temp(tempId, irFieldType);
+      }
+    }
+  } else if (expr.kind === "slice") {
+    // Slice access - start:end
+    const state = yield* gen.peek();
+    const objectType = state.types.get(expr.object.id);
+    if (
+      objectType &&
+      Type.isElementary(objectType) &&
+      Type.Elementary.isBytes(objectType)
+    ) {
+      const object = yield* lift(buildExpression(expr.object));
+      const start = yield* lift(
+        buildExpression(expr.property as Ast.Expression),
       );
-      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-    })(),
+      const end = yield* lift(buildExpression(expr.end!));
+
+      // Slicing bytes returns dynamic bytes
+      const resultType: Ir.Type = { kind: "bytes" };
+      const tempId = yield* gen.genTemp();
+
+      yield* gen.emit({
+        kind: "slice",
+        object,
+        start,
+        end,
+        dest: tempId,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction);
+
+      return Ir.Value.temp(tempId, resultType);
+    }
+
+    yield* gen.addError(
+      new IrgenError(
+        "Only bytes types can be sliced",
+        expr.loc ?? undefined,
+        Severity.Error,
+      ),
+    );
+    return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+  } else {
+    // Array/mapping/bytes index access
+    // First check if we're indexing into bytes (not part of storage chain)
+    const state = yield* gen.peek();
+    const objectType = state.types.get(expr.object.id);
+    if (
+      objectType &&
+      Type.isElementary(objectType) &&
+      Type.Elementary.isBytes(objectType)
+    ) {
+      // Handle bytes indexing directly, not as storage chain
+      const object = yield* lift(buildExpression(expr.object));
+      const index = yield* lift(
+        buildExpression(expr.property as Ast.Expression),
+      );
+
+      // Bytes indexing returns uint8
+      const elementType: Ir.Type = { kind: "uint", bits: 8 };
+      const tempId = yield* gen.genTemp();
+
+      yield* gen.emit({
+        kind: "load_index",
+        array: object,
+        index,
+        elementType,
+        dest: tempId,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction);
+
+      return Ir.Value.temp(tempId, elementType);
+    }
+
+    // For non-bytes types, try to find a complete storage access chain
+    const chain = yield* lift(findStorageAccessChain(expr));
+    if (chain) {
+      const nodeType = state.types.get(expr.id);
+      if (nodeType) {
+        const valueType = mapTypeToIrType(nodeType);
+        return yield* lift(
+          emitStorageChainLoad(chain, valueType, expr.loc ?? undefined),
+        );
+      }
+    }
+
+    // If no storage chain, handle regular array/mapping access
+    const object = yield* lift(buildExpression(expr.object));
+    const index = yield* lift(buildExpression(expr.property as Ast.Expression));
+
+    if (objectType && Type.isArray(objectType)) {
+      const elementType = mapTypeToIrType(objectType.element);
+      const tempId = yield* gen.genTemp();
+
+      yield* gen.emit({
+        kind: "load_index",
+        array: object,
+        index,
+        elementType,
+        dest: tempId,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction);
+
+      return Ir.Value.temp(tempId, elementType);
+    } else if (objectType && Type.isMapping(objectType)) {
+      // Simple mapping access
+      const storageVar = yield* lift(findStorageVariable(expr.object));
+      if (storageVar) {
+        const valueType = mapTypeToIrType(objectType.value);
+        const tempId = yield* gen.genTemp();
+
+        yield* gen.emit({
+          kind: "load_mapping",
+          slot: storageVar.slot,
+          key: index,
+          valueType,
+          dest: tempId,
+          loc: expr.loc ?? undefined,
+        } as Ir.Instruction);
+
+        return Ir.Value.temp(tempId, valueType);
+      }
+    }
+  }
+
+  yield* gen.addError(
+    new IrgenError(
+      "Invalid access expression",
+      expr.loc ?? undefined,
+      Severity.Error,
+    ),
   );
+  return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
 }
 
 /**
  * Build a call expression
  */
-function buildCall(expr: Ast.Expression.Call): Transition<Ir.Value> {
-  return runGen(
-    (function* () {
-      // Check if this is a built-in function call
-      if (
-        expr.callee.type === "IdentifierExpression" &&
-        (expr.callee as Ast.Expression.Identifier).name === "keccak256"
-      ) {
-        // keccak256 built-in function
-        if (expr.arguments.length !== 1) {
-          yield* gen.addError(
-            new IrgenError(
-              "keccak256 expects exactly 1 argument",
-              expr.loc ?? undefined,
-              Severity.Error,
-            ),
-          );
-          return Ir.Value.constant(0n, { kind: "bytes", size: 32 });
-        }
-
-        // Evaluate the argument
-        const argValue = yield* lift(buildExpression(expr.arguments[0]));
-
-        // Generate hash instruction
-        const resultType: Ir.Type = { kind: "bytes", size: 32 }; // bytes32
-        const resultTemp = yield* gen.genTemp();
-
-        yield* gen.emit({
-          kind: "hash",
-          value: argValue,
-          dest: resultTemp,
-          loc: expr.loc ?? undefined,
-        } as Ir.Instruction);
-
-        return Ir.Value.temp(resultTemp, resultType);
-      }
-
-      // Handle user-defined function calls
-      if (expr.callee.type === "IdentifierExpression") {
-        const functionName = (expr.callee as Ast.Expression.Identifier).name;
-
-        // Get the function type from the type checker
-        const state = yield* gen.peek();
-        const callType = state.types.get(expr.id);
-
-        if (!callType) {
-          yield* gen.addError(
-            new IrgenError(
-              `Unknown function: ${functionName}`,
-              expr.loc ?? undefined,
-              Severity.Error,
-            ),
-          );
-          return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-        }
-
-        // Evaluate arguments
-        const argValues: Ir.Value[] = [];
-        for (const arg of expr.arguments) {
-          argValues.push(yield* lift(buildExpression(arg)));
-        }
-
-        // Generate call instruction
-        const irType = mapTypeToIrType(callType);
-        let dest: string | undefined;
-
-        // Only create a destination if the function returns a value
-        // Check if it's a void function by checking if the type is a failure with "void function" message
-        const isVoidFunction =
-          Type.isFailure(callType) &&
-          (callType as Type.Failure).reason === "void function";
-
-        if (!isVoidFunction) {
-          dest = yield* gen.genTemp();
-        }
-
-        yield* gen.emit({
-          kind: "call",
-          function: functionName,
-          arguments: argValues,
-          dest,
-          loc: expr.loc ?? undefined,
-        } as Ir.Instruction.Call);
-
-        // Return the result value or a dummy value for void functions
-        if (dest) {
-          return Ir.Value.temp(dest, irType);
-        } else {
-          // Void function - return a dummy value
-          return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-        }
-      }
-
-      // Other forms of function calls not supported
+function* buildCall(expr: Ast.Expression.Call): IrGen<Ir.Value> {
+  // Check if this is a built-in function call
+  if (
+    expr.callee.type === "IdentifierExpression" &&
+    (expr.callee as Ast.Expression.Identifier).name === "keccak256"
+  ) {
+    // keccak256 built-in function
+    if (expr.arguments.length !== 1) {
       yield* gen.addError(
         new IrgenError(
-          "Complex function call expressions not yet supported",
+          "keccak256 expects exactly 1 argument",
+          expr.loc ?? undefined,
+          Severity.Error,
+        ),
+      );
+      return Ir.Value.constant(0n, { kind: "bytes", size: 32 });
+    }
+
+    // Evaluate the argument
+    const argValue = yield* lift(buildExpression(expr.arguments[0]));
+
+    // Generate hash instruction
+    const resultType: Ir.Type = { kind: "bytes", size: 32 }; // bytes32
+    const resultTemp = yield* gen.genTemp();
+
+    yield* gen.emit({
+      kind: "hash",
+      value: argValue,
+      dest: resultTemp,
+      loc: expr.loc ?? undefined,
+    } as Ir.Instruction);
+
+    return Ir.Value.temp(resultTemp, resultType);
+  }
+
+  // Handle user-defined function calls
+  if (expr.callee.type === "IdentifierExpression") {
+    const functionName = (expr.callee as Ast.Expression.Identifier).name;
+
+    // Get the function type from the type checker
+    const state = yield* gen.peek();
+    const callType = state.types.get(expr.id);
+
+    if (!callType) {
+      yield* gen.addError(
+        new IrgenError(
+          `Unknown function: ${functionName}`,
           expr.loc ?? undefined,
           Severity.Error,
         ),
       );
       return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-    })(),
+    }
+
+    // Evaluate arguments
+    const argValues: Ir.Value[] = [];
+    for (const arg of expr.arguments) {
+      argValues.push(yield* lift(buildExpression(arg)));
+    }
+
+    // Generate call instruction
+    const irType = mapTypeToIrType(callType);
+    let dest: string | undefined;
+
+    // Only create a destination if the function returns a value
+    // Check if it's a void function by checking if the type is a failure with "void function" message
+    const isVoidFunction =
+      Type.isFailure(callType) &&
+      (callType as Type.Failure).reason === "void function";
+
+    if (!isVoidFunction) {
+      dest = yield* gen.genTemp();
+    }
+
+    yield* gen.emit({
+      kind: "call",
+      function: functionName,
+      arguments: argValues,
+      dest,
+      loc: expr.loc ?? undefined,
+    } as Ir.Instruction.Call);
+
+    // Return the result value or a dummy value for void functions
+    if (dest) {
+      return Ir.Value.temp(dest, irType);
+    } else {
+      // Void function - return a dummy value
+      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+    }
+  }
+
+  // Other forms of function calls not supported
+  yield* gen.addError(
+    new IrgenError(
+      "Complex function call expressions not yet supported",
+      expr.loc ?? undefined,
+      Severity.Error,
+    ),
   );
+  return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
 }
 
 /**
  * Build a cast expression
  */
-function buildCast(expr: Ast.Expression.Cast): Transition<Ir.Value> {
-  return runGen(
-    (function* () {
-      // Evaluate the expression being cast
-      const exprValue = yield* lift(buildExpression(expr.expression));
+function* buildCast(expr: Ast.Expression.Cast): IrGen<Ir.Value> {
+  // Evaluate the expression being cast
+  const exprValue = yield* lift(buildExpression(expr.expression));
 
-      // Get the target type from the type checker
-      const state = yield* gen.peek();
-      const targetType = state.types.get(expr.id);
+  // Get the target type from the type checker
+  const state = yield* gen.peek();
+  const targetType = state.types.get(expr.id);
 
-      if (!targetType) {
-        yield* gen.addError(
-          new IrgenError(
-            "Cannot determine target type for cast expression",
-            expr.loc ?? undefined,
-            Severity.Error,
-          ),
-        );
-        return exprValue; // Return the original value
-      }
+  if (!targetType) {
+    yield* gen.addError(
+      new IrgenError(
+        "Cannot determine target type for cast expression",
+        expr.loc ?? undefined,
+        Severity.Error,
+      ),
+    );
+    return exprValue; // Return the original value
+  }
 
-      const targetIrType = mapTypeToIrType(targetType);
+  const targetIrType = mapTypeToIrType(targetType);
 
-      // For now, we'll generate a cast instruction that will be handled during bytecode generation
-      // In many cases, the cast is a no-op at the IR level (e.g., uint256 to address)
-      const resultTemp = yield* gen.genTemp();
+  // For now, we'll generate a cast instruction that will be handled during bytecode generation
+  // In many cases, the cast is a no-op at the IR level (e.g., uint256 to address)
+  const resultTemp = yield* gen.genTemp();
 
-      yield* gen.emit({
-        kind: "cast",
-        value: exprValue,
-        targetType: targetIrType,
-        dest: resultTemp,
-        loc: expr.loc || undefined,
-      } as Ir.Instruction.Cast);
+  yield* gen.emit({
+    kind: "cast",
+    value: exprValue,
+    targetType: targetIrType,
+    dest: resultTemp,
+    loc: expr.loc || undefined,
+  } as Ir.Instruction.Cast);
 
-      return Ir.Value.temp(resultTemp, targetIrType);
-    })(),
-  );
+  return Ir.Value.temp(resultTemp, targetIrType);
 }
 
 /**
  * Build a special expression (msg.sender, block.number, etc.)
  */
-function buildSpecial(expr: Ast.Expression.Special): Transition<Ir.Value> {
-  return runGen(
-    (function* () {
-      // Get the type from the type checker
-      const state = yield* gen.peek();
-      const nodeType = state.types.get(expr.id);
+function* buildSpecial(expr: Ast.Expression.Special): IrGen<Ir.Value> {
+  // Get the type from the type checker
+  const state = yield* gen.peek();
+  const nodeType = state.types.get(expr.id);
 
-      if (!nodeType) {
-        yield* gen.addError(
-          new IrgenError(
-            `Cannot determine type for special expression: ${expr.kind}`,
-            expr.loc ?? undefined,
-            Severity.Error,
-          ),
-        );
-        // Return a default value to allow compilation to continue
-        return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-      }
+  if (!nodeType) {
+    yield* gen.addError(
+      new IrgenError(
+        `Cannot determine type for special expression: ${expr.kind}`,
+        expr.loc ?? undefined,
+        Severity.Error,
+      ),
+    );
+    // Return a default value to allow compilation to continue
+    return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+  }
 
-      const resultType = mapTypeToIrType(nodeType);
-      const temp = yield* gen.genTemp();
+  const resultType = mapTypeToIrType(nodeType);
+  const temp = yield* gen.genTemp();
 
-      let op: Ir.Instruction.Env["op"];
-      switch (expr.kind) {
-        case "msg.sender":
-          op = "msg_sender";
-          break;
-        case "msg.value":
-          op = "msg_value";
-          break;
-        case "msg.data":
-          op = "msg_data";
-          break;
-        case "block.timestamp":
-          op = "block_timestamp";
-          break;
-        case "block.number":
-          op = "block_number";
-          break;
-        default:
-          yield* gen.addError(
-            new IrgenError(
-              `Unknown special expression: ${expr.kind}`,
-              expr.loc || undefined,
-              Severity.Error,
-            ),
-          );
-          return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-      }
+  let op: Ir.Instruction.Env["op"];
+  switch (expr.kind) {
+    case "msg.sender":
+      op = "msg_sender";
+      break;
+    case "msg.value":
+      op = "msg_value";
+      break;
+    case "msg.data":
+      op = "msg_data";
+      break;
+    case "block.timestamp":
+      op = "block_timestamp";
+      break;
+    case "block.number":
+      op = "block_number";
+      break;
+    default:
+      yield* gen.addError(
+        new IrgenError(
+          `Unknown special expression: ${expr.kind}`,
+          expr.loc || undefined,
+          Severity.Error,
+        ),
+      );
+      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+  }
 
-      yield* gen.emit({
-        kind: "env",
-        op,
-        dest: temp,
-        loc: expr.loc ?? undefined,
-      } as Ir.Instruction.Env);
+  yield* gen.emit({
+    kind: "env",
+    op,
+    dest: temp,
+    loc: expr.loc ?? undefined,
+  } as Ir.Instruction.Env);
 
-      return Ir.Value.temp(temp, resultType);
-    })(),
-  );
+  return Ir.Value.temp(temp, resultType);
 }
 
 /**
