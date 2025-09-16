@@ -7,8 +7,11 @@ import { Severity } from "#result";
 import { pipe } from "./builder.js";
 import { operations } from "./operations.js";
 import { addError } from "./updates.js";
-import { buildExpression } from "./expressions.js";
+import { buildExpression } from "./expressions/index.js";
+import { makeFindStorageAccessChain } from "./storage.js";
 import { type IrGen, gen, lift, runGen } from "./irgen.js";
+
+const findStorageAccessChain = makeFindStorageAccessChain(buildExpression);
 
 /**
  * Build a statement
@@ -127,78 +130,6 @@ interface StorageAccessChain {
     fieldName?: string; // For member access
     fieldIndex?: number; // For member access
   }>;
-}
-
-/**
- * Find a storage access chain starting from an expression
- */
-function findStorageAccessChain(
-  expr: Ast.Expression,
-): Transition<StorageAccessChain | undefined> {
-  return (state: IrState) => {
-    const accesses: StorageAccessChain["accesses"] = [];
-    let current = expr;
-    let currentState = state;
-
-    // Walk up the access chain from right to left
-    while (current.type === "AccessExpression") {
-      const accessNode = current as Ast.Expression.Access;
-
-      if (accessNode.kind === "index") {
-        // For index access, we need to evaluate the key expression
-        const keyResult = runGen(
-          buildExpression(accessNode.property as Ast.Expression),
-        )(currentState);
-        currentState = keyResult.state;
-        const key = keyResult.value;
-        accesses.unshift({ kind: "index", key });
-      } else {
-        // For member access on structs
-        const fieldName = accessNode.property as string;
-        accesses.unshift({ kind: "member", fieldName });
-      }
-
-      current = accessNode.object;
-    }
-
-    // At the end, we should have an identifier that references storage
-    if (current.type === "IdentifierExpression") {
-      const name = (current as Ast.Expression.Identifier).name;
-      const slot = currentState.module.storage.slots.find(
-        (s) => s.name === name,
-      );
-      if (slot) {
-        return { state: currentState, value: { slot, accesses } };
-      }
-
-      // Check if it's a local variable (which means we're trying to access
-      // storage through an intermediate variable - not supported)
-      const localResult = operations.lookupVariable(name)(currentState);
-      currentState = localResult.state;
-      const local = localResult.value;
-
-      if (local && accesses.length > 0) {
-        // Get the type to provide better error message
-        const localType = currentState.types.get(current.id);
-        const typeDesc = localType
-          ? (localType as Type & { name?: string; kind?: string }).name ||
-            (localType as Type & { name?: string; kind?: string }).kind ||
-            "complex"
-          : "unknown";
-
-        currentState = addError(
-          currentState,
-          new IrgenError(
-            `Cannot modify storage through local variable '${name}' of type ${typeDesc}`,
-            expr.loc ?? undefined,
-            Severity.Error,
-          ),
-        );
-      }
-    }
-
-    return { state: currentState, value: undefined };
-  };
 }
 
 /**
@@ -374,7 +305,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
 
     if (accessNode.kind === "member") {
       // First check if this is a storage chain assignment
-      const chain = yield* lift(findStorageAccessChain(node));
+      const chain = yield* findStorageAccessChain(node);
       if (chain) {
         yield* lift(
           emitStorageChainAssignment(chain, value, node.loc ?? undefined),
@@ -436,7 +367,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
       }
 
       // For non-bytes types, try to find a complete storage access chain
-      const chain = yield* lift(findStorageAccessChain(node));
+      const chain = yield* findStorageAccessChain(node);
       if (chain) {
         yield* lift(
           emitStorageChainAssignment(chain, value, node.loc ?? undefined),
