@@ -7,73 +7,33 @@ import type { IrState, PartialModule, FunctionContext } from "./state.js";
 import { Error as IrgenError } from "./errors.js";
 import { PhiInserter } from "./phi-inserter.js";
 import { buildFunction } from "./function.js";
-import { runGen } from "./irgen.js";
+import { runGen, type IrGen, peek, addError, lift } from "./irgen.js";
 import { mapTypeToIrType } from "./type.js";
 
 /**
- * Generate IR from an AST program
+ * Generate IR from an AST program (generator version)
  */
-export function generateModule(
+function* generateModuleGen(
   program: Ast.Program,
   types: Types,
-): Result<Ir.Module, IrgenError> {
-  // Create initial state
-  const initialState = createInitialState(program, types);
-
-  // Build all functions
-  let state = initialState;
-
+): IrGen<Ir.Module | undefined> {
   // Build constructor if present
   if (program.create) {
-    const result = runGen(buildFunction("create", [], program.create))(state);
-    state = result.state;
-
-    if (result.value) {
-      // Check if create function is effectively empty (only has entry block with return)
-      const { blocks } = result.value;
-      const entry = blocks.get("entry");
-
-      const isEmptyCreate =
-        blocks.size === 1 &&
-        entry &&
-        entry.instructions.length === 0 &&
-        entry.terminator.kind === "return" &&
-        !entry.terminator.value;
-
-      // Only add create function if it's not empty
-      if (!isEmptyCreate) {
-        state = {
-          ...state,
-          module: {
-            ...state.module,
-            create: result.value,
-            functions: new Map([
-              ...state.module.functions,
-              ["create", result.value],
-            ]),
-          },
-        };
-      }
+    const func = yield* withErrorHandling(
+      buildFunction("create", [], program.create),
+    );
+    if (func && !isEmptyCreateFunction(func)) {
+      yield* addFunctionToModule("create", func, "create");
     }
   }
 
   // Build main function if present
   if (program.body) {
-    const result = runGen(buildFunction("main", [], program.body))(state);
-    state = result.state;
-
-    if (result.value) {
-      state = {
-        ...state,
-        module: {
-          ...state.module,
-          main: result.value,
-          functions: new Map([
-            ...state.module.functions,
-            ["main", result.value],
-          ]),
-        },
-      };
+    const func = yield* withErrorHandling(
+      buildFunction("main", [], program.body),
+    );
+    if (func) {
+      yield* addFunctionToModule("main", func, "main");
     }
   }
 
@@ -87,17 +47,13 @@ export function generateModule(
 
       // We expect the type checker to have validated this function
       if (!funcType || !Type.isFunction(funcType)) {
-        state = {
-          ...state,
-          errors: [
-            ...state.errors,
-            new IrgenError(
-              `Missing type information for function: ${funcDecl.name}`,
-              funcDecl.loc ?? undefined,
-              Severity.Error,
-            ),
-          ],
-        };
+        yield* addError(
+          new IrgenError(
+            `Missing type information for function: ${funcDecl.name}`,
+            funcDecl.loc ?? undefined,
+            Severity.Error,
+          ),
+        );
         continue;
       }
 
@@ -107,34 +63,45 @@ export function generateModule(
         type: mapTypeToIrType(funcType.parameters[index]),
       }));
 
-      const result = runGen(
+      const func = yield* withErrorHandling(
         buildFunction(funcDecl.name, parameters, funcDecl.body),
-      )(state);
-      state = result.state;
-
-      if (result.value) {
-        state = {
-          ...state,
-          module: {
-            ...state.module,
-            functions: new Map([
-              ...state.module.functions,
-              [funcDecl.name, result.value],
-            ]),
-          },
-        };
+      );
+      if (func) {
+        yield* addFunctionToModule(funcDecl.name, func);
       }
     }
   }
 
-  // Convert partial module to complete module
-  const module: Ir.Module = new PhiInserter().insertPhiNodes({
+  // Get final state and convert partial module to complete module
+  const state = yield* peek();
+
+  // Check if there are any errors
+  if (state.errors.length > 0) {
+    return undefined;
+  }
+
+  return new PhiInserter().insertPhiNodes({
     name: state.module.name,
     storage: state.module.storage,
     functions: state.module.functions,
     main: state.module.main || createEmptyFunction("main"),
     create: state.module.create,
   });
+}
+
+/**
+ * Generate IR from an AST program (public API)
+ */
+export function generateModule(
+  program: Ast.Program,
+  types: Types,
+): Result<Ir.Module, IrgenError> {
+  // Create initial state
+  const initialState = createInitialState(program, types);
+
+  // Run the generator
+  const result = runGen(generateModuleGen(program, types))(initialState);
+  const { state, value: module } = result;
 
   // Check if there are any errors
   const hasErrors = state.errors.length > 0;
@@ -151,7 +118,7 @@ export function generateModule(
   }
 
   // Return Result based on whether there were errors
-  if (hasErrors) {
+  if (hasErrors || !module) {
     return {
       success: false,
       messages,
@@ -269,6 +236,25 @@ function buildStorageLayout(
 }
 
 /**
+ * Add a function to the module state
+ */
+function* addFunctionToModule(
+  name: string,
+  func: Ir.Function,
+  specialType?: "create" | "main",
+): IrGen<void> {
+  // Always add to functions map
+  yield* addFunction(name, func);
+
+  // Set special function reference if needed
+  if (specialType === "create") {
+    yield* setCreateFunction(func);
+  } else if (specialType === "main") {
+    yield* setMainFunction(func);
+  }
+}
+
+/**
  * Create an empty function for cases where main is missing
  */
 function createEmptyFunction(name: string): Ir.Function {
@@ -290,4 +276,88 @@ function createEmptyFunction(name: string): Ir.Function {
       ],
     ]),
   };
+}
+
+/**
+ * State update helpers - these simplify common state modifications
+ */
+
+/** Add a function to the module's function map */
+function* addFunction(name: string, func: Ir.Function): IrGen<void> {
+  yield* lift<void>((state: IrState) => ({
+    state: {
+      ...state,
+      module: {
+        ...state.module,
+        functions: new Map([...state.module.functions, [name, func]]),
+      },
+    },
+    value: undefined,
+  }));
+}
+
+/** Set the special 'create' function */
+function* setCreateFunction(func: Ir.Function): IrGen<void> {
+  yield* lift<void>((state: IrState) => ({
+    state: {
+      ...state,
+      module: {
+        ...state.module,
+        create: func,
+      },
+    },
+    value: undefined,
+  }));
+}
+
+/** Set the special 'main' function */
+function* setMainFunction(func: Ir.Function): IrGen<void> {
+  yield* lift<void>((state: IrState) => ({
+    state: {
+      ...state,
+      module: {
+        ...state.module,
+        main: func,
+      },
+    },
+    value: undefined,
+  }));
+}
+
+/**
+ * Error handling wrapper for generators
+ */
+function* withErrorHandling<T>(gen: IrGen<T>): IrGen<T | undefined> {
+  const startState = yield* peek();
+  const startErrorCount = startState.errors.length;
+
+  // Run the generator
+  const result = yield* gen;
+
+  // Check if new errors were added
+  const endState = yield* peek();
+  const hasNewErrors = endState.errors.length > startErrorCount;
+
+  if (hasNewErrors) {
+    // If there were errors during execution, return undefined
+    return undefined;
+  }
+
+  return result;
+}
+
+/**
+ * Check if a create function is effectively empty
+ */
+function isEmptyCreateFunction(func: Ir.Function): boolean {
+  const { blocks } = func;
+  const entry = blocks.get("entry");
+
+  return (
+    blocks.size === 1 &&
+    !!entry &&
+    entry.instructions.length === 0 &&
+    entry.terminator.kind === "return" &&
+    !entry.terminator.value
+  );
 }

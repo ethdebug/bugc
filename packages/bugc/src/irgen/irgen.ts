@@ -169,55 +169,6 @@ export function* declareLocal(
 }
 
 /**
- * Generate a new block
- */
-export function* createBlock(prefix: string): IrGen<string> {
-  const state = yield* peek();
-  const id = `${prefix}_${state.counters.block}`;
-  // Just generate the ID and update counter
-  // The actual block will be created when we switch to it
-  yield* updateCounters((c) => ({ ...c, block: c.block + 1 }));
-  return id;
-}
-
-/**
- * Switch to a block
- */
-export function* switchToBlock(blockId: string): IrGen<void> {
-  // First sync current block to function if it's complete
-  yield* syncBlockToFunction();
-
-  const state = yield* peek();
-  const existingBlock = state.function.blocks.get(blockId);
-
-  if (existingBlock) {
-    // Switch to existing block
-    yield* modify((s) => ({
-      ...s,
-      block: {
-        id: existingBlock.id,
-        instructions: [...existingBlock.instructions],
-        terminator: existingBlock.terminator,
-        predecessors: new Set(existingBlock.predecessors),
-        phis: [...existingBlock.phis],
-      },
-    }));
-  } else {
-    // Create new block context
-    yield* modify((s) => ({
-      ...s,
-      block: {
-        id: blockId,
-        instructions: [],
-        terminator: undefined,
-        predecessors: new Set(),
-        phis: [],
-      },
-    }));
-  }
-}
-
-/**
  * Set block terminator
  */
 export function* setTerminator(terminator: Ir.Block.Terminator): IrGen<void> {
@@ -235,12 +186,6 @@ export function* setTerminator(terminator: Ir.Block.Terminator): IrGen<void> {
   }
 
   yield* updateBlock((block) => ({ ...block, terminator }));
-}
-/**
- * Sync the current block
- */
-export function* syncBlock(): IrGen<void> {
-  yield* syncBlockToFunction();
 }
 
 /**
@@ -359,7 +304,9 @@ function* modify(fn: (state: IrState) => IrState): IrGen<void> {
 /**
  * Update the current block context
  */
-function* updateBlock(fn: (block: BlockContext) => BlockContext): IrGen<void> {
+export function* updateBlock(
+  fn: (block: BlockContext) => BlockContext,
+): IrGen<void> {
   yield* modify((state) => ({
     ...state,
     block: fn(state.block),
@@ -389,7 +336,9 @@ function* updateLoops(fn: (loops: LoopStack) => LoopStack): IrGen<void> {
 /**
  * Update the counters
  */
-function* updateCounters(fn: (counters: Counters) => Counters): IrGen<void> {
+export function* updateCounters(
+  fn: (counters: Counters) => Counters,
+): IrGen<void> {
   yield* modify((state) => ({
     ...state,
     counters: fn(state.counters),
@@ -411,7 +360,7 @@ function* updateFunction(
 /**
  * Sync the current block back to function (if it has a terminator)
  */
-function* syncBlockToFunction(): IrGen<void> {
+export function* syncBlockToFunction(): IrGen<void> {
   const state = yield* peek();
 
   // Only sync blocks that have terminators

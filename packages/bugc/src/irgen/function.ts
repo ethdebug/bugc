@@ -7,7 +7,7 @@ import {
   declareLocal,
   initializeFunction,
   peek,
-  syncBlock,
+  syncBlockToFunction,
 } from "./irgen.js";
 
 /**
@@ -94,7 +94,7 @@ export function* buildFunction(
   }
 
   // Sync final block
-  yield* syncBlock();
+  yield* syncBlockToFunction();
 
   // Create the function
   const finalState = yield* peek();

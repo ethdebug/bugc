@@ -10,10 +10,11 @@ import {
   addError,
   setTerminator,
   getCurrentLoop,
-  createBlock,
+  updateCounters,
+  updateBlock,
   pushLoop,
   popLoop,
-  switchToBlock,
+  syncBlockToFunction,
   peek,
 } from "../irgen.js";
 
@@ -303,4 +304,47 @@ function* buildContinueStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
     kind: "jump",
     target: loop.continueTarget,
   });
+}
+
+/**
+ * Generate a new block
+ */
+function* createBlock(prefix: string): IrGen<string> {
+  const state = yield* peek();
+  const id = `${prefix}_${state.counters.block}`;
+  // Just generate the ID and update counter
+  // The actual block will be created when we switch to it
+  yield* updateCounters((c) => ({ ...c, block: c.block + 1 }));
+  return id;
+}
+
+/**
+ * Switch to a block
+ */
+function* switchToBlock(blockId: string): IrGen<void> {
+  // First sync current block to function if it's complete
+  yield* syncBlockToFunction();
+
+  const state = yield* peek();
+  const existingBlock = state.function.blocks.get(blockId);
+
+  if (existingBlock) {
+    // Switch to existing block
+    yield* updateBlock(() => ({
+      id: existingBlock.id,
+      instructions: [...existingBlock.instructions],
+      terminator: existingBlock.terminator,
+      predecessors: new Set(existingBlock.predecessors),
+      phis: [...existingBlock.phis],
+    }));
+  } else {
+    // Create new block context
+    yield* updateBlock(() => ({
+      id: blockId,
+      instructions: [],
+      terminator: undefined,
+      predecessors: new Set(),
+      phis: [],
+    }));
+  }
 }
