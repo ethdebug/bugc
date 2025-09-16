@@ -17,6 +17,41 @@ import { addError } from "./updates.js";
  */
 export const operations = {
   /**
+   * Initialize a new function context
+   */
+  initializeFunction:
+    (name: string): Transition<void> =>
+    (state) => {
+      const functionContext: FunctionContext = {
+        id: name,
+        locals: [],
+        blocks: new Map(),
+      };
+
+      return {
+        state: {
+          ...state,
+          function: functionContext,
+          block: {
+            id: "entry",
+            instructions: [],
+            terminator: undefined,
+            predecessors: new Set(),
+            phis: [],
+          },
+          scopes: {
+            stack: [{ locals: new Map(), usedNames: new Map() }],
+          },
+          counters: {
+            temp: 0,
+            block: 1, // Start at 1 to match test expectations
+          },
+        },
+        value: undefined,
+      };
+    },
+
+  /**
    * Emit an instruction to current block
    */
   emit:

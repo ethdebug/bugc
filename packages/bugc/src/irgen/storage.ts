@@ -188,3 +188,124 @@ export function* emitStorageChainLoad(
 
   return Ir.Value.temp(loadTempId, valueType);
 }
+
+/**
+ * Emit a storage chain assignment
+ */
+export function* emitStorageChainAssignment(
+  chain: StorageAccessChain,
+  value: Ir.Value,
+  loc: Ast.SourceLocation | undefined,
+): IrGen<void> {
+  if (chain.accesses.length === 0) {
+    // Direct storage assignment
+    yield* gen.emit({
+      kind: "store_storage",
+      slot: Ir.Value.constant(BigInt(chain.slot.slot), {
+        kind: "uint",
+        bits: 256,
+      }),
+      value,
+      loc,
+    } as Ir.Instruction);
+    return;
+  }
+
+  // Compute the final storage slot through the chain
+  let currentSlot: Ir.Value = Ir.Value.constant(BigInt(chain.slot.slot), {
+    kind: "uint",
+    bits: 256,
+  });
+  let currentType = chain.slot.type;
+
+  // Process each access in the chain to compute the final slot
+  for (const access of chain.accesses) {
+    if (access.kind === "index" && access.key) {
+      // Mapping access: compute keccak256(key || slot)
+      if (currentType.kind === "mapping") {
+        const slotTemp = yield* gen.genTemp();
+        yield* gen.emit({
+          kind: "compute_slot",
+          baseSlot: currentSlot,
+          key: access.key,
+          dest: slotTemp,
+          loc,
+        } as Ir.Instruction);
+        currentSlot = Ir.Value.temp(slotTemp, { kind: "uint", bits: 256 });
+        currentType = (currentType as { kind: "mapping"; value: Ir.Type })
+          .value;
+      } else if (currentType.kind === "array") {
+        // Array access
+        const baseSlotTemp = yield* gen.genTemp();
+        yield* gen.emit({
+          kind: "compute_array_slot",
+          baseSlot: currentSlot,
+          dest: baseSlotTemp,
+          loc,
+        } as Ir.Instruction);
+
+        // Add the index to get the final slot
+        const finalSlotTemp = yield* gen.genTemp();
+        yield* gen.emit({
+          kind: "binary",
+          op: "add",
+          left: Ir.Value.temp(baseSlotTemp, { kind: "uint", bits: 256 }),
+          right: access.key,
+          dest: finalSlotTemp,
+          loc,
+        } as Ir.Instruction);
+
+        currentSlot = Ir.Value.temp(finalSlotTemp, {
+          kind: "uint",
+          bits: 256,
+        });
+        currentType = (currentType as { kind: "array"; element: Ir.Type })
+          .element;
+      }
+    } else if (access.kind === "member" && access.fieldName) {
+      // Struct field access: add field offset
+      if (currentType.kind === "struct") {
+        const structType = currentType as {
+          kind: "struct";
+          name: string;
+          fields: Ir.Type.StructField[];
+        };
+        const fieldIndex = structType.fields.findIndex(
+          (f) => f.name === access.fieldName,
+        );
+
+        if (fieldIndex >= 0) {
+          const offsetTemp = yield* gen.genTemp();
+          yield* gen.emit({
+            kind: "compute_field_offset",
+            baseSlot: currentSlot,
+            fieldIndex,
+            dest: offsetTemp,
+            loc,
+          } as Ir.Instruction);
+          currentSlot = Ir.Value.temp(offsetTemp, {
+            kind: "uint",
+            bits: 256,
+          });
+          currentType = structType.fields[fieldIndex].type;
+        } else {
+          yield* gen.addError(
+            new IrgenError(
+              `Field ${access.fieldName} not found in struct ${structType.name}`,
+              loc,
+              Severity.Error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // Store to the computed slot
+  yield* gen.emit({
+    kind: "store_storage",
+    slot: currentSlot,
+    value,
+    loc,
+  } as Ir.Instruction);
+}
