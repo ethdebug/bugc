@@ -2,7 +2,6 @@ import * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Error as IrgenError } from "../errors.js";
 import { Severity } from "#result";
-import { operations } from "../operations.js";
 import { buildExpression } from "../expressions/index.js";
 
 import { makeBuildBlock } from "./block.js";
@@ -10,10 +9,12 @@ import {
   type IrGen,
   addError,
   setTerminator,
+  getCurrentLoop,
   createBlock,
+  pushLoop,
+  popLoop,
   switchToBlock,
   peek,
-  lift,
 } from "../irgen.js";
 
 /**
@@ -149,11 +150,11 @@ export const makeBuildWhileStatement = (
 
     yield* switchToBlock(bodyBlock);
 
-    yield* lift(operations.pushLoop(headerBlock, exitBlock));
+    yield* pushLoop(headerBlock, exitBlock);
 
     yield* buildBlock(stmt.body!);
 
-    yield* lift(operations.popLoop());
+    yield* popLoop();
 
     yield* setTerminator({
       kind: "jump",
@@ -205,10 +206,10 @@ export const makeBuildForStatement = (
 
     yield* switchToBlock(bodyBlock);
 
-    yield* lift(operations.pushLoop(updateBlock, exitBlock));
+    yield* pushLoop(updateBlock, exitBlock);
 
     yield* buildBlock(stmt.body!);
-    yield* lift(operations.popLoop());
+    yield* popLoop();
 
     {
       const state = yield* peek();
@@ -260,7 +261,7 @@ function* buildReturnStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
  * Build a break statement
  */
 function* buildBreakStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
-  const loop = yield* lift(operations.getCurrentLoop());
+  const loop = yield* getCurrentLoop();
 
   if (!loop) {
     yield* addError(
@@ -284,7 +285,7 @@ function* buildBreakStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
  * Build a continue statement
  */
 function* buildContinueStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
-  const loop = yield* lift(operations.getCurrentLoop());
+  const loop = yield* getCurrentLoop();
 
   if (!loop) {
     yield* addError(

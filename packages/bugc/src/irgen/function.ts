@@ -5,11 +5,10 @@ import {
   type IrGen,
   setTerminator,
   declareLocal,
+  initializeFunction,
   peek,
   syncBlock,
-  lift,
 } from "./irgen.js";
-import { operations } from "./operations.js";
 
 /**
  * Compute predecessors for all blocks based on their terminators
@@ -72,7 +71,7 @@ export function* buildFunction(
   body: Ast.Block,
 ): IrGen<Ir.Function> {
   // Initialize function context
-  yield* lift(operations.initializeFunction(name));
+  yield* initializeFunction(name);
 
   // Add parameters as locals
   for (const param of parameters) {
