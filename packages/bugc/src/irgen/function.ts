@@ -11,55 +11,6 @@ import {
 } from "./irgen.js";
 
 /**
- * Compute predecessors for all blocks based on their terminators
- */
-function computePredecessors(
-  blocks: Map<string, Ir.Block>,
-): Map<string, Ir.Block> {
-  // Create new blocks with fresh predecessor sets
-  const result = new Map<string, Ir.Block>();
-
-  // First pass: create all blocks with empty predecessors
-  for (const [id, block] of blocks) {
-    result.set(id, {
-      ...block,
-      predecessors: new Set<string>(),
-    });
-  }
-
-  // Second pass: add predecessors based on terminators
-  for (const [sourceId, block] of blocks) {
-    const terminator = block.terminator;
-    if (!terminator) continue;
-
-    // Add edges based on terminator type
-    switch (terminator.kind) {
-      case "jump": {
-        const targetBlock = result.get(terminator.target);
-        if (targetBlock) {
-          targetBlock.predecessors.add(sourceId);
-        }
-        break;
-      }
-      case "branch": {
-        const trueBlock = result.get(terminator.trueTarget);
-        if (trueBlock) {
-          trueBlock.predecessors.add(sourceId);
-        }
-        const falseBlock = result.get(terminator.falseTarget);
-        if (falseBlock) {
-          falseBlock.predecessors.add(sourceId);
-        }
-        break;
-      }
-      // "return" and "unreachable" have no successors
-    }
-  }
-
-  return result;
-}
-
-/**
  * Build a function
  */
 export function* buildFunction(
@@ -111,4 +62,53 @@ export function* buildFunction(
   };
 
   return func;
+}
+
+/**
+ * Compute predecessors for all blocks based on their terminators
+ */
+function computePredecessors(
+  blocks: Map<string, Ir.Block>,
+): Map<string, Ir.Block> {
+  // Create new blocks with fresh predecessor sets
+  const result = new Map<string, Ir.Block>();
+
+  // First pass: create all blocks with empty predecessors
+  for (const [id, block] of blocks) {
+    result.set(id, {
+      ...block,
+      predecessors: new Set<string>(),
+    });
+  }
+
+  // Second pass: add predecessors based on terminators
+  for (const [sourceId, block] of blocks) {
+    const terminator = block.terminator;
+    if (!terminator) continue;
+
+    // Add edges based on terminator type
+    switch (terminator.kind) {
+      case "jump": {
+        const targetBlock = result.get(terminator.target);
+        if (targetBlock) {
+          targetBlock.predecessors.add(sourceId);
+        }
+        break;
+      }
+      case "branch": {
+        const trueBlock = result.get(terminator.trueTarget);
+        if (trueBlock) {
+          trueBlock.predecessors.add(sourceId);
+        }
+        const falseBlock = result.get(terminator.falseTarget);
+        if (falseBlock) {
+          falseBlock.predecessors.add(sourceId);
+        }
+        break;
+      }
+      // "return" and "unreachable" have no successors
+    }
+  }
+
+  return result;
 }

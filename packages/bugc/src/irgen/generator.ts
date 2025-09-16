@@ -11,85 +11,6 @@ import { runGen, type IrGen, peek, addError, lift } from "./irgen.js";
 import { mapTypeToIrType } from "./type.js";
 
 /**
- * Generate IR from an AST program (generator version)
- */
-function* generateModuleGen(
-  program: Ast.Program,
-  types: Types,
-): IrGen<Ir.Module | undefined> {
-  // Build constructor if present
-  if (program.create) {
-    const func = yield* withErrorHandling(
-      buildFunction("create", [], program.create),
-    );
-    if (func && !isEmptyCreateFunction(func)) {
-      yield* addFunctionToModule("create", func, "create");
-    }
-  }
-
-  // Build main function if present
-  if (program.body) {
-    const func = yield* withErrorHandling(
-      buildFunction("main", [], program.body),
-    );
-    if (func) {
-      yield* addFunctionToModule("main", func, "main");
-    }
-  }
-
-  // Build user-defined functions
-  for (const decl of program.declarations) {
-    if (decl.kind === "function") {
-      const funcDecl = decl as Ast.Declaration.Function;
-
-      // Map parameters to include their resolved types
-      const funcType = types.get(funcDecl.id);
-
-      // We expect the type checker to have validated this function
-      if (!funcType || !Type.isFunction(funcType)) {
-        yield* addError(
-          new IrgenError(
-            `Missing type information for function: ${funcDecl.name}`,
-            funcDecl.loc ?? undefined,
-            Severity.Error,
-          ),
-        );
-        continue;
-      }
-
-      // Type checker has the function type - use it
-      const parameters = funcDecl.parameters.map((param, index) => ({
-        name: param.name,
-        type: mapTypeToIrType(funcType.parameters[index]),
-      }));
-
-      const func = yield* withErrorHandling(
-        buildFunction(funcDecl.name, parameters, funcDecl.body),
-      );
-      if (func) {
-        yield* addFunctionToModule(funcDecl.name, func);
-      }
-    }
-  }
-
-  // Get final state and convert partial module to complete module
-  const state = yield* peek();
-
-  // Check if there are any errors
-  if (state.errors.length > 0) {
-    return undefined;
-  }
-
-  return new PhiInserter().insertPhiNodes({
-    name: state.module.name,
-    storage: state.module.storage,
-    functions: state.module.functions,
-    main: state.module.main || createEmptyFunction("main"),
-    create: state.module.create,
-  });
-}
-
-/**
  * Generate IR from an AST program (public API)
  */
 export function generateModule(
@@ -100,7 +21,7 @@ export function generateModule(
   const initialState = createInitialState(program, types);
 
   // Run the generator
-  const result = runGen(generateModuleGen(program, types))(initialState);
+  const result = runGen(buildModule(program, types))(initialState);
   const { state, value: module } = result;
 
   // Check if there are any errors
@@ -322,6 +243,85 @@ function* setMainFunction(func: Ir.Function): IrGen<void> {
     },
     value: undefined,
   }));
+}
+
+/**
+ * Generate IR from an AST program (generator version)
+ */
+function* buildModule(
+  program: Ast.Program,
+  types: Types,
+): IrGen<Ir.Module | undefined> {
+  // Build constructor if present
+  if (program.create) {
+    const func = yield* withErrorHandling(
+      buildFunction("create", [], program.create),
+    );
+    if (func && !isEmptyCreateFunction(func)) {
+      yield* addFunctionToModule("create", func, "create");
+    }
+  }
+
+  // Build main function if present
+  if (program.body) {
+    const func = yield* withErrorHandling(
+      buildFunction("main", [], program.body),
+    );
+    if (func) {
+      yield* addFunctionToModule("main", func, "main");
+    }
+  }
+
+  // Build user-defined functions
+  for (const decl of program.declarations) {
+    if (decl.kind === "function") {
+      const funcDecl = decl as Ast.Declaration.Function;
+
+      // Map parameters to include their resolved types
+      const funcType = types.get(funcDecl.id);
+
+      // We expect the type checker to have validated this function
+      if (!funcType || !Type.isFunction(funcType)) {
+        yield* addError(
+          new IrgenError(
+            `Missing type information for function: ${funcDecl.name}`,
+            funcDecl.loc ?? undefined,
+            Severity.Error,
+          ),
+        );
+        continue;
+      }
+
+      // Type checker has the function type - use it
+      const parameters = funcDecl.parameters.map((param, index) => ({
+        name: param.name,
+        type: mapTypeToIrType(funcType.parameters[index]),
+      }));
+
+      const func = yield* withErrorHandling(
+        buildFunction(funcDecl.name, parameters, funcDecl.body),
+      );
+      if (func) {
+        yield* addFunctionToModule(funcDecl.name, func);
+      }
+    }
+  }
+
+  // Get final state and convert partial module to complete module
+  const state = yield* peek();
+
+  // Check if there are any errors
+  if (state.errors.length > 0) {
+    return undefined;
+  }
+
+  return new PhiInserter().insertPhiNodes({
+    name: state.module.name,
+    storage: state.module.storage,
+    functions: state.module.functions,
+    main: state.module.main || createEmptyFunction("main"),
+    create: state.module.create,
+  });
 }
 
 /**

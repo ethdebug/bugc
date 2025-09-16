@@ -120,28 +120,46 @@ export const makeBuildIfStatement = (
 };
 
 /**
- * Build a while statement
+ * Unified loop builder for while and for loops
  */
-export const makeBuildWhileStatement = (
-  buildStatement: (stmt: Ast.Statement) => IrGen<void>,
-) => {
-  const buildBlock = makeBuildBlock(buildStatement);
+const makeBuildLoop = (buildStatement: (stmt: Ast.Statement) => IrGen<void>) =>
+  function* buildLoop(config: {
+    init?: Ast.Statement;
+    condition?: Ast.Expression;
+    update?: Ast.Statement;
+    body: Ast.Block;
+    prefix: string;
+  }): IrGen<void> {
+    const buildBlock = makeBuildBlock(buildStatement);
 
-  return function* buildWhileStatement(
-    stmt: Ast.Statement.ControlFlow,
-  ): IrGen<void> {
-    const headerBlock = yield* createBlock("while_header");
-    const bodyBlock = yield* createBlock("while_body");
-    const exitBlock = yield* createBlock("while_exit");
+    // Execute init statement if present (for loops)
+    if (config.init) {
+      yield* buildStatement(config.init);
+    }
 
+    // Create blocks
+    const headerBlock = yield* createBlock(`${config.prefix}_header`);
+    const bodyBlock = yield* createBlock(`${config.prefix}_body`);
+    const exitBlock = yield* createBlock(`${config.prefix}_exit`);
+
+    // For 'for' loops, we need an update block
+    const updateBlock = config.update
+      ? yield* createBlock(`${config.prefix}_update`)
+      : null;
+
+    // Jump to header
     yield* setTerminator({
       kind: "jump",
       target: headerBlock,
     });
 
+    // Header: evaluate condition and branch
     yield* switchToBlock(headerBlock);
 
-    const condVal = yield* buildExpression(stmt.condition!);
+    const condVal = config.condition
+      ? yield* buildExpression(config.condition)
+      : Ir.Value.constant(1n, { kind: "bool" }); // infinite loop if no condition
+
     yield* setTerminator({
       kind: "branch",
       condition: condVal,
@@ -149,20 +167,61 @@ export const makeBuildWhileStatement = (
       falseTarget: exitBlock,
     });
 
+    // Body: execute loop body
     yield* switchToBlock(bodyBlock);
 
-    yield* pushLoop(headerBlock, exitBlock);
+    // Set up loop context (continue target depends on whether we have update)
+    const continueTarget = updateBlock || headerBlock;
+    yield* pushLoop(continueTarget, exitBlock);
 
-    yield* buildBlock(stmt.body!);
+    yield* buildBlock(config.body);
 
     yield* popLoop();
 
-    yield* setTerminator({
-      kind: "jump",
-      target: headerBlock,
-    });
+    // Jump to update block (for loop) or header (while loop)
+    {
+      const state = yield* peek();
+      if (!state.block.terminator) {
+        yield* setTerminator({
+          kind: "jump",
+          target: continueTarget,
+        });
+      }
+    }
 
+    // Update block (only for 'for' loops)
+    if (updateBlock && config.update) {
+      yield* switchToBlock(updateBlock);
+      yield* buildStatement(config.update);
+
+      const state = yield* peek();
+      if (!state.block.terminator) {
+        yield* setTerminator({
+          kind: "jump",
+          target: headerBlock,
+        });
+      }
+    }
+
+    // Continue from exit block
     yield* switchToBlock(exitBlock);
+  };
+
+/**
+ * Build a while statement
+ */
+export const makeBuildWhileStatement = (
+  buildStatement: (stmt: Ast.Statement) => IrGen<void>,
+) => {
+  const buildLoop = makeBuildLoop(buildStatement);
+  return function* buildWhileStatement(
+    stmt: Ast.Statement.ControlFlow,
+  ): IrGen<void> {
+    yield* buildLoop({
+      condition: stmt.condition,
+      body: stmt.body!,
+      prefix: "while",
+    });
   };
 };
 
@@ -172,77 +231,17 @@ export const makeBuildWhileStatement = (
 export const makeBuildForStatement = (
   buildStatement: (stmt: Ast.Statement) => IrGen<void>,
 ) => {
-  const buildBlock = makeBuildBlock(buildStatement);
+  const buildLoop = makeBuildLoop(buildStatement);
   return function* buildForStatement(
     stmt: Ast.Statement.ControlFlow,
   ): IrGen<void> {
-    if (stmt.init) {
-      yield* buildStatement(stmt.init);
-    }
-
-    const headerBlock = yield* createBlock("for_header");
-    const bodyBlock = yield* createBlock("for_body");
-    const updateBlock = yield* createBlock("for_update");
-    const exitBlock = yield* createBlock("for_exit");
-
-    // Jump to loop header
-    yield* setTerminator({
-      kind: "jump",
-      target: headerBlock,
+    yield* buildLoop({
+      init: stmt.init,
+      condition: stmt.condition,
+      update: stmt.update,
+      body: stmt.body!,
+      prefix: "for",
     });
-
-    // Loop header: check condition
-    yield* switchToBlock(headerBlock);
-
-    const condVal = stmt.condition
-      ? yield* buildExpression(stmt.condition)
-      : Ir.Value.constant(1n, { kind: "bool" });
-
-    yield* setTerminator({
-      kind: "branch",
-      condition: condVal,
-      trueTarget: bodyBlock,
-      falseTarget: exitBlock,
-    });
-
-    yield* switchToBlock(bodyBlock);
-
-    yield* pushLoop(updateBlock, exitBlock);
-
-    yield* buildBlock(stmt.body!);
-    yield* popLoop();
-
-    {
-      const state = yield* peek();
-      // Only set terminator if block doesn't have one
-      if (!state.block.terminator) {
-        yield* setTerminator({
-          kind: "jump",
-          target: updateBlock,
-        });
-      }
-    }
-
-    // Update block
-    yield* switchToBlock(updateBlock);
-
-    if (stmt.update) {
-      yield* buildStatement(stmt.update);
-    }
-
-    {
-      const state = yield* peek();
-
-      // Only set terminator if block doesn't have one
-      if (!state.block.terminator) {
-        yield* setTerminator({
-          kind: "jump",
-          target: headerBlock,
-        });
-      }
-    }
-
-    yield* switchToBlock(exitBlock);
   };
 };
 
