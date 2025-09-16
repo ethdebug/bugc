@@ -1,49 +1,41 @@
 import type * as Ast from "#ast";
 import * as Ir from "#ir";
-import type { IrState, Transition } from "./state.js";
 import { Error as IrgenError, ErrorMessages } from "./errors.js";
 import { Severity } from "#result";
-import { pipe, type IrBuilder } from "./builder.js";
-import { operations } from "./operations.js";
-import { addError } from "./updates.js";
 import { Type } from "#types";
-import { type IrGen, gen, lift, runGen } from "./irgen.js";
+import { type IrGen, gen } from "./irgen.js";
 
 /**
  * Build an expression and return the resulting IR value
  */
-export function buildExpression(expr: Ast.Expression): Transition<Ir.Value> {
-  return runGen(
-    (function* () {
-      switch (expr.type) {
-        case "IdentifierExpression":
-          return yield* buildIdentifier(expr as Ast.Expression.Identifier);
-        case "LiteralExpression":
-          return yield* buildLiteral(expr as Ast.Expression.Literal);
-        case "OperatorExpression":
-          return yield* buildOperator(expr as Ast.Expression.Operator);
-        case "AccessExpression":
-          return yield* buildAccess(expr as Ast.Expression.Access);
-        case "CallExpression":
-          return yield* buildCall(expr as Ast.Expression.Call);
-        case "CastExpression":
-          return yield* buildCast(expr as Ast.Expression.Cast);
-        case "SpecialExpression":
-          return yield* buildSpecial(expr as Ast.Expression.Special);
-        default:
-          yield* gen.addError(
-            new IrgenError(
-              // @ts-expect-error switch statement is exhaustive; expr is never
-              `Unsupported expression type: ${expr.type}`,
-              // @ts-expect-error switch statement is exhaustive; expr is never
-              expr.loc ?? undefined,
-              Severity.Error,
-            ),
-          );
-          return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-      }
-    })(),
-  );
+export function* buildExpression(expr: Ast.Expression): IrGen<Ir.Value> {
+  switch (expr.type) {
+    case "IdentifierExpression":
+      return yield* buildIdentifier(expr as Ast.Expression.Identifier);
+    case "LiteralExpression":
+      return yield* buildLiteral(expr as Ast.Expression.Literal);
+    case "OperatorExpression":
+      return yield* buildOperator(expr as Ast.Expression.Operator);
+    case "AccessExpression":
+      return yield* buildAccess(expr as Ast.Expression.Access);
+    case "CallExpression":
+      return yield* buildCall(expr as Ast.Expression.Call);
+    case "CastExpression":
+      return yield* buildCast(expr as Ast.Expression.Cast);
+    case "SpecialExpression":
+      return yield* buildSpecial(expr as Ast.Expression.Special);
+    default:
+      yield* gen.addError(
+        new IrgenError(
+          // @ts-expect-error switch statement is exhaustive; expr is never
+          `Unsupported expression type: ${expr.type}`,
+          // @ts-expect-error switch statement is exhaustive; expr is never
+          expr.loc ?? undefined,
+          Severity.Error,
+        ),
+      );
+      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+  }
 }
 
 /**
@@ -73,7 +65,19 @@ function* buildIdentifier(expr: Ast.Expression.Identifier): IrGen<Ir.Value> {
   );
 
   if (storageSlot) {
-    return yield* lift(buildStorageLoad(storageSlot, expr));
+    // Build storage load directly
+    const tempId = yield* gen.genTemp();
+    yield* gen.emit({
+      kind: "load_storage",
+      slot: Ir.Value.constant(BigInt(storageSlot.slot), {
+        kind: "uint",
+        bits: 256,
+      }),
+      type: storageSlot.type,
+      dest: tempId,
+      loc: expr.loc ?? undefined,
+    } as Ir.Instruction.LoadStorage);
+    return Ir.Value.temp(tempId, storageSlot.type);
   }
 
   // Unknown identifier - add error and return default value
@@ -221,7 +225,7 @@ function* buildUnaryOperator(expr: Ast.Expression.Operator): IrGen<Ir.Value> {
   const resultType = mapTypeToIrType(nodeType);
 
   // Evaluate operand
-  const operandVal = yield* lift(buildExpression(expr.operands[0]));
+  const operandVal = yield* buildExpression(expr.operands[0]);
 
   // Generate temp for result
   const tempId = yield* gen.genTemp();
@@ -263,8 +267,8 @@ function* buildBinaryOperator(expr: Ast.Expression.Operator): IrGen<Ir.Value> {
   const resultType = mapTypeToIrType(nodeType);
 
   // Evaluate operands
-  const leftVal = yield* lift(buildExpression(expr.operands[0]));
-  const rightVal = yield* lift(buildExpression(expr.operands[1]));
+  const leftVal = yield* buildExpression(expr.operands[0]);
+  const rightVal = yield* buildExpression(expr.operands[1]);
 
   // Generate temp for result
   const tempId = yield* gen.genTemp();
@@ -302,7 +306,7 @@ function* buildAccess(expr: Ast.Expression.Access): IrGen<Ir.Value> {
             (Type.Elementary.isBytes(objectType) ||
               Type.Elementary.isString(objectType))))
       ) {
-        const object = yield* lift(buildExpression(expr.object));
+        const object = yield* buildExpression(expr.object);
         const resultType: Ir.Type = { kind: "uint", bits: 256 };
         const tempId = yield* gen.genTemp();
 
@@ -318,14 +322,16 @@ function* buildAccess(expr: Ast.Expression.Access): IrGen<Ir.Value> {
     }
 
     // First check if this is accessing a storage chain (e.g., accounts[user].balance)
-    const chain = yield* lift(findStorageAccessChain(expr));
+    const chain = yield* findStorageAccessChain(expr);
     if (chain) {
       const state = yield* gen.peek();
       const nodeType = state.types.get(expr.id);
       if (nodeType) {
         const valueType = mapTypeToIrType(nodeType);
-        return yield* lift(
-          emitStorageChainLoad(chain, valueType, expr.loc ?? undefined),
+        return yield* emitStorageChainLoad(
+          chain,
+          valueType,
+          expr.loc ?? undefined,
         );
       }
     }
@@ -333,7 +339,7 @@ function* buildAccess(expr: Ast.Expression.Access): IrGen<Ir.Value> {
     // Reading through local variables is allowed, no diagnostic needed
 
     // Otherwise, handle regular struct field access
-    const object = yield* lift(buildExpression(expr.object));
+    const object = yield* buildExpression(expr.object);
     const state = yield* gen.peek();
     const objectType = state.types.get(expr.object.id);
 
@@ -368,11 +374,9 @@ function* buildAccess(expr: Ast.Expression.Access): IrGen<Ir.Value> {
       Type.isElementary(objectType) &&
       Type.Elementary.isBytes(objectType)
     ) {
-      const object = yield* lift(buildExpression(expr.object));
-      const start = yield* lift(
-        buildExpression(expr.property as Ast.Expression),
-      );
-      const end = yield* lift(buildExpression(expr.end!));
+      const object = yield* buildExpression(expr.object);
+      const start = yield* buildExpression(expr.property as Ast.Expression);
+      const end = yield* buildExpression(expr.end!);
 
       // Slicing bytes returns dynamic bytes
       const resultType: Ir.Type = { kind: "bytes" };
@@ -409,11 +413,8 @@ function* buildAccess(expr: Ast.Expression.Access): IrGen<Ir.Value> {
       Type.Elementary.isBytes(objectType)
     ) {
       // Handle bytes indexing directly, not as storage chain
-      const object = yield* lift(buildExpression(expr.object));
-      const index = yield* lift(
-        buildExpression(expr.property as Ast.Expression),
-      );
-
+      const object = yield* buildExpression(expr.object);
+      const index = yield* buildExpression(expr.property as Ast.Expression);
       // Bytes indexing returns uint8
       const elementType: Ir.Type = { kind: "uint", bits: 8 };
       const tempId = yield* gen.genTemp();
@@ -431,20 +432,22 @@ function* buildAccess(expr: Ast.Expression.Access): IrGen<Ir.Value> {
     }
 
     // For non-bytes types, try to find a complete storage access chain
-    const chain = yield* lift(findStorageAccessChain(expr));
+    const chain = yield* findStorageAccessChain(expr);
     if (chain) {
       const nodeType = state.types.get(expr.id);
       if (nodeType) {
         const valueType = mapTypeToIrType(nodeType);
-        return yield* lift(
-          emitStorageChainLoad(chain, valueType, expr.loc ?? undefined),
+        return yield* emitStorageChainLoad(
+          chain,
+          valueType,
+          expr.loc ?? undefined,
         );
       }
     }
 
     // If no storage chain, handle regular array/mapping access
-    const object = yield* lift(buildExpression(expr.object));
-    const index = yield* lift(buildExpression(expr.property as Ast.Expression));
+    const object = yield* buildExpression(expr.object);
+    const index = yield* buildExpression(expr.property as Ast.Expression);
 
     if (objectType && Type.isArray(objectType)) {
       const elementType = mapTypeToIrType(objectType.element);
@@ -462,7 +465,7 @@ function* buildAccess(expr: Ast.Expression.Access): IrGen<Ir.Value> {
       return Ir.Value.temp(tempId, elementType);
     } else if (objectType && Type.isMapping(objectType)) {
       // Simple mapping access
-      const storageVar = yield* lift(findStorageVariable(expr.object));
+      const storageVar = yield* findStorageVariable(expr.object);
       if (storageVar) {
         const valueType = mapTypeToIrType(objectType.value);
         const tempId = yield* gen.genTemp();
@@ -513,7 +516,7 @@ function* buildCall(expr: Ast.Expression.Call): IrGen<Ir.Value> {
     }
 
     // Evaluate the argument
-    const argValue = yield* lift(buildExpression(expr.arguments[0]));
+    const argValue = yield* buildExpression(expr.arguments[0]);
 
     // Generate hash instruction
     const resultType: Ir.Type = { kind: "bytes", size: 32 }; // bytes32
@@ -551,7 +554,7 @@ function* buildCall(expr: Ast.Expression.Call): IrGen<Ir.Value> {
     // Evaluate arguments
     const argValues: Ir.Value[] = [];
     for (const arg of expr.arguments) {
-      argValues.push(yield* lift(buildExpression(arg)));
+      argValues.push(yield* buildExpression(arg));
     }
 
     // Generate call instruction
@@ -601,7 +604,7 @@ function* buildCall(expr: Ast.Expression.Call): IrGen<Ir.Value> {
  */
 function* buildCast(expr: Ast.Expression.Cast): IrGen<Ir.Value> {
   // Evaluate the expression being cast
-  const exprValue = yield* lift(buildExpression(expr.expression));
+  const exprValue = yield* buildExpression(expr.expression);
 
   // Get the target type from the type checker
   const state = yield* gen.peek();
@@ -696,38 +699,6 @@ function* buildSpecial(expr: Ast.Expression.Special): IrGen<Ir.Value> {
   return Ir.Value.temp(temp, resultType);
 }
 
-/**
- * Build a storage load
- */
-function buildStorageLoad(
-  slot: Ir.Module.StorageSlot,
-  expr: Ast.Expression,
-): Transition<Ir.Value> {
-  return pipe()
-    .then(operations.genTemp())
-    .peek(
-      (_state, tempId): IrBuilder<Ir.Value> =>
-        pipe()
-          .then(
-            operations.emit({
-              kind: "load_storage",
-              slot: Ir.Value.constant(BigInt(slot.slot), {
-                kind: "uint",
-                bits: 256,
-              }),
-              type: slot.type,
-              dest: tempId,
-              loc: expr.loc || undefined,
-            } as Ir.Instruction.LoadStorage),
-          )
-          .then((state) => ({
-            state,
-            value: Ir.Value.temp(tempId, slot.type),
-          })),
-    )
-    .done();
-}
-
 // Helper functions
 
 // Storage access chain interface (matching generator.ts)
@@ -743,192 +714,170 @@ interface StorageAccessChain {
 
 /**
  * Find a storage access chain starting from an expression (matching generator.ts)
- * Returns a Transition that evaluates to the chain or undefined
  */
-function findStorageAccessChain(
+function* findStorageAccessChain(
   expr: Ast.Expression,
-): Transition<StorageAccessChain | undefined> {
-  return (state: IrState) => {
-    const accesses: StorageAccessChain["accesses"] = [];
-    let current = expr;
-    let currentState = state;
+): IrGen<StorageAccessChain | undefined> {
+  const accesses: StorageAccessChain["accesses"] = [];
+  let current = expr;
 
-    // Walk up the access chain from right to left
-    while (current.type === "AccessExpression") {
-      const accessNode = current as Ast.Expression.Access;
+  // Walk up the access chain from right to left
+  while (current.type === "AccessExpression") {
+    const accessNode = current as Ast.Expression.Access;
 
-      if (accessNode.kind === "index") {
-        // For index access, we need to evaluate the key expression
-        const keyResult = buildExpression(
-          accessNode.property as Ast.Expression,
-        )(currentState);
-        currentState = keyResult.state;
-        const key = keyResult.value;
-        accesses.unshift({ kind: "index", key });
-      } else {
-        // For member access on structs
-        const fieldName = accessNode.property as string;
-        accesses.unshift({ kind: "member", fieldName });
-      }
-
-      current = accessNode.object;
+    if (accessNode.kind === "index") {
+      // For index access, we need to evaluate the key expression
+      const key = yield* buildExpression(accessNode.property as Ast.Expression);
+      accesses.unshift({ kind: "index", key });
+    } else {
+      // For member access on structs
+      const fieldName = accessNode.property as string;
+      accesses.unshift({ kind: "member", fieldName });
     }
 
-    // At the end, we should have an identifier that references storage
-    if (current.type === "IdentifierExpression") {
-      const name = (current as Ast.Expression.Identifier).name;
-      const slot = currentState.module.storage.slots.find(
-        (s) => s.name === name,
-      );
-      if (slot) {
-        return { state: currentState, value: { slot, accesses } };
-      }
+    current = accessNode.object;
+  }
 
-      // Check if it's a local variable (which means we're trying to access
-      // storage through an intermediate variable - not supported)
-      const localResult = operations.lookupVariable(name)(currentState);
-      currentState = localResult.state;
-      const local = localResult.value;
+  // At the end, we should have an identifier that references storage
+  if (current.type === "IdentifierExpression") {
+    const name = (current as Ast.Expression.Identifier).name;
+    const state = yield* gen.peek();
+    const slot = state.module.storage.slots.find((s) => s.name === name);
+    if (slot) {
+      return { slot, accesses };
+    }
 
-      if (local && accesses.length > 0) {
-        // Get the type to provide better error message
-        const localType = currentState.types.get(current.id);
-        const typeDesc = localType
-          ? (localType as Type & { name?: string; kind?: string }).name ||
-            (localType as Type & { name?: string; kind?: string }).kind ||
-            "complex"
-          : "unknown";
+    // Check if it's a local variable (which means we're trying to access
+    // storage through an intermediate variable - not supported)
+    const local = yield* gen.lookupVariable(name);
 
-        currentState = addError(
-          currentState,
-          new IrgenError(
-            ErrorMessages.STORAGE_MODIFICATION_ERROR(name, typeDesc),
-            expr.loc ?? undefined,
-            Severity.Error,
-          ),
-        );
-      }
-    } else if (current.type === "CallExpression") {
-      // Provide specific error for function calls
-      currentState = addError(
-        currentState,
+    if (local && accesses.length > 0) {
+      // Get the type to provide better error message
+      const localType = state.types.get(current.id);
+      const typeDesc = localType
+        ? (localType as Type & { name?: string; kind?: string }).name ||
+          (localType as Type & { name?: string; kind?: string }).kind ||
+          "complex"
+        : "unknown";
+
+      yield* gen.addError(
         new IrgenError(
-          ErrorMessages.UNSUPPORTED_STORAGE_PATTERN("function return values"),
-          expr.loc || undefined,
-          Severity.Error,
-        ),
-      );
-    } else if (accesses.length > 0) {
-      // Other unsupported base expressions when we have an access chain
-      currentState = addError(
-        currentState,
-        new IrgenError(
-          `Storage access chain must start with a storage variable identifier. ` +
-            `Found ${current.type} at the base of the access chain.`,
-          current.loc ?? undefined,
+          ErrorMessages.STORAGE_MODIFICATION_ERROR(name, typeDesc),
+          expr.loc ?? undefined,
           Severity.Error,
         ),
       );
     }
+  } else if (current.type === "CallExpression") {
+    // Provide specific error for function calls
+    yield* gen.addError(
+      new IrgenError(
+        ErrorMessages.UNSUPPORTED_STORAGE_PATTERN("function return values"),
+        expr.loc || undefined,
+        Severity.Error,
+      ),
+    );
+  } else if (accesses.length > 0) {
+    // Other unsupported base expressions when we have an access chain
+    yield* gen.addError(
+      new IrgenError(
+        `Storage access chain must start with a storage variable identifier. ` +
+          `Found ${current.type} at the base of the access chain.`,
+        current.loc ?? undefined,
+        Severity.Error,
+      ),
+    );
+  }
 
-    return { state: currentState, value: undefined };
-  };
+  return undefined;
 }
 
 /**
  * Find a storage variable from an expression
  */
-function findStorageVariable(
+function* findStorageVariable(
   expr: Ast.Expression,
-): Transition<Ir.Module.StorageSlot | undefined> {
-  return runGen(
-    (function* () {
-      if (expr.type === "IdentifierExpression") {
-        const name = (expr as Ast.Expression.Identifier).name;
-        const state = yield* gen.peek();
-        return state.module.storage.slots.find((s) => s.name === name);
-      }
-      return undefined;
-    })(),
-  );
+): IrGen<Ir.Module.StorageSlot | undefined> {
+  if (expr.type === "IdentifierExpression") {
+    const name = (expr as Ast.Expression.Identifier).name;
+    const state = yield* gen.peek();
+    return state.module.storage.slots.find((s) => s.name === name);
+  }
+  return undefined;
 }
 
 /**
  * Emit a storage chain load (matching generator.ts pattern)
  */
-function emitStorageChainLoad(
+function* emitStorageChainLoad(
   chain: StorageAccessChain,
   valueType: Ir.Type,
   loc: Ast.SourceLocation | undefined,
-): Transition<Ir.Value> {
-  return runGen(
-    (function* () {
-      let currentSlot = Ir.Value.constant(BigInt(chain.slot.slot), {
-        kind: "uint",
-        bits: 256,
-      });
-      let currentType = chain.slot.type;
+): IrGen<Ir.Value> {
+  let currentSlot = Ir.Value.constant(BigInt(chain.slot.slot), {
+    kind: "uint",
+    bits: 256,
+  });
+  let currentType = chain.slot.type;
 
-      // Process each access in the chain
-      for (const access of chain.accesses) {
-        if (access.kind === "index" && access.key) {
-          // For mapping/array access
-          const tempId = yield* gen.genTemp();
-          yield* gen.emit({
-            kind: "compute_slot",
-            baseSlot: currentSlot,
-            key: access.key,
-            dest: tempId,
-            loc,
-          } as Ir.Instruction);
-
-          currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
-
-          // Update type based on mapping/array element type
-          if (currentType.kind === "mapping") {
-            currentType = currentType.value || { kind: "uint", bits: 256 };
-          } else if (currentType.kind === "array") {
-            currentType = currentType.element || { kind: "uint", bits: 256 };
-          }
-        } else if (access.kind === "member" && access.fieldName) {
-          // For struct field access
-          if (currentType.kind === "struct") {
-            const fieldIndex =
-              currentType.fields.findIndex(
-                ({ name }) => name === access.fieldName,
-              ) ?? 0;
-
-            const tempId = yield* gen.genTemp();
-            yield* gen.emit({
-              kind: "compute_field_offset",
-              baseSlot: currentSlot,
-              fieldIndex,
-              dest: tempId,
-              loc,
-            } as Ir.Instruction);
-
-            currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
-            currentType = currentType.fields[fieldIndex]?.type || {
-              kind: "uint",
-              bits: 256,
-            };
-          }
-        }
-      }
-
-      // Generate the final load_storage instruction
-      const loadTempId = yield* gen.genTemp();
+  // Process each access in the chain
+  for (const access of chain.accesses) {
+    if (access.kind === "index" && access.key) {
+      // For mapping/array access
+      const tempId = yield* gen.genTemp();
       yield* gen.emit({
-        kind: "load_storage",
-        slot: currentSlot,
-        type: valueType,
-        dest: loadTempId,
+        kind: "compute_slot",
+        baseSlot: currentSlot,
+        key: access.key,
+        dest: tempId,
         loc,
-      } as Ir.Instruction.LoadStorage);
+      } as Ir.Instruction);
 
-      return Ir.Value.temp(loadTempId, valueType);
-    })(),
-  );
+      currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
+
+      // Update type based on mapping/array element type
+      if (currentType.kind === "mapping") {
+        currentType = currentType.value || { kind: "uint", bits: 256 };
+      } else if (currentType.kind === "array") {
+        currentType = currentType.element || { kind: "uint", bits: 256 };
+      }
+    } else if (access.kind === "member" && access.fieldName) {
+      // For struct field access
+      if (currentType.kind === "struct") {
+        const fieldIndex =
+          currentType.fields.findIndex(
+            ({ name }) => name === access.fieldName,
+          ) ?? 0;
+
+        const tempId = yield* gen.genTemp();
+        yield* gen.emit({
+          kind: "compute_field_offset",
+          baseSlot: currentSlot,
+          fieldIndex,
+          dest: tempId,
+          loc,
+        } as Ir.Instruction);
+
+        currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
+        currentType = currentType.fields[fieldIndex]?.type || {
+          kind: "uint",
+          bits: 256,
+        };
+      }
+    }
+  }
+
+  // Generate the final load_storage instruction
+  const loadTempId = yield* gen.genTemp();
+  yield* gen.emit({
+    kind: "load_storage",
+    slot: currentSlot,
+    type: valueType,
+    dest: loadTempId,
+    loc,
+  } as Ir.Instruction.LoadStorage);
+
+  return Ir.Value.temp(loadTempId, valueType);
 }
 
 function mapTypeToIrType(type: Type): Ir.Type {

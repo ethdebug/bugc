@@ -23,15 +23,18 @@ export type IrGen<T> = Generator<IrOperation, T, IrState>;
  * Lift a transition into a generator operation
  */
 export function* lift<T>(transition: Transition<T>): IrGen<T> {
-  // Apply the transition to modify state and get the value
+  // Store the result value before yielding
+  let result: T;
   yield {
     type: "modify",
-    fn: (state) => transition(state).state,
+    fn: (state) => {
+      const transitionResult = transition(state);
+      result = transitionResult.value;
+      return transitionResult.state;
+    },
   };
-  // We need to peek to get the result value
-  const state = yield { type: "peek" };
-  // Re-run transition to get the value (not ideal, but works with current protocol)
-  return transition(state).value;
+  // Return the stored value
+  return result!;
 }
 
 /**

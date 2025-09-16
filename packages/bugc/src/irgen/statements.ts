@@ -100,7 +100,7 @@ function buildVariableDeclaration(
       // If there's an initializer, evaluate it and assign
       if (decl.initializer) {
         return pipe()
-          .then(buildExpression(decl.initializer))
+          .then(runGen(buildExpression(decl.initializer)))
           .peek((_state2, value) =>
             pipe().then(
               operations.emit({
@@ -146,8 +146,8 @@ function findStorageAccessChain(
 
       if (accessNode.kind === "index") {
         // For index access, we need to evaluate the key expression
-        const keyResult = buildExpression(
-          accessNode.property as Ast.Expression,
+        const keyResult = runGen(
+          buildExpression(accessNode.property as Ast.Expression),
         )(currentState);
         currentState = keyResult.state;
         const key = keyResult.value;
@@ -383,7 +383,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
       }
 
       // Otherwise, handle regular struct field assignment
-      const object = yield* lift(buildExpression(accessNode.object));
+      const object = yield* buildExpression(accessNode.object);
       const state = yield* gen.peek();
       const objectType = state.types.get(accessNode.object.id);
 
@@ -420,9 +420,9 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
         Type.Elementary.isBytes(objectType)
       ) {
         // Handle bytes indexing directly
-        const object = yield* lift(buildExpression(accessNode.object));
-        const index = yield* lift(
-          buildExpression(accessNode.property as Ast.Expression),
+        const object = yield* buildExpression(accessNode.object);
+        const index = yield* buildExpression(
+          accessNode.property as Ast.Expression,
         );
 
         yield* gen.emit({
@@ -445,9 +445,9 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
       }
 
       // If no storage chain, handle regular array/mapping access
-      const object = yield* lift(buildExpression(accessNode.object));
-      const index = yield* lift(
-        buildExpression(accessNode.property as Ast.Expression),
+      const object = yield* buildExpression(accessNode.object);
+      const index = yield* buildExpression(
+        accessNode.property as Ast.Expression,
       );
 
       if (objectType && Type.isArray(objectType)) {
@@ -476,7 +476,7 @@ function buildAssignmentStatement(
 ): Transition<void> {
   return runGen(
     (function* () {
-      const value = yield* lift(buildExpression(stmt.value));
+      const value = yield* buildExpression(stmt.value);
       yield* buildLValue(stmt.target, value);
     })(),
   );
@@ -533,7 +533,7 @@ function buildIfStatement(stmt: Ast.Statement.ControlFlow): Transition<void> {
               .peek((_state3, mergeBlock) =>
                 pipe()
                   // Evaluate condition
-                  .then(buildExpression(stmt.condition!))
+                  .then(runGen(buildExpression(stmt.condition!)))
                   .peek((_state4, condVal) =>
                     pipe()
                       // Branch to then or else
@@ -590,7 +590,7 @@ function buildIfStatement(stmt: Ast.Statement.ControlFlow): Transition<void> {
           .peek((_state2, mergeBlock) =>
             pipe()
               // Evaluate condition
-              .then(buildExpression(stmt.condition!))
+              .then(runGen(buildExpression(stmt.condition!)))
               .peek((_state3, condVal) =>
                 pipe()
                   // Branch to then or merge
@@ -650,7 +650,7 @@ function buildWhileStatement(
                 )
                 // Loop header: check condition
                 .then(operations.switchToBlock(headerBlock))
-                .then(buildExpression(stmt.condition!))
+                .then(runGen(buildExpression(stmt.condition!)))
                 .peek((_state4, condVal) =>
                   pipe()
                     .then(
@@ -717,7 +717,7 @@ function buildForStatement(stmt: Ast.Statement.ControlFlow): Transition<void> {
                       .then(operations.switchToBlock(headerBlock))
                       .then(
                         stmt.condition
-                          ? buildExpression(stmt.condition)
+                          ? runGen(buildExpression(stmt.condition))
                           : (state: IrState) => ({
                               state,
                               value: Ir.Value.constant(1n, { kind: "bool" }),
@@ -787,7 +787,7 @@ function buildReturnStatement(
 ): Transition<void> {
   if (stmt.value) {
     return pipe()
-      .then(buildExpression(stmt.value))
+      .then(runGen(buildExpression(stmt.value)))
       .peek((_state, value) =>
         pipe().then(
           operations.setTerminator({
@@ -878,7 +878,7 @@ function buildExpressionStatement(
   stmt: Ast.Statement.Express,
 ): Transition<void> {
   return pipe()
-    .then(buildExpression(stmt.expression))
+    .then(runGen(buildExpression(stmt.expression)))
     .then((state) => ({ state, value: undefined }))
     .done();
 }
