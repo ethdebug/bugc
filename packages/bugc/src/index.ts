@@ -12,7 +12,7 @@ export * as TypeChecker from "#typechecker";
 export { Type } from "#types";
 
 // Re-export IR generation functionality
-export { IrBuilder } from "#irgen";
+export { generateModule } from "#irgen";
 
 // Re-export optimizer functionality
 export { optimizeIr } from "#optimizer";

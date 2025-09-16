@@ -3,7 +3,7 @@ import * as Ir from "#ir";
 import { Severity } from "#result";
 import { Type } from "#types";
 import { Error as IrgenError } from "../errors.js";
-import { type IrGen, gen } from "../irgen.js";
+import { type IrGen, addError, emit, peek, newTemp } from "../irgen.js";
 import { mapTypeToIrType } from "../type.js";
 import {
   makeFindStorageAccessChain,
@@ -25,7 +25,7 @@ export const makeBuildAccess = (
 
       // Check if this is a .length property access
       if (property === "length") {
-        const state = yield* gen.peek();
+        const state = yield* peek();
         const objectType = state.types.get(expr.object.id);
 
         // Verify that the object type supports .length (arrays, bytes, string)
@@ -38,9 +38,9 @@ export const makeBuildAccess = (
         ) {
           const object = yield* buildExpression(expr.object);
           const resultType: Ir.Type = { kind: "uint", bits: 256 };
-          const tempId = yield* gen.genTemp();
+          const tempId = yield* newTemp();
 
-          yield* gen.emit({
+          yield* emit({
             kind: "length",
             object,
             dest: tempId,
@@ -54,7 +54,7 @@ export const makeBuildAccess = (
       // First check if this is accessing a storage chain (e.g., accounts[user].balance)
       const chain = yield* findStorageAccessChain(expr);
       if (chain) {
-        const state = yield* gen.peek();
+        const state = yield* peek();
         const nodeType = state.types.get(expr.id);
         if (nodeType) {
           const valueType = mapTypeToIrType(nodeType);
@@ -70,7 +70,7 @@ export const makeBuildAccess = (
 
       // Otherwise, handle regular struct field access
       const object = yield* buildExpression(expr.object);
-      const state = yield* gen.peek();
+      const state = yield* peek();
       const objectType = state.types.get(expr.object.id);
 
       if (objectType && Type.isStruct(objectType)) {
@@ -80,9 +80,9 @@ export const makeBuildAccess = (
             property,
           );
           const irFieldType = mapTypeToIrType(fieldType);
-          const tempId = yield* gen.genTemp();
+          const tempId = yield* newTemp();
 
-          yield* gen.emit({
+          yield* emit({
             kind: "load_field",
             object,
             field: property,
@@ -97,7 +97,7 @@ export const makeBuildAccess = (
       }
     } else if (expr.kind === "slice") {
       // Slice access - start:end
-      const state = yield* gen.peek();
+      const state = yield* peek();
       const objectType = state.types.get(expr.object.id);
       if (
         objectType &&
@@ -110,9 +110,9 @@ export const makeBuildAccess = (
 
         // Slicing bytes returns dynamic bytes
         const resultType: Ir.Type = { kind: "bytes" };
-        const tempId = yield* gen.genTemp();
+        const tempId = yield* newTemp();
 
-        yield* gen.emit({
+        yield* emit({
           kind: "slice",
           object,
           start,
@@ -124,7 +124,7 @@ export const makeBuildAccess = (
         return Ir.Value.temp(tempId, resultType);
       }
 
-      yield* gen.addError(
+      yield* addError(
         new IrgenError(
           "Only bytes types can be sliced",
           expr.loc ?? undefined,
@@ -135,7 +135,7 @@ export const makeBuildAccess = (
     } else {
       // Array/mapping/bytes index access
       // First check if we're indexing into bytes (not part of storage chain)
-      const state = yield* gen.peek();
+      const state = yield* peek();
       const objectType = state.types.get(expr.object.id);
       if (
         objectType &&
@@ -147,9 +147,9 @@ export const makeBuildAccess = (
         const index = yield* buildExpression(expr.property as Ast.Expression);
         // Bytes indexing returns uint8
         const elementType: Ir.Type = { kind: "uint", bits: 8 };
-        const tempId = yield* gen.genTemp();
+        const tempId = yield* newTemp();
 
-        yield* gen.emit({
+        yield* emit({
           kind: "load_index",
           array: object,
           index,
@@ -181,9 +181,9 @@ export const makeBuildAccess = (
 
       if (objectType && Type.isArray(objectType)) {
         const elementType = mapTypeToIrType(objectType.element);
-        const tempId = yield* gen.genTemp();
+        const tempId = yield* newTemp();
 
-        yield* gen.emit({
+        yield* emit({
           kind: "load_index",
           array: object,
           index,
@@ -198,9 +198,9 @@ export const makeBuildAccess = (
         const storageVar = yield* findStorageVariable(expr.object);
         if (storageVar) {
           const valueType = mapTypeToIrType(objectType.value);
-          const tempId = yield* gen.genTemp();
+          const tempId = yield* newTemp();
 
-          yield* gen.emit({
+          yield* emit({
             kind: "load_mapping",
             slot: storageVar.slot,
             key: index,
@@ -214,7 +214,7 @@ export const makeBuildAccess = (
       }
     }
 
-    yield* gen.addError(
+    yield* addError(
       new IrgenError(
         "Invalid access expression",
         expr.loc ?? undefined,

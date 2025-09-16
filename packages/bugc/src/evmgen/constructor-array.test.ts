@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parse } from "#parser";
 import * as TypeChecker from "#typechecker";
-import { IrBuilder } from "#irgen";
+import * as Irgen from "#irgen";
 import type * as Ir from "#ir";
 
 import { Layout, Liveness, Memory } from "#evmgen/analysis";
@@ -37,8 +37,7 @@ code {}
     if (!typeCheckResult.success) return;
 
     // Generate IR
-    const irGenerator = new IrBuilder();
-    const irResult = irGenerator.build(
+    const irResult = Irgen.generateModule(
       parseResult.value,
       typeCheckResult.value,
     );
@@ -116,8 +115,7 @@ code {}
     if (!typeCheckResult.success) return;
 
     // Generate IR
-    const irGenerator = new IrBuilder();
-    const irResult = irGenerator.build(
+    const irResult = Irgen.generateModule(
       parseResult.value,
       typeCheckResult.value,
     );
@@ -188,8 +186,7 @@ code {}
     if (!typeCheckResult.success) return;
 
     // Generate IR
-    const irGenerator = new IrBuilder();
-    const irResult = irGenerator.build(
+    const irResult = Irgen.generateModule(
       parseResult.value,
       typeCheckResult.value,
     );

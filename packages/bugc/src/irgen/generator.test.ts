@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "#parser";
 import * as TypeChecker from "#typechecker";
-import { IrBuilder } from "./generator.js";
-import { generateModule } from "./generator-revised.js";
+import { generateModule } from "./generator.js";
 import * as Ir from "#ir";
 import { Result, Severity } from "#result";
 import "#test/matchers";
 
-describe("IrBuilder", () => {
+describe("generateModule", () => {
   function buildIR(source: string): Ir.Module {
     const parseResult = parse(source);
     if (!parseResult.success) {
@@ -478,8 +477,7 @@ describe("IrBuilder", () => {
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
 
-      const generator = new IrBuilder();
-      const buildResult = generator.build(ast, typeCheckResult.value);
+      const buildResult = generateModule(ast, typeCheckResult.value);
 
       expect(buildResult.success).toBe(true);
       if (!buildResult.success) return;
@@ -584,8 +582,7 @@ describe("IrBuilder", () => {
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
 
-      const generator = new IrBuilder();
-      const buildResult = generator.build(ast, typeCheckResult.value);
+      const buildResult = generateModule(ast, typeCheckResult.value);
 
       expect(buildResult.success).toBe(true);
       if (!buildResult.success) return;
@@ -637,8 +634,7 @@ describe("IrBuilder", () => {
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
 
-      const generator = new IrBuilder();
-      const buildResult = generator.build(ast, typeCheckResult.value);
+      const buildResult = generateModule(ast, typeCheckResult.value);
       expect(buildResult.success).toBe(true);
       if (!buildResult.success) return;
 

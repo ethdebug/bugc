@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { IrBuilder } from "#irgen";
+import * as Irgen from "#irgen";
 import { parse } from "#parser";
 import { Result } from "#result";
 import * as TypeChecker from "#typechecker";
@@ -52,8 +52,7 @@ describe("ReturnMergingStep", () => {
     }
 
     // Build IR
-    const builder = new IrBuilder();
-    const irResult = builder.build(parseResult.value, typeResult.value);
+    const irResult = Irgen.generateModule(parseResult.value, typeResult.value);
     if (!irResult.success) {
       throw new Error(
         "IR build failed: " +
@@ -157,8 +156,7 @@ describe("ReturnMergingStep", () => {
     }
 
     // Build IR
-    const builder = new IrBuilder();
-    const irResult = builder.build(parseResult.value, typeResult.value);
+    const irResult = Irgen.generateModule(parseResult.value, typeResult.value);
     if (!irResult.success) {
       throw new Error(
         "IR build failed: " +

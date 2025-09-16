@@ -1,6 +1,7 @@
 import type { IrState, Transition } from "./state.js";
 import * as Ir from "#ir";
 import { operations } from "./operations.js";
+import { Error as IrgenError } from "./errors.js";
 import { addError as addErrorUpdate } from "./updates.js";
 
 /**
@@ -35,21 +36,6 @@ export function* lift<T>(transition: Transition<T>): IrGen<T> {
   };
   // Return the stored value
   return result!;
-}
-
-/**
- * Get the current state (peek without modification)
- */
-export function* peek(): IrGen<IrState> {
-  const state = yield { type: "peek" };
-  return state;
-}
-
-/**
- * Modify the state
- */
-export function* modify(fn: (state: IrState) => IrState): IrGen<void> {
-  yield { type: "modify", fn };
 }
 
 /**
@@ -88,95 +74,98 @@ export function runGen<T>(gen: IrGen<T>): Transition<T> {
 }
 
 /**
- * Helper to convert existing operations to generator-friendly versions
+ * Get the current state
  */
-export const gen = {
-  /**
-   * Get the current state
-   */
-  peek,
+export function* peek(): IrGen<IrState> {
+  return yield { type: "peek" };
+}
 
-  /**
-   * Modify the state
-   */
-  modify,
+/**
+ * Generate a new temp
+ */
+export function* newTemp(): IrGen<string> {
+  return yield* lift(operations.genTemp());
+}
 
-  /**
-   * Emit an instruction
-   */
-  *emit(instruction: Ir.Instruction): IrGen<void> {
-    yield* lift(operations.emit(instruction));
-  },
+/**
+ * Emit an instruction
+ */
+export function* emit(instruction: Ir.Instruction): IrGen<void> {
+  yield* lift(operations.emit(instruction));
+}
 
-  /**
-   * Generate a temp variable
-   */
-  *genTemp(): IrGen<string> {
-    return yield* lift(operations.genTemp());
-  },
+/**
+ * Lookup a variable
+ */
+export function* lookupVariable(
+  name: string,
+): IrGen<{ id: string; type: Ir.Type } | null> {
+  return yield* lift(operations.lookupVariable(name));
+}
 
-  /**
-   * Lookup a variable
-   */
-  *lookupVariable(name: string): IrGen<{ id: string; type: Ir.Type } | null> {
-    return yield* lift(operations.lookupVariable(name));
-  },
+/**
+ * Declare a local variable
+ */
+export function* declareLocal(
+  name: string,
+  type: Ir.Type,
+): IrGen<Ir.Function.LocalVariable> {
+  return yield* lift(operations.declareLocal(name, type));
+}
 
-  /**
-   * Declare a local variable
-   */
-  *declareLocal(name: string, type: Ir.Type): IrGen<void> {
-    yield* lift(operations.declareLocal(name, type));
-  },
+/**
+ * Generate a new block
+ */
+export function* createBlock(prefix: string): IrGen<string> {
+  return yield* lift(operations.createBlock(prefix));
+}
 
-  /**
-   * Generate a new block
-   */
-  *createBlock(prefix: string): IrGen<string> {
-    return yield* lift(operations.createBlock(prefix));
-  },
+/**
+ * Switch to a block
+ */
+export function* switchToBlock(blockId: string): IrGen<void> {
+  return yield* lift(operations.switchToBlock(blockId));
+}
 
-  /**
-   * Switch to a block
-   */
-  *switchToBlock(blockId: string): IrGen<void> {
-    yield* lift(operations.switchToBlock(blockId));
-  },
+/**
+ * Set block terminator
+ */
+export function* setTerminator(terminator: Ir.Block.Terminator): IrGen<void> {
+  return yield* lift(operations.setTerminator(terminator));
+}
+/**
+ * Sync the current block
+ */
+export function* syncBlock(): IrGen<void> {
+  return yield* lift(operations.syncBlock());
+}
 
-  /**
-   * Set block terminator
-   */
-  *setTerminator(terminator: Ir.Block.Terminator): IrGen<void> {
-    yield* lift(operations.setTerminator(terminator));
-  },
+/**
+ * Push a new scope
+ */
+export function* pushScope(): IrGen<void> {
+  yield* lift(operations.pushScope());
+}
 
-  /**
-   * Sync the current block
-   */
-  *syncBlock(): IrGen<void> {
-    yield* lift(operations.syncBlock());
-  },
+/**
+ * Pop the current scope
+ */
+export function* popScope(): IrGen<void> {
+  yield* lift(operations.popScope());
+}
 
-  /**
-   * Push a new scope
-   */
-  *pushScope(): IrGen<void> {
-    yield* lift(operations.pushScope());
-  },
+/**
+ * Add an error
+ */
+export function* addError(error: IrgenError): IrGen<void> {
+  const state = yield* peek();
+  const newState = addErrorUpdate(state, error);
+  yield* modify(() => newState);
+}
 
-  /**
-   * Pop the current scope
-   */
-  *popScope(): IrGen<void> {
-    yield* lift(operations.popScope());
-  },
-
-  /**
-   * Add an error
-   */
-  *addError(error: any): IrGen<void> {
-    const state = yield* peek();
-    const newState = addErrorUpdate(state, error);
-    yield* modify(() => newState);
-  },
-};
+/**
+ * Modify the state
+ */
+function* modify(fn: (state: IrState) => IrState): IrGen<void> {
+  yield { type: "modify", fn };
+}

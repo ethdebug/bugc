@@ -160,19 +160,6 @@ export const operations = {
     },
 
   /**
-   * Add a predecessor to the current block
-   */
-  addPredecessor:
-    (predecessorId: string): Transition<void> =>
-    (state) => ({
-      state: updateBlock(state, (block) => ({
-        ...block,
-        predecessors: new Set([...block.predecessors, predecessorId]),
-      })),
-      value: undefined,
-    }),
-
-  /**
    * Declare a local variable
    */
   declareLocal:

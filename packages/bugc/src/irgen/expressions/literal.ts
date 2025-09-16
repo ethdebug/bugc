@@ -2,7 +2,7 @@ import type * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Error as IrgenError } from "../errors.js";
 import { Severity } from "#result";
-import { type IrGen, gen } from "../irgen.js";
+import { type IrGen, addError, emit, peek, newTemp } from "../irgen.js";
 import { mapTypeToIrType } from "../type.js";
 
 /**
@@ -10,11 +10,11 @@ import { mapTypeToIrType } from "../type.js";
  */
 export function* buildLiteral(expr: Ast.Expression.Literal): IrGen<Ir.Value> {
   // Get the type from the context
-  const state = yield* gen.peek();
+  const state = yield* peek();
   const nodeType = state.types.get(expr.id);
 
   if (!nodeType) {
-    yield* gen.addError(
+    yield* addError(
       new IrgenError(
         `Cannot determine type for literal: ${expr.value}`,
         expr.loc ?? undefined,
@@ -56,7 +56,7 @@ export function* buildLiteral(expr: Ast.Expression.Literal): IrGen<Ir.Value> {
       value = expr.value === "true";
       break;
     default:
-      yield* gen.addError(
+      yield* addError(
         new IrgenError(
           `Unknown literal kind: ${expr.kind}`,
           expr.loc || undefined,
@@ -66,9 +66,9 @@ export function* buildLiteral(expr: Ast.Expression.Literal): IrGen<Ir.Value> {
       return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
   }
 
-  const tempId = yield* gen.genTemp();
+  const tempId = yield* newTemp();
 
-  yield* gen.emit({
+  yield* emit({
     kind: "const",
     dest: tempId,
     value,

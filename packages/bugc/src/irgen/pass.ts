@@ -4,9 +4,8 @@ import type * as Ir from "#ir";
 import { Result } from "#result";
 import type { Pass } from "#compiler";
 
-import { Error } from "./errors.js";
-import { IrBuilder } from "./generator.js";
-import { PhiInserter } from "./phi-inserter.js";
+import { Error as IrgenError } from "./errors.js";
+import { generateModule } from "./generator.js";
 
 /**
  * IR generation pass - converts typed AST to intermediate representation
@@ -20,18 +19,10 @@ const pass: Pass<{
   adds: {
     ir: Ir.Module;
   };
-  error: Error;
+  error: IrgenError;
 }> = {
   async run({ ast, types }) {
-    const generator = new IrBuilder();
-    const result = generator.build(ast, types);
-
-    // Insert phi nodes after generating the IR
-    return Result.map(result, (ir: Ir.Module) => {
-      const phiInserter = new PhiInserter();
-      const irWithPhis = phiInserter.insertPhiNodes(ir);
-      return { ir: irWithPhis };
-    });
+    return Result.map(generateModule(ast, types), (ir) => ({ ir }));
   },
 };
 

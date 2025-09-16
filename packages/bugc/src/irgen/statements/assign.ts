@@ -1,0 +1,162 @@
+import type * as Ast from "#ast";
+import * as Ir from "#ir";
+import { Type } from "#types";
+import { Error as IrgenError } from "../errors.js";
+import { Severity } from "#result";
+import { buildExpression } from "../expressions/index.js";
+import { type IrGen, addError, emit, lookupVariable, peek } from "../irgen.js";
+
+import {
+  makeFindStorageAccessChain,
+  emitStorageChainAssignment,
+} from "../storage.js";
+
+const findStorageAccessChain = makeFindStorageAccessChain(buildExpression);
+
+/**
+ * Build an assignment statement
+ */
+export function* buildAssignmentStatement(
+  stmt: Ast.Statement.Assign,
+): IrGen<void> {
+  const value = yield* buildExpression(stmt.value);
+  yield* buildLValue(stmt.target, value);
+}
+
+/**
+ * Handle lvalue assignment
+ */
+function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
+  if (node.type === "IdentifierExpression") {
+    const name = (node as Ast.Expression.Identifier).name;
+
+    // Check if it's a local
+    const local = yield* lookupVariable(name);
+    if (local) {
+      yield* emit({
+        kind: "store_local",
+        local: local.id,
+        value,
+        loc: node.loc ?? undefined,
+      } as Ir.Instruction);
+      return;
+    }
+
+    // Check if it's storage
+    const state = yield* peek();
+    const storageSlot = state.module.storage.slots.find((s) => s.name === name);
+    if (storageSlot) {
+      yield* emit({
+        kind: "store_storage",
+        slot: Ir.Value.constant(BigInt(storageSlot.slot), {
+          kind: "uint",
+          bits: 256,
+        }),
+        value,
+        loc: node.loc ?? undefined,
+      } as Ir.Instruction);
+      return;
+    }
+
+    yield* addError(
+      new IrgenError(
+        `Unknown identifier: ${name}`,
+        node.loc || undefined,
+        Severity.Error,
+      ),
+    );
+    return;
+  } else if (node.type === "AccessExpression") {
+    const accessNode = node as Ast.Expression.Access;
+
+    if (accessNode.kind === "member") {
+      // First check if this is a storage chain assignment
+      const chain = yield* findStorageAccessChain(node);
+      if (chain) {
+        yield* emitStorageChainAssignment(chain, value, node.loc ?? undefined);
+        return;
+      }
+
+      // Otherwise, handle regular struct field assignment
+      const object = yield* buildExpression(accessNode.object);
+      const state = yield* peek();
+      const objectType = state.types.get(accessNode.object.id);
+
+      if (objectType && Type.isStruct(objectType)) {
+        const fieldName = accessNode.property as string;
+        const fieldType = objectType.fields.get(fieldName);
+        if (fieldType) {
+          // Find field index
+          let fieldIndex = 0;
+          for (const [name] of objectType.fields) {
+            if (name === fieldName) break;
+            fieldIndex++;
+          }
+
+          yield* emit({
+            kind: "store_field",
+            object,
+            field: fieldName,
+            fieldIndex,
+            value,
+            loc: node.loc ?? undefined,
+          } as Ir.Instruction);
+          return;
+        }
+      }
+    } else {
+      // Array/mapping/bytes assignment
+      // First check if we're assigning to bytes
+      const state = yield* peek();
+      const objectType = state.types.get(accessNode.object.id);
+      if (
+        objectType &&
+        Type.isElementary(objectType) &&
+        Type.Elementary.isBytes(objectType)
+      ) {
+        // Handle bytes indexing directly
+        const object = yield* buildExpression(accessNode.object);
+        const index = yield* buildExpression(
+          accessNode.property as Ast.Expression,
+        );
+
+        yield* emit({
+          kind: "store_index",
+          array: object,
+          index,
+          value,
+          loc: node.loc ?? undefined,
+        } as Ir.Instruction);
+        return;
+      }
+
+      // For non-bytes types, try to find a complete storage access chain
+      const chain = yield* findStorageAccessChain(node);
+      if (chain) {
+        yield* emitStorageChainAssignment(chain, value, node.loc ?? undefined);
+        return;
+      }
+
+      // If no storage chain, handle regular array/mapping access
+      const object = yield* buildExpression(accessNode.object);
+      const index = yield* buildExpression(
+        accessNode.property as Ast.Expression,
+      );
+
+      if (objectType && Type.isArray(objectType)) {
+        yield* emit({
+          kind: "store_index",
+          array: object,
+          index,
+          value,
+          loc: node.loc ?? undefined,
+        } as Ir.Instruction);
+        return;
+      }
+    }
+  }
+
+  yield* addError(
+    new IrgenError("Invalid lvalue", node.loc || undefined, Severity.Error),
+  );
+}

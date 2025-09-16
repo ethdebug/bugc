@@ -3,7 +3,7 @@ import * as Ir from "#ir";
 import { Severity } from "#result";
 import { Type } from "#types";
 import { Error as IrgenError } from "../errors.js";
-import { type IrGen, gen } from "../irgen.js";
+import { type IrGen, addError, emit, peek, newTemp } from "../irgen.js";
 import { mapTypeToIrType } from "../type.js";
 
 /**
@@ -20,7 +20,7 @@ export const makeBuildCall = (
     ) {
       // keccak256 built-in function
       if (expr.arguments.length !== 1) {
-        yield* gen.addError(
+        yield* addError(
           new IrgenError(
             "keccak256 expects exactly 1 argument",
             expr.loc ?? undefined,
@@ -35,9 +35,9 @@ export const makeBuildCall = (
 
       // Generate hash instruction
       const resultType: Ir.Type = { kind: "bytes", size: 32 }; // bytes32
-      const resultTemp = yield* gen.genTemp();
+      const resultTemp = yield* newTemp();
 
-      yield* gen.emit({
+      yield* emit({
         kind: "hash",
         value: argValue,
         dest: resultTemp,
@@ -52,11 +52,11 @@ export const makeBuildCall = (
       const functionName = (expr.callee as Ast.Expression.Identifier).name;
 
       // Get the function type from the type checker
-      const state = yield* gen.peek();
+      const state = yield* peek();
       const callType = state.types.get(expr.id);
 
       if (!callType) {
-        yield* gen.addError(
+        yield* addError(
           new IrgenError(
             `Unknown function: ${functionName}`,
             expr.loc ?? undefined,
@@ -83,10 +83,10 @@ export const makeBuildCall = (
         (callType as Type.Failure).reason === "void function";
 
       if (!isVoidFunction) {
-        dest = yield* gen.genTemp();
+        dest = yield* newTemp();
       }
 
-      yield* gen.emit({
+      yield* emit({
         kind: "call",
         function: functionName,
         arguments: argValues,
@@ -104,7 +104,7 @@ export const makeBuildCall = (
     }
 
     // Other forms of function calls not supported
-    yield* gen.addError(
+    yield* addError(
       new IrgenError(
         "Complex function call expressions not yet supported",
         expr.loc ?? undefined,

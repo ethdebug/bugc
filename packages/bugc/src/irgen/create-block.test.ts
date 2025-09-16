@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parse } from "#parser";
 import * as TypeChecker from "#typechecker";
-import { IrBuilder } from "#irgen";
+import { generateModule } from "./generator.js";
 
 describe("IR generation for create blocks", () => {
   it("generates separate IR for create and main functions", () => {
@@ -31,8 +31,7 @@ describe("IR generation for create blocks", () => {
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 
-    const irBuilder = new IrBuilder();
-    const irResult = irBuilder.build(parseResult.value, typeResult.value);
+    const irResult = generateModule(parseResult.value, typeResult.value);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 
@@ -89,8 +88,7 @@ describe("IR generation for create blocks", () => {
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 
-    const irBuilder = new IrBuilder();
-    const irResult = irBuilder.build(parseResult.value, typeResult.value);
+    const irResult = generateModule(parseResult.value, typeResult.value);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 
@@ -132,8 +130,7 @@ describe("IR generation for create blocks", () => {
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 
-    const irBuilder = new IrBuilder();
-    const irResult = irBuilder.build(parseResult.value, typeResult.value);
+    const irResult = generateModule(parseResult.value, typeResult.value);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 
@@ -170,8 +167,7 @@ describe("IR generation for create blocks", () => {
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 
-    const irBuilder = new IrBuilder();
-    const irResult = irBuilder.build(parseResult.value, typeResult.value);
+    const irResult = generateModule(parseResult.value, typeResult.value);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 

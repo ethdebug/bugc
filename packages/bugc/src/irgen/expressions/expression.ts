@@ -3,7 +3,7 @@ import * as Ir from "#ir";
 import { Severity } from "#result";
 
 import { Error as IrgenError } from "../errors.js";
-import { type IrGen, gen } from "../irgen.js";
+import { type IrGen, addError } from "../irgen.js";
 
 import { buildIdentifier } from "./identifier.js";
 import { buildLiteral } from "./literal.js";
@@ -38,7 +38,7 @@ export function* buildExpression(expr: Ast.Expression): IrGen<Ir.Value> {
     case "SpecialExpression":
       return yield* buildSpecial(expr as Ast.Expression.Special);
     default:
-      yield* gen.addError(
+      yield* addError(
         new IrgenError(
           // @ts-expect-error switch statement is exhaustive; expr is never
           `Unsupported expression type: ${expr.type}`,

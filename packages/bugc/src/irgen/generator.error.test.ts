@@ -5,7 +5,7 @@ import { Result, Severity } from "#result";
 import type { BugError } from "#errors";
 import "#test/matchers";
 
-describe("IrBuilder error handling", () => {
+describe("generateModule error handling", () => {
   const compileTest = async (
     source: string,
   ): Promise<Result<Ir.Module, BugError>> => {

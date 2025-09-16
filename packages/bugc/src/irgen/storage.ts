@@ -4,7 +4,14 @@ import { Severity } from "#result";
 import { Type } from "#types";
 
 import { Error as IrgenError, ErrorMessages } from "./errors.js";
-import { type IrGen, gen } from "./irgen.js";
+import {
+  type IrGen,
+  lookupVariable,
+  addError,
+  emit,
+  peek,
+  newTemp,
+} from "./irgen.js";
 
 export interface StorageAccessChain {
   slot: Ir.Module.StorageSlot;
@@ -50,7 +57,7 @@ export const makeFindStorageAccessChain = (
     // At the end, we should have an identifier that references storage
     if (current.type === "IdentifierExpression") {
       const name = (current as Ast.Expression.Identifier).name;
-      const state = yield* gen.peek();
+      const state = yield* peek();
       const slot = state.module.storage.slots.find((s) => s.name === name);
       if (slot) {
         return { slot, accesses };
@@ -58,7 +65,7 @@ export const makeFindStorageAccessChain = (
 
       // Check if it's a local variable (which means we're trying to access
       // storage through an intermediate variable - not supported)
-      const local = yield* gen.lookupVariable(name);
+      const local = yield* lookupVariable(name);
 
       if (local && accesses.length > 0) {
         // Get the type to provide better error message
@@ -69,7 +76,7 @@ export const makeFindStorageAccessChain = (
             "complex"
           : "unknown";
 
-        yield* gen.addError(
+        yield* addError(
           new IrgenError(
             ErrorMessages.STORAGE_MODIFICATION_ERROR(name, typeDesc),
             expr.loc ?? undefined,
@@ -79,7 +86,7 @@ export const makeFindStorageAccessChain = (
       }
     } else if (current.type === "CallExpression") {
       // Provide specific error for function calls
-      yield* gen.addError(
+      yield* addError(
         new IrgenError(
           ErrorMessages.UNSUPPORTED_STORAGE_PATTERN("function return values"),
           expr.loc || undefined,
@@ -88,7 +95,7 @@ export const makeFindStorageAccessChain = (
       );
     } else if (accesses.length > 0) {
       // Other unsupported base expressions when we have an access chain
-      yield* gen.addError(
+      yield* addError(
         new IrgenError(
           `Storage access chain must start with a storage variable identifier. ` +
             `Found ${current.type} at the base of the access chain.`,
@@ -109,7 +116,7 @@ export function* findStorageVariable(
 ): IrGen<Ir.Module.StorageSlot | undefined> {
   if (expr.type === "IdentifierExpression") {
     const name = (expr as Ast.Expression.Identifier).name;
-    const state = yield* gen.peek();
+    const state = yield* peek();
     return state.module.storage.slots.find((s) => s.name === name);
   }
   return undefined;
@@ -133,8 +140,8 @@ export function* emitStorageChainLoad(
   for (const access of chain.accesses) {
     if (access.kind === "index" && access.key) {
       // For mapping/array access
-      const tempId = yield* gen.genTemp();
-      yield* gen.emit({
+      const tempId = yield* newTemp();
+      yield* emit({
         kind: "compute_slot",
         baseSlot: currentSlot,
         key: access.key,
@@ -158,8 +165,8 @@ export function* emitStorageChainLoad(
             ({ name }) => name === access.fieldName,
           ) ?? 0;
 
-        const tempId = yield* gen.genTemp();
-        yield* gen.emit({
+        const tempId = yield* newTemp();
+        yield* emit({
           kind: "compute_field_offset",
           baseSlot: currentSlot,
           fieldIndex,
@@ -177,8 +184,8 @@ export function* emitStorageChainLoad(
   }
 
   // Generate the final load_storage instruction
-  const loadTempId = yield* gen.genTemp();
-  yield* gen.emit({
+  const loadTempId = yield* newTemp();
+  yield* emit({
     kind: "load_storage",
     slot: currentSlot,
     type: valueType,
@@ -199,7 +206,7 @@ export function* emitStorageChainAssignment(
 ): IrGen<void> {
   if (chain.accesses.length === 0) {
     // Direct storage assignment
-    yield* gen.emit({
+    yield* emit({
       kind: "store_storage",
       slot: Ir.Value.constant(BigInt(chain.slot.slot), {
         kind: "uint",
@@ -223,8 +230,8 @@ export function* emitStorageChainAssignment(
     if (access.kind === "index" && access.key) {
       // Mapping access: compute keccak256(key || slot)
       if (currentType.kind === "mapping") {
-        const slotTemp = yield* gen.genTemp();
-        yield* gen.emit({
+        const slotTemp = yield* newTemp();
+        yield* emit({
           kind: "compute_slot",
           baseSlot: currentSlot,
           key: access.key,
@@ -236,8 +243,8 @@ export function* emitStorageChainAssignment(
           .value;
       } else if (currentType.kind === "array") {
         // Array access
-        const baseSlotTemp = yield* gen.genTemp();
-        yield* gen.emit({
+        const baseSlotTemp = yield* newTemp();
+        yield* emit({
           kind: "compute_array_slot",
           baseSlot: currentSlot,
           dest: baseSlotTemp,
@@ -245,8 +252,8 @@ export function* emitStorageChainAssignment(
         } as Ir.Instruction);
 
         // Add the index to get the final slot
-        const finalSlotTemp = yield* gen.genTemp();
-        yield* gen.emit({
+        const finalSlotTemp = yield* newTemp();
+        yield* emit({
           kind: "binary",
           op: "add",
           left: Ir.Value.temp(baseSlotTemp, { kind: "uint", bits: 256 }),
@@ -275,8 +282,8 @@ export function* emitStorageChainAssignment(
         );
 
         if (fieldIndex >= 0) {
-          const offsetTemp = yield* gen.genTemp();
-          yield* gen.emit({
+          const offsetTemp = yield* newTemp();
+          yield* emit({
             kind: "compute_field_offset",
             baseSlot: currentSlot,
             fieldIndex,
@@ -289,7 +296,7 @@ export function* emitStorageChainAssignment(
           });
           currentType = structType.fields[fieldIndex].type;
         } else {
-          yield* gen.addError(
+          yield* addError(
             new IrgenError(
               `Field ${access.fieldName} not found in struct ${structType.name}`,
               loc,
@@ -302,7 +309,7 @@ export function* emitStorageChainAssignment(
   }
 
   // Store to the computed slot
-  yield* gen.emit({
+  yield* emit({
     kind: "store_storage",
     slot: currentSlot,
     value,

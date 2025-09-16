@@ -3,7 +3,7 @@ import * as Ir from "#ir";
 import { Severity } from "#result";
 
 import { Error as IrgenError } from "../errors.js";
-import { type IrGen, gen } from "../irgen.js";
+import { type IrGen, addError, emit, peek, newTemp } from "../irgen.js";
 import { mapTypeToIrType } from "../type.js";
 
 /**
@@ -19,11 +19,11 @@ export const makeBuildOperator = (
     expr: Ast.Expression.Operator,
   ): IrGen<Ir.Value> {
     // Get the type from the context
-    const state = yield* gen.peek();
+    const state = yield* peek();
     const nodeType = state.types.get(expr.id);
 
     if (!nodeType) {
-      yield* gen.addError(
+      yield* addError(
         new IrgenError(
           `Cannot determine type for operator expression: ${expr.operator}`,
           expr.loc ?? undefined,
@@ -39,7 +39,7 @@ export const makeBuildOperator = (
       case 2:
         return yield* buildBinaryOperator(expr);
       default: {
-        yield* gen.addError(
+        yield* addError(
           new IrgenError(
             `Invalid operator arity: ${expr.operands.length}`,
             expr.loc || undefined,
@@ -59,11 +59,11 @@ const makeBuildUnaryOperator = (
 ) =>
   function* buildUnaryOperator(expr: Ast.Expression.Operator): IrGen<Ir.Value> {
     // Get the result type from the context
-    const state = yield* gen.peek();
+    const state = yield* peek();
     const nodeType = state.types.get(expr.id);
 
     if (!nodeType) {
-      yield* gen.addError(
+      yield* addError(
         new IrgenError(
           `Cannot determine type for unary operator: ${expr.operator}`,
           expr.loc ?? undefined,
@@ -79,13 +79,13 @@ const makeBuildUnaryOperator = (
     const operandVal = yield* buildExpression(expr.operands[0]);
 
     // Generate temp for result
-    const tempId = yield* gen.genTemp();
+    const tempId = yield* newTemp();
 
     // Map operator (matching generator.ts logic)
     const op = expr.operator === "!" ? "not" : "neg";
 
     // Emit unary operation
-    yield* gen.emit({
+    yield* emit({
       kind: "unary",
       op,
       operand: operandVal,
@@ -106,11 +106,11 @@ const makeBuildBinaryOperator = (
     expr: Ast.Expression.Operator,
   ): IrGen<Ir.Value> {
     // Get the result type from the context
-    const state = yield* gen.peek();
+    const state = yield* peek();
     const nodeType = state.types.get(expr.id);
 
     if (!nodeType) {
-      yield* gen.addError(
+      yield* addError(
         new IrgenError(
           `Cannot determine type for binary operator: ${expr.operator}`,
           expr.loc ?? undefined,
@@ -127,10 +127,10 @@ const makeBuildBinaryOperator = (
     const rightVal = yield* buildExpression(expr.operands[1]);
 
     // Generate temp for result
-    const tempId = yield* gen.genTemp();
+    const tempId = yield* newTemp();
 
     // Emit binary operation
-    yield* gen.emit({
+    yield* emit({
       kind: "binary",
       op: mapBinaryOp(expr.operator),
       left: leftVal,

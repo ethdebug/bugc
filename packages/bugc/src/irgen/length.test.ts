@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "#parser";
 import * as TypeChecker from "#typechecker";
-import { IrBuilder } from "./generator.js";
+import { generateModule } from "./generator.js";
 
 describe("IR Builder - Length Instructions", () => {
   it("should generate length instruction for array", () => {
@@ -26,8 +26,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -69,8 +68,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -118,8 +116,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -162,8 +159,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -207,8 +203,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -251,8 +246,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const builder = new IrBuilder();
-    const ir = builder.build(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value);
     expect(ir.success).toBe(true);
 
     if (ir.success) {

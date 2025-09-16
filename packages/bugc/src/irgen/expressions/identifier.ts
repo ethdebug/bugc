@@ -2,20 +2,27 @@ import type * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Error as IrgenError, ErrorMessages } from "../errors.js";
 import { Severity } from "#result";
-import { type IrGen, gen } from "../irgen.js";
+import {
+  type IrGen,
+  addError,
+  emit,
+  lookupVariable,
+  peek,
+  newTemp,
+} from "../irgen.js";
 /**
  * Build an identifier expression
  */
 export function* buildIdentifier(
   expr: Ast.Expression.Identifier,
 ): IrGen<Ir.Value> {
-  const local = yield* gen.lookupVariable(expr.name);
+  const local = yield* lookupVariable(expr.name);
 
   if (local) {
     // Load the local variable
-    const tempId = yield* gen.genTemp();
+    const tempId = yield* newTemp();
 
-    yield* gen.emit({
+    yield* emit({
       kind: "load_local",
       local: local.id,
       dest: tempId,
@@ -26,15 +33,15 @@ export function* buildIdentifier(
   }
 
   // Check if it's a storage variable
-  const state = yield* gen.peek();
+  const state = yield* peek();
   const storageSlot = state.module.storage.slots.find(
     ({ name }) => name === expr.name,
   );
 
   if (storageSlot) {
     // Build storage load directly
-    const tempId = yield* gen.genTemp();
-    yield* gen.emit({
+    const tempId = yield* newTemp();
+    yield* emit({
       kind: "load_storage",
       slot: Ir.Value.constant(BigInt(storageSlot.slot), {
         kind: "uint",
@@ -48,7 +55,7 @@ export function* buildIdentifier(
   }
 
   // Unknown identifier - add error and return default value
-  yield* gen.addError(
+  yield* addError(
     new IrgenError(
       ErrorMessages.UNKNOWN_IDENTIFIER(expr.name),
       expr.loc ?? undefined,
