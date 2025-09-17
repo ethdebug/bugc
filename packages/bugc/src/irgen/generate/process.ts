@@ -1,18 +1,10 @@
 import type * as Ast from "#ast";
 import * as Ir from "#ir";
+
+import { assertExhausted } from "#irgen/errors";
+
 import { State, type Modify, type Read, isModify, isRead } from "./state.js";
 
-/**
- * State transition that may produce a value
- */
-export type Transition<T = void> = (state: State) => Transition.Output<T>;
-
-export namespace Transition {
-  export interface Output<T> {
-    state: State;
-    value: T;
-  }
-}
 /**
  * Generator type for IR operations
  * - Yields IrOperation commands
@@ -444,13 +436,9 @@ export function lift<T, A extends readonly unknown[]>(
   fn: (...args: A) => Read<State, T>,
 ): (...args: A) => Process<T>;
 
-export function lift<T, A extends readonly unknown[]>(
-  fn: (...args: A) => Transition<T>,
-): (...args: A) => Process<T>;
-
 // Implementation
 export function lift<T, A extends readonly unknown[]>(
-  fn: (...args: A) => Modify<State> | Read<State, T> | Transition<T>,
+  fn: (...args: A) => Modify<State> | Read<State, T>,
 ) {
   return function* (...args: A): Process<T | void> {
     const result = fn(...args);
@@ -467,14 +455,6 @@ export function lift<T, A extends readonly unknown[]>(
       return result(yield { type: "peek" });
     }
 
-    // otherwise, it's a full Transition
-
-    const { state, value } = result(yield { type: "peek" });
-
-    yield {
-      type: "modify",
-      fn: () => state,
-    };
-    return value;
+    assertExhausted(result);
   };
 }
