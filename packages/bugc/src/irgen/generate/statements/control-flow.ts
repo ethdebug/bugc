@@ -1,28 +1,18 @@
 import * as Ast from "#ast";
 import * as Ir from "#ir";
-import { Error as IrgenError } from "../errors.js";
+import { Error as IrgenError } from "#irgen/errors";
 import { Severity } from "#result";
 import { buildExpression } from "../expressions/index.js";
 
 import { makeBuildBlock } from "./block.js";
-import {
-  type IrGen,
-  addError,
-  setTerminator,
-  getCurrentLoop,
-  updateCounters,
-  updateBlock,
-  pushLoop,
-  popLoop,
-  syncBlockToFunction,
-  peek,
-} from "../irgen.js";
+
+import { Process } from "../process.js";
 
 /**
  * Build a control flow statement
  */
 export const makeBuildControlFlowStatement = (
-  buildStatement: (stmt: Ast.Statement) => IrGen<void>,
+  buildStatement: (stmt: Ast.Statement) => Process<void>,
 ) => {
   const buildIfStatement = makeBuildIfStatement(buildStatement);
   const buildWhileStatement = makeBuildWhileStatement(buildStatement);
@@ -30,7 +20,7 @@ export const makeBuildControlFlowStatement = (
 
   return function* buildControlFlowStatement(
     stmt: Ast.Statement.ControlFlow,
-  ): IrGen<void> {
+  ): Process<void> {
     switch (stmt.kind) {
       case "if":
         return yield* buildIfStatement(stmt);
@@ -45,7 +35,7 @@ export const makeBuildControlFlowStatement = (
       case "continue":
         return yield* buildContinueStatement(stmt);
       default:
-        return yield* addError(
+        return yield* Process.Errors.report(
           new IrgenError(
             `Unsupported control flow: ${stmt.kind}`,
             stmt.loc ?? undefined,
@@ -60,23 +50,23 @@ export const makeBuildControlFlowStatement = (
  * Build an if statement
  */
 export const makeBuildIfStatement = (
-  buildStatement: (stmt: Ast.Statement) => IrGen<void>,
+  buildStatement: (stmt: Ast.Statement) => Process<void>,
 ) => {
   const buildBlock = makeBuildBlock(buildStatement);
   return function* buildIfStatement(
     stmt: Ast.Statement.ControlFlow,
-  ): IrGen<void> {
-    const thenBlock = yield* createBlock("then");
+  ): Process<void> {
+    const thenBlock = yield* Process.Blocks.create("then");
     const elseBlock = stmt.alternate
-      ? yield* createBlock("else")
-      : yield* createBlock("merge");
-    const mergeBlock = stmt.alternate ? yield* createBlock("merge") : elseBlock; // For no-else case, elseBlock IS the merge block
+      ? yield* Process.Blocks.create("else")
+      : yield* Process.Blocks.create("merge");
+    const mergeBlock = stmt.alternate ? yield* Process.Blocks.create("merge") : elseBlock; // For no-else case, elseBlock IS the merge block
 
     // Evaluate condition
     const condVal = yield* buildExpression(stmt.condition!);
 
     // Branch to then or else/merge
-    yield* setTerminator({
+    yield* Process.Blocks.terminate({
       kind: "branch",
       condition: condVal,
       trueTarget: thenBlock,
@@ -84,14 +74,14 @@ export const makeBuildIfStatement = (
     });
 
     // Build then block
-    yield* switchToBlock(thenBlock);
+    yield* Process.Blocks.switchTo(thenBlock);
     yield* buildBlock(stmt.body!);
 
     {
-      const state = yield* peek();
+      const terminator = yield* Process.Blocks.currentTerminator();
       // Only set terminator if block doesn't have one
-      if (!state.block.terminator) {
-        yield* setTerminator({
+      if (!terminator) {
+        yield* Process.Blocks.terminate({
           kind: "jump",
           target: mergeBlock,
         });
@@ -100,36 +90,34 @@ export const makeBuildIfStatement = (
 
     // Build else block if it exists
     if (stmt.alternate) {
-      yield* switchToBlock(elseBlock);
+      yield* Process.Blocks.switchTo(elseBlock);
       yield* buildBlock(stmt.alternate);
 
-      {
-        const state = yield* peek();
-        if (!state.block.terminator) {
-          yield* setTerminator({
-            kind: "jump",
-            target: mergeBlock,
-          });
-        }
+      const terminator = yield* Process.Blocks.currentTerminator();
+      if (!terminator) {
+        yield* Process.Blocks.terminate({
+          kind: "jump",
+          target: mergeBlock,
+        });
       }
     }
 
     // Continue in merge block
-    yield* switchToBlock(mergeBlock);
+    yield* Process.Blocks.switchTo(mergeBlock);
   };
 };
 
 /**
  * Unified loop builder for while and for loops
  */
-const makeBuildLoop = (buildStatement: (stmt: Ast.Statement) => IrGen<void>) =>
+const makeBuildLoop = (buildStatement: (stmt: Ast.Statement) => Process<void>) =>
   function* buildLoop(config: {
     init?: Ast.Statement;
     condition?: Ast.Expression;
     update?: Ast.Statement;
     body: Ast.Block;
     prefix: string;
-  }): IrGen<void> {
+  }): Process<void> {
     const buildBlock = makeBuildBlock(buildStatement);
 
     // Execute init statement if present (for loops)
@@ -138,29 +126,29 @@ const makeBuildLoop = (buildStatement: (stmt: Ast.Statement) => IrGen<void>) =>
     }
 
     // Create blocks
-    const headerBlock = yield* createBlock(`${config.prefix}_header`);
-    const bodyBlock = yield* createBlock(`${config.prefix}_body`);
-    const exitBlock = yield* createBlock(`${config.prefix}_exit`);
+    const headerBlock = yield* Process.Blocks.create(`${config.prefix}_header`);
+    const bodyBlock = yield* Process.Blocks.create(`${config.prefix}_body`);
+    const exitBlock = yield* Process.Blocks.create(`${config.prefix}_exit`);
 
     // For 'for' loops, we need an update block
     const updateBlock = config.update
-      ? yield* createBlock(`${config.prefix}_update`)
+      ? yield* Process.Blocks.create(`${config.prefix}_update`)
       : null;
 
     // Jump to header
-    yield* setTerminator({
+    yield* Process.Blocks.terminate({
       kind: "jump",
       target: headerBlock,
     });
 
     // Header: evaluate condition and branch
-    yield* switchToBlock(headerBlock);
+    yield* Process.Blocks.switchTo(headerBlock);
 
     const condVal = config.condition
       ? yield* buildExpression(config.condition)
       : Ir.Value.constant(1n, { kind: "bool" }); // infinite loop if no condition
 
-    yield* setTerminator({
+    yield* Process.Blocks.terminate({
       kind: "branch",
       condition: condVal,
       trueTarget: bodyBlock,
@@ -168,21 +156,21 @@ const makeBuildLoop = (buildStatement: (stmt: Ast.Statement) => IrGen<void>) =>
     });
 
     // Body: execute loop body
-    yield* switchToBlock(bodyBlock);
+    yield* Process.Blocks.switchTo(bodyBlock);
 
     // Set up loop context (continue target depends on whether we have update)
     const continueTarget = updateBlock || headerBlock;
-    yield* pushLoop(continueTarget, exitBlock);
+    yield* Process.ControlFlow.enterLoop(continueTarget, exitBlock);
 
     yield* buildBlock(config.body);
 
-    yield* popLoop();
+    yield* Process.ControlFlow.exitLoop();
 
     // Jump to update block (for loop) or header (while loop)
     {
-      const state = yield* peek();
-      if (!state.block.terminator) {
-        yield* setTerminator({
+      const terminator = yield* Process.Blocks.currentTerminator();
+      if (!terminator) {
+        yield* Process.Blocks.terminate({
           kind: "jump",
           target: continueTarget,
         });
@@ -191,12 +179,12 @@ const makeBuildLoop = (buildStatement: (stmt: Ast.Statement) => IrGen<void>) =>
 
     // Update block (only for 'for' loops)
     if (updateBlock && config.update) {
-      yield* switchToBlock(updateBlock);
+      yield* Process.Blocks.switchTo(updateBlock);
       yield* buildStatement(config.update);
 
-      const state = yield* peek();
-      if (!state.block.terminator) {
-        yield* setTerminator({
+      const terminator = yield* Process.Blocks.currentTerminator();
+      if (!terminator) {
+        yield* Process.Blocks.terminate({
           kind: "jump",
           target: headerBlock,
         });
@@ -204,19 +192,19 @@ const makeBuildLoop = (buildStatement: (stmt: Ast.Statement) => IrGen<void>) =>
     }
 
     // Continue from exit block
-    yield* switchToBlock(exitBlock);
+    yield* Process.Blocks.switchTo(exitBlock);
   };
 
 /**
  * Build a while statement
  */
 export const makeBuildWhileStatement = (
-  buildStatement: (stmt: Ast.Statement) => IrGen<void>,
+  buildStatement: (stmt: Ast.Statement) => Process<void>,
 ) => {
   const buildLoop = makeBuildLoop(buildStatement);
   return function* buildWhileStatement(
     stmt: Ast.Statement.ControlFlow,
-  ): IrGen<void> {
+  ): Process<void> {
     yield* buildLoop({
       condition: stmt.condition,
       body: stmt.body!,
@@ -229,12 +217,12 @@ export const makeBuildWhileStatement = (
  * Build a for statement
  */
 export const makeBuildForStatement = (
-  buildStatement: (stmt: Ast.Statement) => IrGen<void>,
+  buildStatement: (stmt: Ast.Statement) => Process<void>,
 ) => {
   const buildLoop = makeBuildLoop(buildStatement);
   return function* buildForStatement(
     stmt: Ast.Statement.ControlFlow,
-  ): IrGen<void> {
+  ): Process<void> {
     yield* buildLoop({
       init: stmt.init,
       condition: stmt.condition,
@@ -248,10 +236,10 @@ export const makeBuildForStatement = (
 /**
  * Build a return statement
  */
-function* buildReturnStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
+function* buildReturnStatement(stmt: Ast.Statement.ControlFlow): Process<void> {
   const value = stmt.value ? yield* buildExpression(stmt.value) : undefined;
 
-  yield* setTerminator({
+  yield* Process.Blocks.terminate({
     kind: "return",
     value,
   });
@@ -260,11 +248,11 @@ function* buildReturnStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
 /**
  * Build a break statement
  */
-function* buildBreakStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
-  const loop = yield* getCurrentLoop();
+function* buildBreakStatement(stmt: Ast.Statement.ControlFlow): Process<void> {
+  const loop = yield* Process.ControlFlow.currentLoop();
 
   if (!loop) {
-    yield* addError(
+    yield* Process.Errors.report(
       new IrgenError(
         "Break outside loop",
         stmt.loc ?? undefined,
@@ -275,7 +263,7 @@ function* buildBreakStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
     return;
   }
 
-  yield* setTerminator({
+  yield* Process.Blocks.terminate({
     kind: "jump",
     target: loop.breakTarget,
   });
@@ -284,11 +272,11 @@ function* buildBreakStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
 /**
  * Build a continue statement
  */
-function* buildContinueStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
-  const loop = yield* getCurrentLoop();
+function* buildContinueStatement(stmt: Ast.Statement.ControlFlow): Process<void> {
+  const loop = yield* Process.ControlFlow.currentLoop();
 
   if (!loop) {
-    yield* addError(
+    yield* Process.Errors.report(
       new IrgenError(
         "Continue outside loop",
         stmt.loc ?? undefined,
@@ -299,51 +287,10 @@ function* buildContinueStatement(stmt: Ast.Statement.ControlFlow): IrGen<void> {
     return;
   }
 
-  yield* setTerminator({
+  yield* Process.Blocks.terminate({
     kind: "jump",
     target: loop.continueTarget,
   });
 }
 
-/**
- * Generate a new block
- */
-function* createBlock(prefix: string): IrGen<string> {
-  const state = yield* peek();
-  const id = `${prefix}_${state.counters.block}`;
-  // Just generate the ID and update counter
-  // The actual block will be created when we switch to it
-  yield* updateCounters((c) => ({ ...c, block: c.block + 1 }));
-  return id;
-}
 
-/**
- * Switch to a block
- */
-function* switchToBlock(blockId: string): IrGen<void> {
-  // First sync current block to function if it's complete
-  yield* syncBlockToFunction();
-
-  const state = yield* peek();
-  const existingBlock = state.function.blocks.get(blockId);
-
-  if (existingBlock) {
-    // Switch to existing block
-    yield* updateBlock(() => ({
-      id: existingBlock.id,
-      instructions: [...existingBlock.instructions],
-      terminator: existingBlock.terminator,
-      predecessors: new Set(existingBlock.predecessors),
-      phis: [...existingBlock.phis],
-    }));
-  } else {
-    // Create new block context
-    yield* updateBlock(() => ({
-      id: blockId,
-      instructions: [],
-      terminator: undefined,
-      predecessors: new Set(),
-      phis: [],
-    }));
-  }
-}

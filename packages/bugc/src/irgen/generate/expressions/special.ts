@@ -1,20 +1,19 @@
 import type * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Severity } from "#result";
-import { Error as IrgenError } from "../errors.js";
-import { type IrGen, addError, emit, peek, newTemp } from "../irgen.js";
-import { mapTypeToIrType } from "../type.js";
 
+import { Error as IrgenError } from "#irgen/errors";
+import { fromBugType } from "#irgen/type";
+import { Process } from "../process.js";
 /**
  * Build a special expression (msg.sender, block.number, etc.)
  */
-export function* buildSpecial(expr: Ast.Expression.Special): IrGen<Ir.Value> {
+export function* buildSpecial(expr: Ast.Expression.Special): Process<Ir.Value> {
   // Get the type from the type checker
-  const state = yield* peek();
-  const nodeType = state.types.get(expr.id);
+  const nodeType = yield* Process.Types.nodeType(expr);
 
   if (!nodeType) {
-    yield* addError(
+    yield* Process.Errors.report(
       new IrgenError(
         `Cannot determine type for special expression: ${expr.kind}`,
         expr.loc ?? undefined,
@@ -25,8 +24,8 @@ export function* buildSpecial(expr: Ast.Expression.Special): IrGen<Ir.Value> {
     return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
   }
 
-  const resultType = mapTypeToIrType(nodeType);
-  const temp = yield* newTemp();
+  const resultType = fromBugType(nodeType);
+  const temp = yield* Process.Variables.newTemp();
 
   let op: Ir.Instruction.Env["op"];
   switch (expr.kind) {
@@ -46,7 +45,7 @@ export function* buildSpecial(expr: Ast.Expression.Special): IrGen<Ir.Value> {
       op = "block_number";
       break;
     default:
-      yield* addError(
+      yield* Process.Errors.report(
         new IrgenError(
           `Unknown special expression: ${expr.kind}`,
           expr.loc || undefined,
@@ -56,7 +55,7 @@ export function* buildSpecial(expr: Ast.Expression.Special): IrGen<Ir.Value> {
       return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
   }
 
-  yield* emit({
+  yield* Process.Instructions.emit({
     kind: "env",
     op,
     dest: temp,

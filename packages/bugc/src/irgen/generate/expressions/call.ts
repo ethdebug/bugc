@@ -2,17 +2,18 @@ import type * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Severity } from "#result";
 import { Type } from "#types";
-import { Error as IrgenError } from "../errors.js";
-import { type IrGen, addError, emit, peek, newTemp } from "../irgen.js";
-import { mapTypeToIrType } from "../type.js";
+
+import { Error as IrgenError } from "#irgen/errors";
+import { Process } from "../process.js";
+import { fromBugType } from "#irgen/type";
 
 /**
  * Build a call expression
  */
 export const makeBuildCall = (
-  buildExpression: (node: Ast.Expression) => IrGen<Ir.Value>,
+  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
 ) =>
-  function* buildCall(expr: Ast.Expression.Call): IrGen<Ir.Value> {
+  function* buildCall(expr: Ast.Expression.Call): Process<Ir.Value> {
     // Check if this is a built-in function call
     if (
       expr.callee.type === "IdentifierExpression" &&
@@ -20,7 +21,7 @@ export const makeBuildCall = (
     ) {
       // keccak256 built-in function
       if (expr.arguments.length !== 1) {
-        yield* addError(
+        yield* Process.Errors.report(
           new IrgenError(
             "keccak256 expects exactly 1 argument",
             expr.loc ?? undefined,
@@ -35,9 +36,9 @@ export const makeBuildCall = (
 
       // Generate hash instruction
       const resultType: Ir.Type = { kind: "bytes", size: 32 }; // bytes32
-      const resultTemp = yield* newTemp();
+      const resultTemp = yield* Process.Variables.newTemp();
 
-      yield* emit({
+      yield* Process.Instructions.emit({
         kind: "hash",
         value: argValue,
         dest: resultTemp,
@@ -52,11 +53,10 @@ export const makeBuildCall = (
       const functionName = (expr.callee as Ast.Expression.Identifier).name;
 
       // Get the function type from the type checker
-      const state = yield* peek();
-      const callType = state.types.get(expr.id);
+      const callType = yield* Process.Types.nodeType(expr);
 
       if (!callType) {
-        yield* addError(
+        yield* Process.Errors.report(
           new IrgenError(
             `Unknown function: ${functionName}`,
             expr.loc ?? undefined,
@@ -73,7 +73,7 @@ export const makeBuildCall = (
       }
 
       // Generate call instruction
-      const irType = mapTypeToIrType(callType);
+      const irType = fromBugType(callType);
       let dest: string | undefined;
 
       // Only create a destination if the function returns a value
@@ -83,10 +83,10 @@ export const makeBuildCall = (
         (callType as Type.Failure).reason === "void function";
 
       if (!isVoidFunction) {
-        dest = yield* newTemp();
+        dest = yield* Process.Variables.newTemp();
       }
 
-      yield* emit({
+      yield* Process.Instructions.emit({
         kind: "call",
         function: functionName,
         arguments: argValues,
@@ -104,7 +104,7 @@ export const makeBuildCall = (
     }
 
     // Other forms of function calls not supported
-    yield* addError(
+    yield* Process.Errors.report(
       new IrgenError(
         "Complex function call expressions not yet supported",
         expr.loc ?? undefined,

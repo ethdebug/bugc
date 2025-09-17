@@ -48,3 +48,12 @@ class IrgenError extends BugError {
 }
 
 export { IrgenError as Error };
+
+export function assertExhausted(_: never): never {
+  throw new IrgenError(
+    `Unexpected code path; expected exhaustive conditionals`,
+    undefined,
+    Severity.Error,
+    ErrorCode.INTERNAL_ERROR,
+  );
+}

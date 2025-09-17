@@ -33,6 +33,9 @@
 
       "#irgen": ["./src/irgen/index"],
       "#irgen/pass": ["./src/irgen/pass"],
+      "#irgen/errors": ["./src/irgen/errors"],
+      "#irgen/type": ["./src/irgen/type"],
+      "#irgen/generate": ["./src/irgen/generate/index"],
 
       "#optimizer": ["./src/optimizer/index"],
       "#optimizer/*": ["./src/optimizer/*"],

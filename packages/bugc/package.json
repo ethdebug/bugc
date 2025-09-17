@@ -42,6 +42,9 @@
 
     "#irgen": "./dist/src/irgen/index.js",
     "#irgen/pass": "./dist/src/irgen/pass.js",
+    "#irgen/errors": "./dist/src/irgen/errors.js",
+    "#irgen/type": "./dist/src/irgen/type.js",
+    "#irgen/generate": "./dist/src/irgen/generate/index.js",
 
     "#optimizer": "./dist/src/optimizer/index.js",
     "#optimizer/*": "./dist/src/optimizer/*.js",

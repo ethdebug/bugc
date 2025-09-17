@@ -1,28 +1,24 @@
 import type * as Ast from "#ast";
 import * as Ir from "#ir";
-import { Error as IrgenError, ErrorMessages } from "../errors.js";
 import { Severity } from "#result";
-import {
-  type IrGen,
-  addError,
-  emit,
-  lookupVariable,
-  peek,
-  newTemp,
-} from "../irgen.js";
+
+import { Error as IrgenError, ErrorMessages } from "#irgen/errors";
+
+import { Process } from "../process.js";
+
 /**
  * Build an identifier expression
  */
 export function* buildIdentifier(
   expr: Ast.Expression.Identifier,
-): IrGen<Ir.Value> {
-  const local = yield* lookupVariable(expr.name);
+): Process<Ir.Value> {
+  const local = yield* Process.Variables.lookup(expr.name);
 
   if (local) {
     // Load the local variable
-    const tempId = yield* newTemp();
+    const tempId = yield* Process.Variables.newTemp();
 
-    yield* emit({
+    yield* Process.Instructions.emit({
       kind: "load_local",
       local: local.id,
       dest: tempId,
@@ -33,15 +29,12 @@ export function* buildIdentifier(
   }
 
   // Check if it's a storage variable
-  const state = yield* peek();
-  const storageSlot = state.module.storage.slots.find(
-    ({ name }) => name === expr.name,
-  );
+  const storageSlot = yield* Process.Storage.findSlot(expr.name);
 
   if (storageSlot) {
     // Build storage load directly
-    const tempId = yield* newTemp();
-    yield* emit({
+    const tempId = yield* Process.Variables.newTemp();
+    yield* Process.Instructions.emit({
       kind: "load_storage",
       slot: Ir.Value.constant(BigInt(storageSlot.slot), {
         kind: "uint",
@@ -55,7 +48,7 @@ export function* buildIdentifier(
   }
 
   // Unknown identifier - add error and return default value
-  yield* addError(
+  yield* Process.Errors.report(
     new IrgenError(
       ErrorMessages.UNKNOWN_IDENTIFIER(expr.name),
       expr.loc ?? undefined,

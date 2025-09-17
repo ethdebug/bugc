@@ -1,20 +1,21 @@
 import type * as Ast from "#ast";
 import * as Ir from "#ir";
-import { Error as IrgenError } from "../errors.js";
 import { Severity } from "#result";
-import { type IrGen, addError, emit, peek, newTemp } from "../irgen.js";
-import { mapTypeToIrType } from "../type.js";
+
+import { Error as IrgenError } from "#irgen/errors";
+import { fromBugType } from "#irgen/type";
+
+import { Process } from "../process.js";
 
 /**
  * Build a literal expression
  */
-export function* buildLiteral(expr: Ast.Expression.Literal): IrGen<Ir.Value> {
+export function* buildLiteral(expr: Ast.Expression.Literal): Process<Ir.Value> {
   // Get the type from the context
-  const state = yield* peek();
-  const nodeType = state.types.get(expr.id);
+  const nodeType = yield* Process.Types.nodeType(expr);
 
   if (!nodeType) {
-    yield* addError(
+    yield* Process.Errors.report(
       new IrgenError(
         `Cannot determine type for literal: ${expr.value}`,
         expr.loc ?? undefined,
@@ -25,7 +26,7 @@ export function* buildLiteral(expr: Ast.Expression.Literal): IrGen<Ir.Value> {
     return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
   }
 
-  const type = mapTypeToIrType(nodeType);
+  const type = fromBugType(nodeType);
 
   // Parse the literal value based on its kind
   let value: bigint | string | boolean;
@@ -56,7 +57,7 @@ export function* buildLiteral(expr: Ast.Expression.Literal): IrGen<Ir.Value> {
       value = expr.value === "true";
       break;
     default:
-      yield* addError(
+      yield* Process.Errors.report(
         new IrgenError(
           `Unknown literal kind: ${expr.kind}`,
           expr.loc || undefined,
@@ -66,9 +67,9 @@ export function* buildLiteral(expr: Ast.Expression.Literal): IrGen<Ir.Value> {
       return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
   }
 
-  const tempId = yield* newTemp();
+  const tempId = yield* Process.Variables.newTemp();
 
-  yield* emit({
+  yield* Process.Instructions.emit({
     kind: "const",
     dest: tempId,
     value,

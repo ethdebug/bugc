@@ -1,10 +1,10 @@
 import type * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Type } from "#types";
-import { Error as IrgenError } from "../errors.js";
+import { Error as IrgenError } from "#irgen/errors";
 import { Severity } from "#result";
 import { buildExpression } from "../expressions/index.js";
-import { type IrGen, addError, emit, lookupVariable, peek } from "../irgen.js";
+import { Process } from "../process.js";
 
 import {
   makeFindStorageAccessChain,
@@ -18,7 +18,7 @@ const findStorageAccessChain = makeFindStorageAccessChain(buildExpression);
  */
 export function* buildAssignmentStatement(
   stmt: Ast.Statement.Assign,
-): IrGen<void> {
+): Process<void> {
   const value = yield* buildExpression(stmt.value);
   yield* buildLValue(stmt.target, value);
 }
@@ -26,14 +26,14 @@ export function* buildAssignmentStatement(
 /**
  * Handle lvalue assignment
  */
-function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
+function* buildLValue(node: Ast.Expression, value: Ir.Value): Process<void> {
   if (node.type === "IdentifierExpression") {
     const name = (node as Ast.Expression.Identifier).name;
 
     // Check if it's a local
-    const local = yield* lookupVariable(name);
+    const local = yield* Process.Variables.lookup(name);
     if (local) {
-      yield* emit({
+      yield* Process.Instructions.emit({
         kind: "store_local",
         local: local.id,
         value,
@@ -43,10 +43,9 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
     }
 
     // Check if it's storage
-    const state = yield* peek();
-    const storageSlot = state.module.storage.slots.find((s) => s.name === name);
+    const storageSlot = yield* Process.Storage.findSlot(name);
     if (storageSlot) {
-      yield* emit({
+      yield* Process.Instructions.emit({
         kind: "store_storage",
         slot: Ir.Value.constant(BigInt(storageSlot.slot), {
           kind: "uint",
@@ -58,7 +57,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
       return;
     }
 
-    yield* addError(
+    yield* Process.Errors.report(
       new IrgenError(
         `Unknown identifier: ${name}`,
         node.loc || undefined,
@@ -79,8 +78,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
 
       // Otherwise, handle regular struct field assignment
       const object = yield* buildExpression(accessNode.object);
-      const state = yield* peek();
-      const objectType = state.types.get(accessNode.object.id);
+      const objectType = yield* Process.Types.nodeType(accessNode.object);
 
       if (objectType && Type.isStruct(objectType)) {
         const fieldName = accessNode.property as string;
@@ -93,7 +91,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
             fieldIndex++;
           }
 
-          yield* emit({
+          yield* Process.Instructions.emit({
             kind: "store_field",
             object,
             field: fieldName,
@@ -107,8 +105,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
     } else {
       // Array/mapping/bytes assignment
       // First check if we're assigning to bytes
-      const state = yield* peek();
-      const objectType = state.types.get(accessNode.object.id);
+      const objectType = yield* Process.Types.nodeType(accessNode.object);
       if (
         objectType &&
         Type.isElementary(objectType) &&
@@ -120,7 +117,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
           accessNode.property as Ast.Expression,
         );
 
-        yield* emit({
+        yield* Process.Instructions.emit({
           kind: "store_index",
           array: object,
           index,
@@ -144,7 +141,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
       );
 
       if (objectType && Type.isArray(objectType)) {
-        yield* emit({
+        yield* Process.Instructions.emit({
           kind: "store_index",
           array: object,
           index,
@@ -156,7 +153,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): IrGen<void> {
     }
   }
 
-  yield* addError(
+  yield* Process.Errors.report(
     new IrgenError("Invalid lvalue", node.loc || undefined, Severity.Error),
   );
 }

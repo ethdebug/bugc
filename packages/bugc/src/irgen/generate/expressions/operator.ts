@@ -2,28 +2,28 @@ import * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Severity } from "#result";
 
-import { Error as IrgenError } from "../errors.js";
-import { type IrGen, addError, emit, peek, newTemp } from "../irgen.js";
-import { mapTypeToIrType } from "../type.js";
+import { Error as IrgenError } from "#irgen/errors";
+import { fromBugType } from "#irgen/type";
+
+import { Process } from "../process.js";
 
 /**
  * Build an operator expression (unary or binary)
  */
 export const makeBuildOperator = (
-  buildExpression: (node: Ast.Expression) => IrGen<Ir.Value>,
+  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
 ) => {
   const buildUnaryOperator = makeBuildUnaryOperator(buildExpression);
   const buildBinaryOperator = makeBuildBinaryOperator(buildExpression);
 
   return function* buildOperator(
     expr: Ast.Expression.Operator,
-  ): IrGen<Ir.Value> {
+  ): Process<Ir.Value> {
     // Get the type from the context
-    const state = yield* peek();
-    const nodeType = state.types.get(expr.id);
+    const nodeType = yield* Process.Types.nodeType(expr);
 
     if (!nodeType) {
-      yield* addError(
+      yield* Process.Errors.report(
         new IrgenError(
           `Cannot determine type for operator expression: ${expr.operator}`,
           expr.loc ?? undefined,
@@ -39,7 +39,7 @@ export const makeBuildOperator = (
       case 2:
         return yield* buildBinaryOperator(expr);
       default: {
-        yield* addError(
+        yield* Process.Errors.report(
           new IrgenError(
             `Invalid operator arity: ${expr.operands.length}`,
             expr.loc || undefined,
@@ -55,15 +55,14 @@ export const makeBuildOperator = (
  * Build a unary operator expression
  */
 const makeBuildUnaryOperator = (
-  buildExpression: (expr: Ast.Expression) => IrGen<Ir.Value>,
+  buildExpression: (expr: Ast.Expression) => Process<Ir.Value>,
 ) =>
-  function* buildUnaryOperator(expr: Ast.Expression.Operator): IrGen<Ir.Value> {
+  function* buildUnaryOperator(expr: Ast.Expression.Operator): Process<Ir.Value> {
     // Get the result type from the context
-    const state = yield* peek();
-    const nodeType = state.types.get(expr.id);
+    const nodeType = yield* Process.Types.nodeType(expr);
 
     if (!nodeType) {
-      yield* addError(
+      yield* Process.Errors.report(
         new IrgenError(
           `Cannot determine type for unary operator: ${expr.operator}`,
           expr.loc ?? undefined,
@@ -73,19 +72,19 @@ const makeBuildUnaryOperator = (
       return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
     }
 
-    const resultType = mapTypeToIrType(nodeType);
+    const resultType = fromBugType(nodeType);
 
     // Evaluate operand
     const operandVal = yield* buildExpression(expr.operands[0]);
 
     // Generate temp for result
-    const tempId = yield* newTemp();
+    const tempId = yield* Process.Variables.newTemp();
 
     // Map operator (matching generator.ts logic)
     const op = expr.operator === "!" ? "not" : "neg";
 
     // Emit unary operation
-    yield* emit({
+    yield* Process.Instructions.emit({
       kind: "unary",
       op,
       operand: operandVal,
@@ -100,17 +99,16 @@ const makeBuildUnaryOperator = (
  * Build a binary operator expression
  */
 const makeBuildBinaryOperator = (
-  buildExpression: (node: Ast.Expression) => IrGen<Ir.Value>,
+  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
 ) =>
   function* buildBinaryOperator(
     expr: Ast.Expression.Operator,
-  ): IrGen<Ir.Value> {
+  ): Process<Ir.Value> {
     // Get the result type from the context
-    const state = yield* peek();
-    const nodeType = state.types.get(expr.id);
+    const nodeType = yield* Process.Types.nodeType(expr);
 
     if (!nodeType) {
-      yield* addError(
+      yield* Process.Errors.report(
         new IrgenError(
           `Cannot determine type for binary operator: ${expr.operator}`,
           expr.loc ?? undefined,
@@ -120,17 +118,17 @@ const makeBuildBinaryOperator = (
       return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
     }
 
-    const resultType = mapTypeToIrType(nodeType);
+    const resultType = fromBugType(nodeType);
 
     // Evaluate operands
     const leftVal = yield* buildExpression(expr.operands[0]);
     const rightVal = yield* buildExpression(expr.operands[1]);
 
     // Generate temp for result
-    const tempId = yield* newTemp();
+    const tempId = yield* Process.Variables.newTemp();
 
     // Emit binary operation
-    yield* emit({
+    yield* Process.Instructions.emit({
       kind: "binary",
       op: mapBinaryOp(expr.operator),
       left: leftVal,

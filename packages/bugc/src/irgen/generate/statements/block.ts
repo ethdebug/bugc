@@ -1,14 +1,14 @@
 import * as Ast from "#ast";
-import { type IrGen, pushScope, popScope } from "../irgen.js";
+import { Process } from "../process.js";
 
 /**
  * Build a block of statements
  */
 export const makeBuildBlock = (
-  buildStatement: (stmt: Ast.Statement) => IrGen<void>,
+  buildStatement: (stmt: Ast.Statement) => Process<void>,
 ) =>
-  function* buildBlock(block: Ast.Block): IrGen<void> {
-    yield* pushScope();
+  function* buildBlock(block: Ast.Block): Process<void> {
+    yield* Process.Variables.enterScope();
 
     for (const item of block.items) {
       if ("type" in item && Ast.isStatement(item)) {
@@ -16,5 +16,5 @@ export const makeBuildBlock = (
       }
     }
 
-    yield* popScope();
+    yield* Process.Variables.exitScope();
   };

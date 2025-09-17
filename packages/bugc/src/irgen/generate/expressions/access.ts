@@ -1,13 +1,14 @@
-import type * as Ast from "#ast";
+import * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Severity } from "#result";
 import { Type } from "#types";
-import { Error as IrgenError } from "../errors.js";
-import { type IrGen, addError, emit, peek, newTemp } from "../irgen.js";
-import { mapTypeToIrType } from "../type.js";
+
+import { Error as IrgenError } from "#irgen/errors";
+
+import { Process } from "../process.js";
+import { fromBugType } from "#irgen/type";
 import {
   makeFindStorageAccessChain,
-  findStorageVariable,
   emitStorageChainLoad,
 } from "../storage.js";
 
@@ -15,18 +16,17 @@ import {
  * Build an access expression (array/member access)
  */
 export const makeBuildAccess = (
-  buildExpression: (node: Ast.Expression) => IrGen<Ir.Value>,
+  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
 ) => {
   const findStorageAccessChain = makeFindStorageAccessChain(buildExpression);
 
-  return function* buildAccess(expr: Ast.Expression.Access): IrGen<Ir.Value> {
+  return function* buildAccess(expr: Ast.Expression.Access): Process<Ir.Value> {
     if (expr.kind === "member") {
       const property = expr.property as string;
 
       // Check if this is a .length property access
       if (property === "length") {
-        const state = yield* peek();
-        const objectType = state.types.get(expr.object.id);
+        const objectType = yield* Process.Types.nodeType(expr.object);
 
         // Verify that the object type supports .length (arrays, bytes, string)
         if (
@@ -38,9 +38,9 @@ export const makeBuildAccess = (
         ) {
           const object = yield* buildExpression(expr.object);
           const resultType: Ir.Type = { kind: "uint", bits: 256 };
-          const tempId = yield* newTemp();
+          const tempId = yield* Process.Variables.newTemp();
 
-          yield* emit({
+          yield* Process.Instructions.emit({
             kind: "length",
             object,
             dest: tempId,
@@ -54,10 +54,9 @@ export const makeBuildAccess = (
       // First check if this is accessing a storage chain (e.g., accounts[user].balance)
       const chain = yield* findStorageAccessChain(expr);
       if (chain) {
-        const state = yield* peek();
-        const nodeType = state.types.get(expr.id);
+        const nodeType = yield* Process.Types.nodeType(expr);
         if (nodeType) {
-          const valueType = mapTypeToIrType(nodeType);
+          const valueType = fromBugType(nodeType);
           return yield* emitStorageChainLoad(
             chain,
             valueType,
@@ -70,8 +69,7 @@ export const makeBuildAccess = (
 
       // Otherwise, handle regular struct field access
       const object = yield* buildExpression(expr.object);
-      const state = yield* peek();
-      const objectType = state.types.get(expr.object.id);
+      const objectType = yield* Process.Types.nodeType(expr.object);
 
       if (objectType && Type.isStruct(objectType)) {
         const fieldType = objectType.fields.get(property);
@@ -79,10 +77,10 @@ export const makeBuildAccess = (
           const fieldIndex = Array.from(objectType.fields.keys()).indexOf(
             property,
           );
-          const irFieldType = mapTypeToIrType(fieldType);
-          const tempId = yield* newTemp();
+          const irFieldType = fromBugType(fieldType);
+          const tempId = yield* Process.Variables.newTemp();
 
-          yield* emit({
+          yield* Process.Instructions.emit({
             kind: "load_field",
             object,
             field: property,
@@ -97,8 +95,7 @@ export const makeBuildAccess = (
       }
     } else if (expr.kind === "slice") {
       // Slice access - start:end
-      const state = yield* peek();
-      const objectType = state.types.get(expr.object.id);
+      const objectType = yield *Process.Types.nodeType(expr.object);
       if (
         objectType &&
         Type.isElementary(objectType) &&
@@ -110,9 +107,9 @@ export const makeBuildAccess = (
 
         // Slicing bytes returns dynamic bytes
         const resultType: Ir.Type = { kind: "bytes" };
-        const tempId = yield* newTemp();
+        const tempId = yield* Process.Variables.newTemp();
 
-        yield* emit({
+        yield* Process.Instructions.emit({
           kind: "slice",
           object,
           start,
@@ -124,7 +121,7 @@ export const makeBuildAccess = (
         return Ir.Value.temp(tempId, resultType);
       }
 
-      yield* addError(
+      yield* Process.Errors.report(
         new IrgenError(
           "Only bytes types can be sliced",
           expr.loc ?? undefined,
@@ -135,8 +132,8 @@ export const makeBuildAccess = (
     } else {
       // Array/mapping/bytes index access
       // First check if we're indexing into bytes (not part of storage chain)
-      const state = yield* peek();
-      const objectType = state.types.get(expr.object.id);
+      const nodeType = yield* Process.Types.nodeType(expr);
+      const objectType = yield* Process.Types.nodeType(expr.object);
       if (
         objectType &&
         Type.isElementary(objectType) &&
@@ -147,9 +144,9 @@ export const makeBuildAccess = (
         const index = yield* buildExpression(expr.property as Ast.Expression);
         // Bytes indexing returns uint8
         const elementType: Ir.Type = { kind: "uint", bits: 8 };
-        const tempId = yield* newTemp();
+        const tempId = yield* Process.Variables.newTemp();
 
-        yield* emit({
+        yield* Process.Instructions.emit({
           kind: "load_index",
           array: object,
           index,
@@ -163,16 +160,13 @@ export const makeBuildAccess = (
 
       // For non-bytes types, try to find a complete storage access chain
       const chain = yield* findStorageAccessChain(expr);
-      if (chain) {
-        const nodeType = state.types.get(expr.id);
-        if (nodeType) {
-          const valueType = mapTypeToIrType(nodeType);
-          return yield* emitStorageChainLoad(
-            chain,
-            valueType,
-            expr.loc ?? undefined,
-          );
-        }
+      if (chain && nodeType) {
+        const valueType = fromBugType(nodeType);
+        return yield* emitStorageChainLoad(
+          chain,
+          valueType,
+          expr.loc ?? undefined,
+        );
       }
 
       // If no storage chain, handle regular array/mapping access
@@ -180,10 +174,10 @@ export const makeBuildAccess = (
       const index = yield* buildExpression(expr.property as Ast.Expression);
 
       if (objectType && Type.isArray(objectType)) {
-        const elementType = mapTypeToIrType(objectType.element);
-        const tempId = yield* newTemp();
+        const elementType = fromBugType(objectType.element);
+        const tempId = yield* Process.Variables.newTemp();
 
-        yield* emit({
+        yield* Process.Instructions.emit({
           kind: "load_index",
           array: object,
           index,
@@ -193,14 +187,14 @@ export const makeBuildAccess = (
         } as Ir.Instruction);
 
         return Ir.Value.temp(tempId, elementType);
-      } else if (objectType && Type.isMapping(objectType)) {
+      } else if (objectType && Type.isMapping(objectType) && Ast.Expression.isIdentifier(expr.object)) {
         // Simple mapping access
-        const storageVar = yield* findStorageVariable(expr.object);
+        const storageVar = yield* Process.Storage.findSlot(expr.object.name);
         if (storageVar) {
-          const valueType = mapTypeToIrType(objectType.value);
-          const tempId = yield* newTemp();
+          const valueType = fromBugType(objectType.value);
+          const tempId = yield* Process.Variables.newTemp();
 
-          yield* emit({
+          yield* Process.Instructions.emit({
             kind: "load_mapping",
             slot: storageVar.slot,
             key: index,
@@ -214,7 +208,7 @@ export const makeBuildAccess = (
       }
     }
 
-    yield* addError(
+    yield* Process.Errors.report(
       new IrgenError(
         "Invalid access expression",
         expr.loc ?? undefined,

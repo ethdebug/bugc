@@ -1,14 +1,8 @@
 import type * as Ast from "#ast";
 import * as Ir from "#ir";
 import { buildBlock } from "./statements/index.js";
-import {
-  type IrGen,
-  setTerminator,
-  declareLocal,
-  initializeFunction,
-  peek,
-  syncBlockToFunction,
-} from "./irgen.js";
+
+import { Process } from "./process.js";
 
 /**
  * Build a function
@@ -20,24 +14,19 @@ export function* buildFunction(
     type: Ir.Type;
   }[],
   body: Ast.Block,
-): IrGen<Ir.Function> {
+): Process<Ir.Function> {
   // Initialize function context
-  yield* initializeFunction(name);
-
-  // Add parameters as locals
-  for (const param of parameters) {
-    yield* declareLocal(param.name, param.type);
-  }
+  yield* Process.Functions.initialize(name, parameters);
 
   // Build function body
   yield* buildBlock(body);
 
   // Ensure function has a terminator
   {
-    const state = yield* peek();
-    if (!state.block.terminator) {
+    const terminator = yield* Process.Blocks.currentTerminator();
+    if (!terminator) {
       // Add implicit return
-      yield* setTerminator({
+      yield* Process.Blocks.terminate({
         kind: "return",
         value: undefined,
       });
@@ -45,23 +34,22 @@ export function* buildFunction(
   }
 
   // Sync final block
-  yield* syncBlockToFunction();
+  yield* Process.Blocks.syncCurrent();
 
-  // Create the function
-  const finalState = yield* peek();
 
   // Compute predecessors from the control flow graph
-  const blocks = computePredecessors(finalState.function.blocks);
+  const blocks = computePredecessors(yield* Process.Functions.currentBlocks());
+  const locals = yield* Process.Functions.currentLocals();
 
-  const func: Ir.Function = {
+  const function_: Ir.Function = {
     name,
-    locals: finalState.function.locals,
+    locals: locals,
     paramCount: parameters.length,
     entry: "entry",
     blocks,
   };
 
-  return func;
+  return function_;
 }
 
 /**

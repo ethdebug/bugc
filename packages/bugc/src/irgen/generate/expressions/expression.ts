@@ -1,9 +1,8 @@
 import type * as Ast from "#ast";
 import * as Ir from "#ir";
-import { Severity } from "#result";
 
-import { Error as IrgenError } from "../errors.js";
-import { type IrGen, addError } from "../irgen.js";
+import { assertExhausted } from "#irgen/errors";
+import { type Process } from "../process.js";
 
 import { buildIdentifier } from "./identifier.js";
 import { buildLiteral } from "./literal.js";
@@ -21,7 +20,7 @@ const buildCast = makeBuildCast(buildExpression);
 /**
  * Build an expression and return the resulting IR value
  */
-export function* buildExpression(expr: Ast.Expression): IrGen<Ir.Value> {
+export function* buildExpression(expr: Ast.Expression): Process<Ir.Value> {
   switch (expr.type) {
     case "IdentifierExpression":
       return yield* buildIdentifier(expr as Ast.Expression.Identifier);
@@ -38,15 +37,6 @@ export function* buildExpression(expr: Ast.Expression): IrGen<Ir.Value> {
     case "SpecialExpression":
       return yield* buildSpecial(expr as Ast.Expression.Special);
     default:
-      yield* addError(
-        new IrgenError(
-          // @ts-expect-error switch statement is exhaustive; expr is never
-          `Unsupported expression type: ${expr.type}`,
-          // @ts-expect-error switch statement is exhaustive; expr is never
-          expr.loc ?? undefined,
-          Severity.Error,
-        ),
-      );
-      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+      assertExhausted(expr);
   }
 }

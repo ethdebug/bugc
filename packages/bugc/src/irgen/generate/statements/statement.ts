@@ -1,7 +1,7 @@
 import type * as Ast from "#ast";
-import { Severity } from "#result";
-import { Error as IrgenError } from "../errors.js";
-import { type IrGen, addError } from "../irgen.js";
+import { assertExhausted } from "#irgen/errors";
+
+import { Process } from "../process.js";
 
 import { makeBuildBlock } from "./block.js";
 
@@ -17,7 +17,7 @@ export const buildBlock = makeBuildBlock(buildStatement);
 /**
  * Build a statement
  */
-export function* buildStatement(stmt: Ast.Statement): IrGen<void> {
+export function* buildStatement(stmt: Ast.Statement): Process<void> {
   switch (stmt.type) {
     case "DeclarationStatement":
       return yield* buildDeclarationStatement(stmt);
@@ -30,14 +30,6 @@ export function* buildStatement(stmt: Ast.Statement): IrGen<void> {
     case "ExpressionStatement":
       return yield* buildExpressionStatement(stmt as Ast.Statement.Express);
     default:
-      return yield* addError(
-        new IrgenError(
-          // @ts-expect-error switch statement is exhaustive
-          `Unsupported statement type: ${stmt.type}`,
-          // @ts-expect-error switch statement is exhaustive
-          stmt.loc ?? undefined,
-          Severity.Error,
-        ),
-      );
+      assertExhausted(stmt);
   }
 }

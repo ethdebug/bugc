@@ -1,5 +1,5 @@
 import type * as Ast from "#ast";
-import { type IrGen } from "../irgen.js";
+import { type Process } from "../process.js";
 import { buildExpression } from "../expressions/index.js";
 
 /**
@@ -7,6 +7,6 @@ import { buildExpression } from "../expressions/index.js";
  */
 export function* buildExpressionStatement(
   stmt: Ast.Statement.Express,
-): IrGen<void> {
+): Process<void> {
   yield* buildExpression(stmt.expression);
 }
