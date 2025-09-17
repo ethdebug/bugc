@@ -428,16 +428,16 @@ export namespace Process {
 }
 
 // Overloaded signatures for different return types
-export function lift<A extends readonly unknown[]>(
+function lift<A extends readonly unknown[]>(
   fn: (...args: A) => Modify<State>,
 ): (...args: A) => Process<void>;
 
-export function lift<T, A extends readonly unknown[]>(
+function lift<T, A extends readonly unknown[]>(
   fn: (...args: A) => Read<State, T>,
 ): (...args: A) => Process<T>;
 
 // Implementation
-export function lift<T, A extends readonly unknown[]>(
+function lift<T, A extends readonly unknown[]>(
   fn: (...args: A) => Modify<State> | Read<State, T>,
 ) {
   return function* (...args: A): Process<T | void> {
