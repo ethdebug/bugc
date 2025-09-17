@@ -136,9 +136,8 @@ describe("Visitor Pattern", () => {
     expect(
       Ast.visit(
         visitor,
-        Ast.Expression.access(
+        Ast.Expression.Access.member(
           createId(),
-          "member",
           Ast.Expression.identifier(createId(), "x"),
           "y",
         ),

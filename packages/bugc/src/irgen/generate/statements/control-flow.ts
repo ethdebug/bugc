@@ -60,7 +60,9 @@ export const makeBuildIfStatement = (
     const elseBlock = stmt.alternate
       ? yield* Process.Blocks.create("else")
       : yield* Process.Blocks.create("merge");
-    const mergeBlock = stmt.alternate ? yield* Process.Blocks.create("merge") : elseBlock; // For no-else case, elseBlock IS the merge block
+    const mergeBlock = stmt.alternate
+      ? yield* Process.Blocks.create("merge")
+      : elseBlock; // For no-else case, elseBlock IS the merge block
 
     // Evaluate condition
     const condVal = yield* buildExpression(stmt.condition!);
@@ -110,7 +112,9 @@ export const makeBuildIfStatement = (
 /**
  * Unified loop builder for while and for loops
  */
-const makeBuildLoop = (buildStatement: (stmt: Ast.Statement) => Process<void>) =>
+const makeBuildLoop = (
+  buildStatement: (stmt: Ast.Statement) => Process<void>,
+) =>
   function* buildLoop(config: {
     init?: Ast.Statement;
     condition?: Ast.Expression;
@@ -272,7 +276,9 @@ function* buildBreakStatement(stmt: Ast.Statement.ControlFlow): Process<void> {
 /**
  * Build a continue statement
  */
-function* buildContinueStatement(stmt: Ast.Statement.ControlFlow): Process<void> {
+function* buildContinueStatement(
+  stmt: Ast.Statement.ControlFlow,
+): Process<void> {
   const loop = yield* Process.ControlFlow.currentLoop();
 
   if (!loop) {
@@ -292,5 +298,3 @@ function* buildContinueStatement(stmt: Ast.Statement.ControlFlow): Process<void>
     target: loop.continueTarget,
   });
 }
-
-

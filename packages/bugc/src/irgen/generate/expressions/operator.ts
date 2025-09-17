@@ -57,7 +57,9 @@ export const makeBuildOperator = (
 const makeBuildUnaryOperator = (
   buildExpression: (expr: Ast.Expression) => Process<Ir.Value>,
 ) =>
-  function* buildUnaryOperator(expr: Ast.Expression.Operator): Process<Ir.Value> {
+  function* buildUnaryOperator(
+    expr: Ast.Expression.Operator,
+  ): Process<Ir.Value> {
     // Get the result type from the context
     const nodeType = yield* Process.Types.nodeType(expr);
 

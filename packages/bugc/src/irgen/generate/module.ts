@@ -134,7 +134,6 @@ function createEmptyFunction(name: string): Ir.Function {
   };
 }
 
-
 /**
  * Check if a create function is effectively empty
  */

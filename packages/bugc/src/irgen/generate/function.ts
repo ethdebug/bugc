@@ -36,7 +36,6 @@ export function* buildFunction(
   // Sync final block
   yield* Process.Blocks.syncCurrent();
 
-
   // Compute predecessors from the control flow graph
   const blocks = computePredecessors(yield* Process.Functions.currentBlocks());
   const locals = yield* Process.Functions.currentLocals();

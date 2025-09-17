@@ -662,44 +662,113 @@ export namespace Expression {
     };
   }
 
-  export interface Access extends Node.Base {
-    type: "AccessExpression";
-    kind: "member" | "index" | "slice";
-    object: Expression;
-    property: Expression | string; // string for member access, expression for index
-    end?: Expression; // For slice access, the end index
-  }
+  export type Access =
+    | Expression.Access.Member
+    | Expression.Access.Slice
+    | Expression.Access.Index;
 
   export const isAccess = (
     expression: Node.Base,
   ): expression is Expression.Access =>
-    expression.type === "AccessExpression" &&
-    "kind" in expression &&
-    typeof expression.kind === "string" &&
-    "object" in expression &&
-    typeof expression.object === "object" &&
-    "property" in expression;
+    Expression.Access.isBase(expression) &&
+    [
+      Expression.Access.isMember,
+      Expression.Access.isSlice,
+      Expression.Access.isIndex,
+    ].some((guard) => guard(expression));
 
-  export function access(
-    id: Id,
-    kind: Expression.Access["kind"],
-    object: Expression,
-    property: Expression | string,
-    end?: Expression,
-    loc?: SourceLocation,
-  ): Expression.Access {
-    const node: Expression.Access = {
-      id,
-      type: "AccessExpression",
-      kind,
-      object,
-      property,
-      loc: loc ?? null,
-    };
-    if (end !== undefined) {
-      node.end = end;
+  export namespace Access {
+    export interface Base extends Node.Base {
+      type: "AccessExpression";
+      object: Expression;
     }
-    return node;
+
+    export const isBase = (access: unknown): access is Expression.Access.Base =>
+      Node.isBase(access) &&
+      access.type === "AccessExpression" &&
+      "object" in access &&
+      isExpression(access.object);
+
+    export interface Member extends Expression.Access.Base {
+      kind: "member";
+      property: string;
+    }
+
+    export function member(
+      id: Id,
+      object: Expression,
+      property: string,
+      loc?: SourceLocation,
+    ): Expression.Access.Member {
+      return {
+        id,
+        type: "AccessExpression",
+        kind: "member",
+        object,
+        property,
+        loc: loc ?? null,
+      };
+    }
+
+    export const isMember = (
+      access: Expression.Access.Base,
+    ): access is Expression.Access.Member =>
+      "kind" in access && access.kind === "member";
+
+    export interface Slice extends Expression.Access.Base {
+      kind: "slice";
+      start: Expression;
+      end: Expression;
+    }
+
+    export function slice(
+      id: Id,
+      object: Expression,
+      start: Expression,
+      end: Expression,
+      loc?: SourceLocation,
+    ): Expression.Access.Slice {
+      return {
+        id,
+        type: "AccessExpression",
+        kind: "slice",
+        object,
+        start,
+        end,
+        loc: loc ?? null,
+      };
+    }
+
+    export const isSlice = (
+      access: Expression.Access.Base,
+    ): access is Expression.Access.Slice =>
+      "kind" in access && access.kind === "slice";
+
+    export interface Index extends Expression.Access.Base {
+      kind: "index";
+      index: Expression;
+    }
+
+    export function index(
+      id: Id,
+      object: Expression,
+      index: Expression,
+      loc?: SourceLocation,
+    ): Expression.Access.Index {
+      return {
+        id,
+        type: "AccessExpression",
+        kind: "index",
+        object,
+        index,
+        loc: loc ?? null,
+      };
+    }
+
+    export const isIndex = (
+      access: Expression.Access.Base,
+    ): access is Expression.Access.Index =>
+      "kind" in access && access.kind === "index";
   }
 
   export interface Call extends Node.Base {

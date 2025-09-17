@@ -314,7 +314,9 @@ export namespace Process {
     /**
      * Find a storage slot by name
      */
-    export function* findSlot(name: string): Process<Ir.Module.StorageSlot | null> {
+    export function* findSlot(
+      name: string,
+    ): Process<Ir.Module.StorageSlot | null> {
       const state: State = yield { type: "peek" };
       return state.module.storage.slots.find((s) => s.name === name) || null;
     }

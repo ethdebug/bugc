@@ -375,17 +375,33 @@ code {}`;
       const stmts = result.body?.items as Ast.Statement.Express[];
       const exprs = stmts.map((s) => s.expression as Ast.Expression.Access);
 
-      expect(exprs[0].kind).toBe("member");
+      if (!Ast.Expression.Access.isMember(exprs[0])) {
+        throw new Error("Expected member access");
+      }
       expect(exprs[0].property).toBe("x");
 
-      expect(exprs[1].kind).toBe("index");
-      expect((exprs[1].property as Ast.Expression.Literal).value).toBe("0");
+      if (!Ast.Expression.Access.isIndex(exprs[1])) {
+        throw new Error("Expected index access");
+      }
+      if (!Ast.Expression.isLiteral(exprs[1].index)) {
+        throw new Error("Expected literal in index");
+      }
+      expect(exprs[1].index.value).toBe("0");
 
       // nested.field.subfield is two member accesses
       const nested = exprs[2];
-      expect(nested.kind).toBe("member");
+      if (!Ast.Expression.Access.isMember(nested)) {
+        throw new Error("Expected member access");
+      }
       expect(nested.property).toBe("subfield");
-      const nestedObj = nested.object as Ast.Expression.Access;
+
+      const nestedObj = nested.object;
+      if (
+        !Ast.Expression.isAccess(nestedObj) ||
+        !Ast.Expression.Access.isMember(nestedObj)
+      ) {
+        throw new Error("expected member access");
+      }
       expect(nestedObj.kind).toBe("member");
       expect(nestedObj.property).toBe("field");
 

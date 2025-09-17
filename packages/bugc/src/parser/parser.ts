@@ -621,15 +621,14 @@ const postfixExpression = P.lazy(() => {
         if (suffix.type === "member") {
           return located(
             P.succeed(
-              Ast.Expression.access(PENDING_ID, "member", obj, suffix.property),
+              Ast.Expression.Access.member(PENDING_ID, obj, suffix.property),
             ),
           ).tryParse("");
         } else if (suffix.type === "slice") {
           return located(
             P.succeed(
-              Ast.Expression.access(
+              Ast.Expression.Access.slice(
                 PENDING_ID,
-                "slice",
                 obj,
                 suffix.property,
                 suffix.end,
@@ -647,7 +646,7 @@ const postfixExpression = P.lazy(() => {
         } else {
           return located(
             P.succeed(
-              Ast.Expression.access(PENDING_ID, "index", obj, suffix.property),
+              Ast.Expression.Access.index(PENDING_ID, obj, suffix.property),
             ),
           ).tryParse("");
         }

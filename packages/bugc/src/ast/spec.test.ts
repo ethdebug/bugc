@@ -134,14 +134,14 @@ describe("Ast", () => {
       const unary = Ast.Expression.operator(createId(), "!", [id]);
       expect(unary.operands).toHaveLength(1);
 
-      const member = Ast.Expression.access(createId(), "member", id, "field");
+      const member = Ast.Expression.Access.member(createId(), id, "field");
       expect(member.type).toBe("AccessExpression");
       expect(member.kind).toBe("member");
       expect(member.property).toBe("field");
 
-      const index = Ast.Expression.access(createId(), "index", id, literal);
+      const index = Ast.Expression.Access.index(createId(), id, literal);
       expect(index.kind).toBe("index");
-      expect((index.property as Ast.Expression).type).toBe("LiteralExpression");
+      expect(index.index.type).toBe("LiteralExpression");
 
       const call = Ast.Expression.call(createId(), id, [literal]);
       expect(call.type).toBe("CallExpression");
@@ -234,9 +234,8 @@ describe("Ast", () => {
       ).toBe(true);
       expect(
         Ast.isExpression(
-          Ast.Expression.access(
+          Ast.Expression.Access.member(
             createId(),
-            "member",
             Ast.Expression.identifier(createId(), "x"),
             "y",
           ),
@@ -326,9 +325,8 @@ describe("Ast", () => {
       ).toBe(true);
       expect(
         Ast.Expression.isAssignable(
-          Ast.Expression.access(
+          Ast.Expression.Access.member(
             createId(),
-            "member",
             Ast.Expression.identifier(createId(), "x"),
             "y",
           ),
@@ -336,9 +334,8 @@ describe("Ast", () => {
       ).toBe(true);
       expect(
         Ast.Expression.isAssignable(
-          Ast.Expression.access(
+          Ast.Expression.Access.index(
             createId(),
-            "index",
             Ast.Expression.identifier(createId(), "x"),
             Ast.Expression.literal(createId(), "number", "0"),
           ),
@@ -503,24 +500,20 @@ describe("Ast", () => {
             body: Ast.block(createId(), "statements", [
               Ast.Statement.assign(
                 createId(),
-                Ast.Expression.access(
+                Ast.Expression.Access.member(
                   createId(),
-                  "member",
-                  Ast.Expression.access(
+                  Ast.Expression.Access.index(
                     createId(),
-                    "index",
                     Ast.Expression.identifier(createId(), "users"),
                     Ast.Expression.identifier(createId(), "sender"),
                   ),
                   "balance",
                 ),
                 Ast.Expression.operator(createId(), "+", [
-                  Ast.Expression.access(
+                  Ast.Expression.Access.member(
                     createId(),
-                    "member",
-                    Ast.Expression.access(
+                    Ast.Expression.Access.index(
                       createId(),
-                      "index",
                       Ast.Expression.identifier(createId(), "users"),
                       Ast.Expression.identifier(createId(), "sender"),
                     ),

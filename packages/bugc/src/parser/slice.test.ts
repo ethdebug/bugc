@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import type * as Ast from "#ast";
+import * as Ast from "#ast";
 
 import { parse } from "./parser.js";
 
@@ -24,9 +24,13 @@ describe("Slice expressions", () => {
     if (exprStmt?.type === "ExpressionStatement") {
       const slice = (exprStmt as Ast.Statement.Express)
         .expression as Ast.Expression.Access;
+      if (!Ast.Expression.Access.isSlice(slice)) {
+        throw new Error("Expected slice access");
+      }
+
       expect(slice.type).toBe("AccessExpression");
       expect(slice.kind).toBe("slice");
-      expect(slice.property).toMatchObject({
+      expect(slice.start).toMatchObject({
         type: "LiteralExpression",
         value: "0",
       });
@@ -87,10 +91,7 @@ describe("Slice expressions", () => {
         .expression as Ast.Expression.Access;
 
       expect(indexed.kind).toBe("index");
-      expect(indexed.end).toBeUndefined();
-
       expect(sliced.kind).toBe("slice");
-      expect(sliced.end).toBeDefined();
     }
   });
 });

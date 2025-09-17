@@ -380,8 +380,8 @@ export const expressionChecker: Pick<
       }
     } else if (node.kind === "slice") {
       // Slice access - start:end
-      const startExpr = node.property as Ast.Expression;
-      const endExpr = node.end!; // slice always has end
+      const startExpr = node.start;
+      const endExpr = node.end; // slice always has end
 
       const startContext: Context = {
         ...context,
@@ -455,7 +455,7 @@ export const expressionChecker: Pick<
       }
     } else {
       // Index access
-      const indexExpr = node.property as Ast.Expression;
+      const indexExpr = node.index;
 
       const indexContext: Context = {
         ...context,

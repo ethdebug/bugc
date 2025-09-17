@@ -23,11 +23,8 @@ export interface State {
 }
 
 export namespace State {
-
   export namespace Types {
-    const extract = makeExtract<Types>(
-      (read) => (state) => read(state.types),
-    );
+    const extract = makeExtract<Types>((read) => (state) => read(state.types));
 
     export const nodeType = (node: Ast.Node) =>
       extract((types) => types.get(node.id));
@@ -78,7 +75,7 @@ export namespace State {
   }
 
   export namespace Function {
-    export const update = makeUpdate<State.Function>((modify) => (state) => ({
+    const update = makeUpdate<State.Function>((modify) => (state) => ({
       ...state,
       function: modify(state.function),
     }));
@@ -230,21 +227,22 @@ export namespace State {
         stack: [...loops.stack, { continueTarget, breakTarget }],
       }));
 
-    export const pop = () => State.Errors.attempt(
-      update((loops) => {
-        if (loops.stack.length < 1) {
-          throw new IrgenError(
-            "Cannot exit loop if not currently inside a loop",
-            undefined,
-            Severity.Error,
-          );
-        }
+    export const pop = () =>
+      State.Errors.attempt(
+        update((loops) => {
+          if (loops.stack.length < 1) {
+            throw new IrgenError(
+              "Cannot exit loop if not currently inside a loop",
+              undefined,
+              Severity.Error,
+            );
+          }
 
-        return {
-          stack: loops.stack.slice(0, -1),
-        };
-      }),
-    );
+          return {
+            stack: loops.stack.slice(0, -1),
+          };
+        }),
+      );
   }
 
   /**

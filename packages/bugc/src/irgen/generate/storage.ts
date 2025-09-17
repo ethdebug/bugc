@@ -34,11 +34,9 @@ export const makeFindStorageAccessChain = (
 
       if (accessNode.kind === "index") {
         // For index access, we need to evaluate the key expression
-        const key = yield* buildExpression(
-          accessNode.property as Ast.Expression,
-        );
+        const key = yield* buildExpression(accessNode.index);
         accesses.unshift({ kind: "index", key });
-      } else {
+      } else if (accessNode.kind === "member") {
         // For member access on structs
         const fieldName = accessNode.property as string;
         accesses.unshift({ kind: "member", fieldName });
@@ -89,18 +87,20 @@ export const makeFindStorageAccessChain = (
       yield* Process.Errors.report(
         accesses.length > 0
           ? new IrgenError(
-              ErrorMessages.UNSUPPORTED_STORAGE_PATTERN("function return values"),
+              ErrorMessages.UNSUPPORTED_STORAGE_PATTERN(
+                "function return values",
+              ),
               expr.loc || undefined,
               Severity.Error,
             )
           : new IrgenError(
-            `Storage access chain must start with a storage variable identifier. ` +
-              `Found ${current.type} at the base of the access chain.`,
-            current.loc ?? undefined,
-            Severity.Error,
-          )
-        );
-      }
+              `Storage access chain must start with a storage variable identifier. ` +
+                `Found ${current.type} at the base of the access chain.`,
+              current.loc ?? undefined,
+              Severity.Error,
+            ),
+      );
+    }
 
     // Base is not an identifier and has no accesses - just return undefined
     return undefined;

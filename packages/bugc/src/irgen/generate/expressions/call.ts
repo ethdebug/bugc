@@ -97,10 +97,9 @@ export const makeBuildCall = (
       // Return the result value or a dummy value for void functions
       if (dest) {
         return Ir.Value.temp(dest, irType);
-      } else {
-        // Void function - return a dummy value
-        return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
       }
+      // Void function - return a dummy value
+      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
     }
 
     // Other forms of function calls not supported

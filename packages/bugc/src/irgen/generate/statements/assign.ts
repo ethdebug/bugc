@@ -1,4 +1,4 @@
-import type * as Ast from "#ast";
+import * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Type } from "#types";
 import { Error as IrgenError } from "#irgen/errors";
@@ -65,7 +65,9 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): Process<void> {
       ),
     );
     return;
-  } else if (node.type === "AccessExpression") {
+  }
+
+  if (node.type === "AccessExpression") {
     const accessNode = node as Ast.Expression.Access;
 
     if (accessNode.kind === "member") {
@@ -102,7 +104,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): Process<void> {
           return;
         }
       }
-    } else {
+    } else if (Ast.Expression.Access.isIndex(accessNode)) {
       // Array/mapping/bytes assignment
       // First check if we're assigning to bytes
       const objectType = yield* Process.Types.nodeType(accessNode.object);
@@ -113,9 +115,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): Process<void> {
       ) {
         // Handle bytes indexing directly
         const object = yield* buildExpression(accessNode.object);
-        const index = yield* buildExpression(
-          accessNode.property as Ast.Expression,
-        );
+        const index = yield* buildExpression(accessNode.index);
 
         yield* Process.Instructions.emit({
           kind: "store_index",
@@ -136,9 +136,7 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): Process<void> {
 
       // If no storage chain, handle regular array/mapping access
       const object = yield* buildExpression(accessNode.object);
-      const index = yield* buildExpression(
-        accessNode.property as Ast.Expression,
-      );
+      const index = yield* buildExpression(accessNode.index);
 
       if (objectType && Type.isArray(objectType)) {
         yield* Process.Instructions.emit({
