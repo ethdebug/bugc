@@ -129,7 +129,10 @@ describe("Visitor Pattern", () => {
     expect(
       Ast.visit(
         visitor,
-        Ast.Expression.operator(createId(), "+", []),
+        Ast.Expression.operator(createId(), "+", [
+          Ast.Expression.literal(createId(), "number", "1"),
+          Ast.Expression.literal(createId(), "number", "2"),
+        ]),
         undefined as never,
       ),
     ).toBe("Operator(+)");

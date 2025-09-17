@@ -634,8 +634,7 @@ export namespace Expression {
   export interface Operator extends Node.Base {
     type: "OperatorExpression";
     operator: string;
-    operands: Expression[];
-    // Arity is implicit from operands.length
+    operands: readonly [Expression] | readonly [Expression, Expression];
   }
 
   export const isOperator = (
@@ -650,7 +649,7 @@ export namespace Expression {
   export function operator(
     id: Id,
     operator: string,
-    operands: Expression[],
+    operands: readonly [Expression] | readonly [Expression, Expression],
     loc?: SourceLocation,
   ): Expression.Operator {
     return {

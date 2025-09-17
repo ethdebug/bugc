@@ -3,6 +3,7 @@
  */
 
 import { BugError } from "#errors";
+import { Severity } from "#result";
 import type { SourceLocation } from "#ast";
 
 /**
@@ -22,6 +23,7 @@ export enum ErrorCode {
   NOT_INDEXABLE = "TYPE011",
   INVALID_ARGUMENT_COUNT = "TYPE012",
   INVALID_TYPE_CAST = "TYPE013",
+  INTERNAL_ERROR = "TYPE014",
   GENERAL = "TYPE_ERROR", // Legacy support
 }
 
@@ -60,3 +62,12 @@ class TypeError extends BugError {
 }
 
 export { TypeError as Error };
+
+export function assertExhausted(_: never): never {
+  throw new TypeError(
+    `Unexpected code path; expected exhaustive conditionals`,
+    undefined,
+    Severity.Error,
+    ErrorCode.INTERNAL_ERROR,
+  );
+}

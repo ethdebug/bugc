@@ -2,7 +2,12 @@ import * as Ast from "#ast";
 import { Type } from "#types";
 import type { Visitor } from "#ast";
 import type { Context, Report } from "./context.js";
-import { Error as TypeError, ErrorCode, ErrorMessages } from "./errors.js";
+import {
+  Error as TypeError,
+  ErrorCode,
+  ErrorMessages,
+  assertExhausted,
+} from "./errors.js";
 import { isAssignable, commonType } from "./assignable.js";
 
 /**
@@ -281,14 +286,7 @@ export const expressionChecker: Pick<
         }
       }
     } else {
-      const error = new TypeError(
-        `Invalid operator arity: ${node.operands.length}`,
-        node.loc || undefined,
-        undefined,
-        undefined,
-        ErrorCode.INVALID_OPERATION,
-      );
-      errors.push(error);
+      assertExhausted(node.operands);
     }
 
     if (resultType) {

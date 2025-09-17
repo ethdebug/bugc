@@ -230,7 +230,12 @@ describe("Ast", () => {
         Ast.isExpression(Ast.Expression.literal(createId(), "number", "42")),
       ).toBe(true);
       expect(
-        Ast.isExpression(Ast.Expression.operator(createId(), "+", [])),
+        Ast.isExpression(
+          Ast.Expression.operator(createId(), "+", [
+            Ast.Expression.literal(createId(), "number", "1"),
+            Ast.Expression.literal(createId(), "number", "2"),
+          ]),
+        ),
       ).toBe(true);
       expect(
         Ast.isExpression(
@@ -349,7 +354,10 @@ describe("Ast", () => {
       ).toBe(false);
       expect(
         Ast.Expression.isAssignable(
-          Ast.Expression.operator(createId(), "+", []),
+          Ast.Expression.operator(createId(), "+", [
+            Ast.Expression.literal(createId(), "number", "1"),
+            Ast.Expression.literal(createId(), "number", "2"),
+          ]),
         ),
       ).toBe(false);
       expect(

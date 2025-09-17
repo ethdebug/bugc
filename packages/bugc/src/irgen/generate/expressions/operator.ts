@@ -2,7 +2,7 @@ import * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Severity } from "#result";
 
-import { Error as IrgenError } from "#irgen/errors";
+import { Error as IrgenError, assertExhausted } from "#irgen/errors";
 import { fromBugType } from "#irgen/type";
 
 import { Process } from "../process.js";
@@ -37,17 +37,11 @@ export const makeBuildOperator = (
       case 1:
         return yield* buildUnaryOperator(expr);
       case 2:
-        return yield* buildBinaryOperator(expr);
-      default: {
-        yield* Process.Errors.report(
-          new IrgenError(
-            `Invalid operator arity: ${expr.operands.length}`,
-            expr.loc || undefined,
-            Severity.Error,
-          ),
+        return yield* buildBinaryOperator(
+          expr as typeof expr & { operands: { length: 2 } },
         );
-        return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
-      }
+      default:
+        assertExhausted(expr.operands);
     }
   };
 };
@@ -104,7 +98,7 @@ const makeBuildBinaryOperator = (
   buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
 ) =>
   function* buildBinaryOperator(
-    expr: Ast.Expression.Operator,
+    expr: Ast.Expression.Operator & { operands: { length: 2 } },
   ): Process<Ir.Value> {
     // Get the result type from the context
     const nodeType = yield* Process.Types.nodeType(expr);
