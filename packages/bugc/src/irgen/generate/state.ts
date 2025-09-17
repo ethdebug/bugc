@@ -56,10 +56,14 @@ export namespace State {
     ) =>
       update((module) => ({
         ...module,
-        // HACK we add to the functions map using the names main and create
-        // although this will introduce subtle errors when there's a user
-        // name collision
-        functions: new Map([...module.functions, [name.toString(), function_]]),
+        ...(name !== main && name !== create
+          ? {
+              functions: new Map([
+                ...module.functions,
+                [name.toString(), function_],
+              ]),
+            }
+          : {}),
         ...(name === main ? { main: function_ } : {}),
         ...(name === create ? { create: function_ } : {}),
       }));
