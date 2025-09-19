@@ -67,6 +67,12 @@ export function generate<S extends Stack>(
       return generateCast(inst);
     case "slice":
       return generateSlice(inst);
+    case "call":
+    case "load_field":
+    case "load_index":
+    case "store_field":
+    case "store_index":
+    case "compute_field_offset":
     default: {
       return (state) => {
         // Add warning for unsupported instructions

@@ -58,6 +58,10 @@ export function formatError(error: BugError, source?: string): string {
     }
   }
 
+  if (error.stack) {
+    output += `\n${error.stack.split("\n").slice(1, 4).join("\n")}`;
+  }
+
   return output;
 }
 
