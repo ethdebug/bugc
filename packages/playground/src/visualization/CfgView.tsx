@@ -138,6 +138,23 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
               color: "#f44336",
             },
           });
+        } else if (term.kind === "call") {
+          // Handle call terminator
+          const continuationId = `${funcName}:${term.continuation}`;
+          edges.push({
+            id: `${sourceId}-${continuationId}-call-cont`,
+            source: sourceId,
+            target: continuationId,
+            sourceHandle: "bottom",
+            targetHandle: "top",
+            label: `after ${term.function}()`,
+            labelBgStyle: { fill: "#f3e8ff" },
+            style: { stroke: "#9333ea" },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: "#9333ea",
+            },
+          });
         }
       });
     };
@@ -165,43 +182,7 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
     }
     allFunctions.set("main", ir.main);
 
-    // Find all call instructions and create edges to the called functions
-    allFunctions.forEach((func, callerFuncName) => {
-      func.blocks.forEach((block, blockId) => {
-        block.instructions.forEach((inst) => {
-          if (inst.kind === "call") {
-            const calleeFunc = inst.function;
-            const sourceId = `${callerFuncName}:${blockId}`;
-            const targetId = `${calleeFunc}:${allFunctions.get(calleeFunc)?.entry}`;
-
-            if (targetId && allFunctions.has(calleeFunc)) {
-              edges.push({
-                id: `call-${sourceId}-${targetId}`,
-                source: sourceId,
-                target: targetId,
-                sourceHandle: "right",
-                targetHandle: "left",
-                label: `call ${calleeFunc}`,
-                animated: true,
-                style: {
-                  stroke: "#9333ea",
-                  strokeDasharray: "5 5",
-                },
-                labelStyle: {
-                  fill: "#9333ea",
-                  fontWeight: "bold",
-                },
-                labelBgStyle: { fill: "#f3e8ff" },
-                markerEnd: {
-                  type: MarkerType.ArrowClosed,
-                  color: "#9333ea",
-                },
-              });
-            }
-          }
-        });
-      });
-    });
+    // Call instructions are now terminators, so we don't need this loop anymore
 
     // Apply dagre layout
     const dagreGraph = new dagre.graphlib.Graph();
@@ -351,14 +332,7 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
         return `${inst.dest} = array_slot(${formatValue(inst.baseSlot)})`;
       case "compute_field_offset":
         return `${inst.dest} = field_offset(${formatValue(inst.baseSlot)}, ${inst.fieldIndex})`;
-      case "call": {
-        const args = inst.arguments.map(formatValue).join(", ");
-        if (inst.dest) {
-          return `${inst.dest} = call ${inst.function}(${args})`;
-        } else {
-          return `call ${inst.function}(${args})`;
-        }
-      }
+      // Call instruction removed - calls are now block terminators
       default: {
         const unknownInst = inst as { dest?: string; kind?: string };
         return `${unknownInst.dest || "?"} = ${unknownInst.kind || "unknown"}(...)`;
@@ -399,6 +373,13 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
         return `branch ${formatValue(term.condition)} ? ${term.trueTarget} : ${term.falseTarget}`;
       case "return":
         return term.value ? `return ${formatValue(term.value)}` : "return void";
+      case "call": {
+        const args = term.arguments.map(formatValue).join(", ");
+        const callPart = term.dest
+          ? `${term.dest} = call ${term.function}(${args})`
+          : `call ${term.function}(${args})`;
+        return `${callPart} -> ${term.continuation}`;
+      }
       default:
         return `unknown terminator`;
     }

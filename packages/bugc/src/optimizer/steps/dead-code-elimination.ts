@@ -36,6 +36,11 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
           block.terminator.value
         ) {
           this.collectValueUse(block.terminator.value, usedValues);
+        } else if (block.terminator.kind === "call") {
+          // Collect argument uses
+          for (const arg of block.terminator.arguments) {
+            this.collectValueUse(arg, usedValues);
+          }
         }
       }
 
@@ -154,11 +159,7 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
       case "cast":
         this.collectValueUse(inst.value, used);
         break;
-      case "call":
-        for (const arg of inst.arguments) {
-          this.collectValueUse(arg, used);
-        }
-        break;
+      // Call instruction removed - calls are now block terminators
       case "length":
         this.collectValueUse(inst.object, used);
         break;
@@ -182,7 +183,6 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
       case "store_mapping":
       case "store_field":
       case "store_index":
-      case "call": // Function calls may have side effects
         return true;
       default:
         return false;

@@ -31,8 +31,6 @@ export type Instruction =
   // Type operations
   | Instruction.Hash
   | Instruction.Cast
-  // Function calls
-  | Instruction.Call
   // Length operations
   | Instruction.Length;
 
@@ -205,13 +203,7 @@ export namespace Instruction {
     loc?: Ast.SourceLocation;
   }
 
-  export interface Call {
-    kind: "call";
-    function: string; // Function name
-    arguments: Value[];
-    dest?: string; // Optional for void functions
-    loc?: Ast.SourceLocation;
-  }
+  // Call instruction removed - calls are now block terminators
 
   export interface Length {
     kind: "length";

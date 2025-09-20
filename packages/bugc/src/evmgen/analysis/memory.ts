@@ -245,12 +245,7 @@ function simulateInstruction(stack: string[], inst: Ir.Instruction): string[] {
       newStack.pop();
       newStack.pop();
       break;
-    case "call":
-      // Pop arguments
-      for (let i = 0; i < inst.arguments.length; i++) {
-        newStack.pop();
-      }
-      break;
+    // Call instruction removed - calls are now block terminators
     // These don't pop anything
     case "const":
     case "env":
@@ -358,11 +353,7 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
     case "hash":
       addValue(inst.value);
       break;
-    case "call":
-      for (const arg of inst.arguments) {
-        addValue(arg);
-      }
-      break;
+    // Call instruction removed - calls are now block terminators
   }
 
   return used;

@@ -72,7 +72,7 @@ export const makeBuildCall = (
         argValues.push(yield* buildExpression(arg));
       }
 
-      // Generate call instruction
+      // Generate call terminator and split block
       const irType = fromBugType(callType);
       let dest: string | undefined;
 
@@ -86,13 +86,21 @@ export const makeBuildCall = (
         dest = yield* Process.Variables.newTemp();
       }
 
-      yield* Process.Instructions.emit({
+      // Create a continuation block for after the call
+      const continuationBlockId = yield* Process.Blocks.create("call_cont");
+
+      // Terminate current block with call terminator
+      yield* Process.Blocks.terminate({
         kind: "call",
         function: functionName,
         arguments: argValues,
         dest,
+        continuation: continuationBlockId,
         loc: expr.loc ?? undefined,
-      } as Ir.Instruction.Call);
+      });
+
+      // Switch to the continuation block
+      yield* Process.Blocks.switchTo(continuationBlockId);
 
       // Return the result value or a dummy value for void functions
       if (dest) {

@@ -502,6 +502,11 @@ export class PhiInserter {
           block: block.terminator.falseTarget,
           distance: distance + 1,
         });
+      } else if (block.terminator.kind === "call") {
+        queue.push({
+          block: block.terminator.continuation,
+          distance: distance + 1,
+        });
       }
     }
 
@@ -534,6 +539,8 @@ export class PhiInserter {
       } else if (block.terminator.kind === "branch") {
         queue.push(block.terminator.trueTarget);
         queue.push(block.terminator.falseTarget);
+      } else if (block.terminator.kind === "call") {
+        queue.push(block.terminator.continuation);
       }
     }
 
@@ -560,6 +567,8 @@ export class PhiInserter {
       } else if (block.terminator.kind === "branch") {
         queue.push(block.terminator.trueTarget);
         queue.push(block.terminator.falseTarget);
+      } else if (block.terminator.kind === "call") {
+        queue.push(block.terminator.continuation);
       }
     }
 
@@ -602,6 +611,8 @@ export class PhiInserter {
       } else if (block.terminator.kind === "branch") {
         collect(block.terminator.trueTarget);
         collect(block.terminator.falseTarget);
+      } else if (block.terminator.kind === "call") {
+        collect(block.terminator.continuation);
       }
     };
 
@@ -713,13 +724,7 @@ export class PhiInserter {
             addValue(inst.object);
           }
           break;
-        case "call":
-          if ("arguments" in inst && inst.arguments) {
-            for (const arg of inst.arguments) {
-              addValue(arg);
-            }
-          }
-          break;
+        // Call instruction removed - calls are now block terminators
       }
 
       return used;
@@ -735,6 +740,13 @@ export class PhiInserter {
       } else if (term.kind === "return" && term.value) {
         if (term.value.kind === "temp") {
           used.add(term.value.id);
+        }
+      } else if (term.kind === "call") {
+        // Add all argument temps
+        for (const arg of term.arguments) {
+          if (arg.kind === "temp") {
+            used.add(arg.id);
+          }
         }
       }
       return used;
@@ -762,6 +774,8 @@ export class PhiInserter {
         } else if (block.terminator.kind === "branch") {
           successors.push(block.terminator.trueTarget);
           successors.push(block.terminator.falseTarget);
+        } else if (block.terminator.kind === "call") {
+          successors.push(block.terminator.continuation);
         }
         // For return, no successors
 

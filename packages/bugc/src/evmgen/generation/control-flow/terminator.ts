@@ -112,5 +112,36 @@ export function generateTerminator<S extends Stack>(
         })
         .done();
     }
+
+    case "call": {
+      // TODO: Implement actual EVM function call generation
+      // For now, just jump to the continuation block after pushing arguments
+      // This is a placeholder implementation
+      return pipe<S>()
+        .peek((state, builder) => {
+          const patchIndex = state.instructions.length;
+
+          // In a real implementation, we would:
+          // 1. Push arguments
+          // 2. Push return label
+          // 3. Jump to function
+          // 4. After return, result would be on stack if dest is defined
+          // For now, just jump to continuation
+          return builder
+            .then(PUSH2([0, 0]), { as: "counter" })
+            .then(JUMP())
+            .then((newState) => ({
+              ...newState,
+              patches: [
+                ...newState.patches,
+                {
+                  index: patchIndex,
+                  target: term.continuation,
+                },
+              ],
+            }));
+        })
+        .done();
+    }
   }
 }

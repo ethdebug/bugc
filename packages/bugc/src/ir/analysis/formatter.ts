@@ -182,17 +182,7 @@ export class Formatter {
       case "compute_field_offset":
         return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = compute_field_offset base=${this.formatValue(inst.baseSlot)}, field_index=${inst.fieldIndex}`;
 
-      case "call": {
-        const args = inst.arguments
-          .map((arg) => this.formatValue(arg))
-          .join(", ");
-        if (inst.dest) {
-          // Need to get return type - for now just use unknown
-          return `${inst.dest} = call ${inst.function}(${args})`;
-        } else {
-          return `call ${inst.function}(${args})`;
-        }
-      }
+      // Call instruction removed - calls are now block terminators
 
       case "length":
         return `${destWithType(inst.dest)} = length ${this.formatValue(inst.object)}`;
@@ -214,6 +204,16 @@ export class Formatter {
         return term.value
           ? `return ${this.formatValue(term.value)}`
           : "return void";
+
+      case "call": {
+        const args = term.arguments
+          .map((arg) => this.formatValue(arg))
+          .join(", ");
+        const callPart = term.dest
+          ? `${term.dest} = call ${term.function}(${args})`
+          : `call ${term.function}(${args})`;
+        return `${callPart} -> ${term.continuation}`;
+      }
 
       default:
         return `; unknown terminator: ${(term as unknown as { kind: string }).kind}`;

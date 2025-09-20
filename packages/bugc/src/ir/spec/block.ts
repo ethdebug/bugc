@@ -35,7 +35,15 @@ export namespace Block {
         falseTarget: string;
         loc?: Ast.SourceLocation;
       }
-    | { kind: "return"; value?: Value; loc?: Ast.SourceLocation };
+    | { kind: "return"; value?: Value; loc?: Ast.SourceLocation }
+    | {
+        kind: "call";
+        function: string;
+        arguments: Value[];
+        dest?: string;
+        continuation: string;
+        loc?: Ast.SourceLocation;
+      };
 
   export interface Phi {
     kind: "phi";

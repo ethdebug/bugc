@@ -293,11 +293,7 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
     case "cast":
       addValue(inst.value);
       break;
-    case "call":
-      for (const arg of inst.arguments) {
-        addValue(arg);
-      }
-      break;
+    // Call instruction removed - calls are now block terminators
     case "length":
       addValue(inst.object);
       break;
@@ -330,8 +326,7 @@ function getDefinedValue(inst: Ir.Instruction): string | undefined {
     case "hash":
     case "cast":
     case "length":
-    case "call":
-      return inst.dest; // May be undefined for void functions
+      return inst.dest;
     // These instructions don't define values
     case "store_storage":
     case "store_mapping":

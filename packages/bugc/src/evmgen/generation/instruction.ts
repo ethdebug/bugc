@@ -61,7 +61,7 @@ export function generate<S extends Stack>(
       return generateCast(inst);
     case "slice":
       return generateSlice(inst);
-    case "call":
+    // Call instruction removed - calls are now block terminators
     case "load_field":
     case "load_index":
     case "store_field":
