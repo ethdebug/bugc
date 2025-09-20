@@ -204,29 +204,29 @@ export namespace Type {
 
     export interface Bytes {
       kind: "bytes";
-      bits?: number;
+      size?: number;
     }
 
-    export const bytes = (bits?: number): Type.Elementary.Bytes => ({
+    export const bytes = (size?: number): Type.Elementary.Bytes => ({
       kind: "bytes",
-      bits,
+      size,
     });
 
     export namespace Bytes {
       export const isDynamic = (
         type: Type.Elementary.Bytes,
-      ): type is Type.Elementary.Bytes & { bits?: undefined } =>
-        !("bits" in type) || type.bits === undefined;
+      ): type is Type.Elementary.Bytes & { size?: undefined } =>
+        !("size" in type) || type.size === undefined;
 
       export const equals = (
         a: Type.Elementary.Bytes,
         b: Type.Elementary.Bytes,
-      ): boolean => a.bits == b.bits;
+      ): boolean => a.size == b.size;
 
       export const format = (type: Type.Elementary.Bytes) =>
         `bytes${
-          "bits" in type && typeof type.bits === "number"
-            ? (type.bits / 8).toString()
+          "size" in type && typeof type.size === "number"
+            ? type.size.toString()
             : ""
         }`;
     }

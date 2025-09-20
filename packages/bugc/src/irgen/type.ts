@@ -59,8 +59,8 @@ export function fromBugType(type: BugType): Ir.Type {
       case "bool":
         return { kind: "bool" };
       case "bytes":
-        return type.bits
-          ? { kind: "bytes", size: type.bits / 8 }
+        return type.size
+          ? { kind: "bytes", size: type.size }
           : { kind: "bytes" };
       case "string":
         return { kind: "string" };

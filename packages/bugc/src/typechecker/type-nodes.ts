@@ -47,15 +47,13 @@ export const typeNodeChecker: Pick<
       if (!node.bits) {
         type = Type.Elementary.bytes(); // Dynamic bytes
       } else {
-        const typeMap: Record<number, Type> = {
-          256: Type.Elementary.bytes(32),
-          128: Type.Elementary.bytes(16),
-          64: Type.Elementary.bytes(8),
-          32: Type.Elementary.bytes(4),
-        };
-        type =
-          typeMap[node.bits] ||
-          Type.failure(`Unknown bytes size: ${node.bits}`);
+        // node.bits now contains the byte size directly (e.g., 32 for bytes32)
+        const validSizes = [4, 8, 16, 32];
+        if (validSizes.includes(node.bits)) {
+          type = Type.Elementary.bytes(node.bits);
+        } else {
+          type = Type.failure(`Unknown bytes size: ${node.bits}`);
+        }
       }
     } else if (node.kind === "address") {
       type = Type.Elementary.address();

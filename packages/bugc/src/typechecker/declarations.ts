@@ -134,16 +134,13 @@ export function resolveType(
         if (!typeNode.bits) {
           return Type.Elementary.bytes(); // Dynamic bytes
         }
-        const typeMap: Record<number, Type> = {
-          256: Type.Elementary.bytes(32),
-          128: Type.Elementary.bytes(16),
-          64: Type.Elementary.bytes(8),
-          32: Type.Elementary.bytes(4),
-        };
-        return (
-          typeMap[typeNode.bits] ||
-          Type.failure(`Unknown bytes size: ${typeNode.bits}`)
-        );
+        // typeNode.bits now contains the byte size directly (e.g., 32 for bytes32)
+        const validSizes = [4, 8, 16, 32];
+        if (validSizes.includes(typeNode.bits)) {
+          return Type.Elementary.bytes(typeNode.bits);
+        } else {
+          return Type.failure(`Unknown bytes size: ${typeNode.bits}`);
+        }
       } else if (typeNode.kind === "address") {
         return Type.Elementary.address();
       } else if (typeNode.kind === "bool") {

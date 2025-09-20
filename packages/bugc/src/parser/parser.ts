@@ -369,9 +369,8 @@ const elementaryType = located(
       const bits = parseInt(name.substring(3), 10);
       return Ast.Type.elementary(PENDING_ID, "int", bits);
     } else if (name.startsWith("bytes") && name !== "bytes") {
-      const bytes = parseInt(name.substring(5), 10);
-      const bits = bytes * 8; // Convert bytes to bits
-      return Ast.Type.elementary(PENDING_ID, "bytes", bits);
+      const size = parseInt(name.substring(5), 10);
+      return Ast.Type.elementary(PENDING_ID, "bytes", size);
     } else if (name === "address") {
       return Ast.Type.elementary(PENDING_ID, "address");
     } else if (name === "bool") {

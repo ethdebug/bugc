@@ -56,6 +56,7 @@ export function generate<S extends Stack>(
     case "slice":
       return generateSlice(inst);
     // Call instruction removed - calls are now block terminators
+    case "compute_offset":
     case "compute_field_offset":
     default: {
       return (state) => {
