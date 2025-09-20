@@ -54,17 +54,20 @@ export function generateComputeSlot<S extends Stack>(
           .done()
       );
 
-    case "field":
-      // For struct fields: base + fieldIndex
-      if (inst.fieldIndex === undefined) {
-        throw new Error("Field compute_slot requires fieldIndex");
+    case "field": {
+      // For struct fields: base + (fieldOffset / 32) to get the slot
+      if (inst.fieldOffset === undefined) {
+        throw new Error("Field compute_slot requires fieldOffset");
       }
+      // Convert byte offset to slot offset
+      const slotOffset = Math.floor(inst.fieldOffset / 32);
       return pipe<S>()
         .then(loadValue(inst.base), { as: "b" })
-        .then(PUSHn(BigInt(inst.fieldIndex)), { as: "a" })
+        .then(PUSHn(BigInt(slotOffset)), { as: "a" })
         .then(ADD(), { as: "value" })
         .then(storeValueIfNeeded(inst.dest))
         .done();
+    }
 
     default:
       throw new Error(`Unknown compute_slot kind: ${inst.slotKind}`);

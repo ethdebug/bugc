@@ -107,7 +107,7 @@ export namespace Instruction {
     key?: Value; // Mapping key
     keyType?: Type; // Type of the key for proper encoding
     // For field kind
-    fieldIndex?: number; // Field index in the struct
+    fieldOffset?: number; // Byte offset from struct base
     dest: string;
     loc?: Ast.SourceLocation;
   }

@@ -326,7 +326,7 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
         } else if (inst.slotKind === "array") {
           return `${inst.dest} = compute_slot[array](${formatValue(inst.base)})`;
         } else if (inst.slotKind === "field") {
-          return `${inst.dest} = compute_slot[field](${formatValue(inst.base)}, field_${inst.fieldIndex})`;
+          return `${inst.dest} = compute_slot[field](${formatValue(inst.base)}, offset_${inst.fieldOffset})`;
         }
         return `${inst.dest} = compute_slot[${inst.slotKind}](${formatValue(inst.base)})`;
       // Call instruction removed - calls are now block terminators

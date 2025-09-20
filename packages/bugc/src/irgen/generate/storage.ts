@@ -12,7 +12,7 @@ export interface StorageAccessChain {
     kind: "index" | "member";
     key?: Ir.Value; // For index access
     fieldName?: string; // For member access
-    fieldIndex?: number; // For member access
+    fieldOffset?: number; // Slot offset for member access
   }>;
 }
 
@@ -170,12 +170,17 @@ export function* emitStorageChainLoad(
             ({ name }) => name === access.fieldName,
           ) ?? 0;
 
+        // For now, use simple layout where each field gets its own slot
+        // This maintains compatibility with existing code
+        // fieldOffset is in bytes, so multiply by 32 (bytes per slot)
+        const fieldOffset = fieldIndex * 32;
+
         const tempId = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit({
           kind: "compute_slot",
           slotKind: "field",
           base: currentSlot,
-          fieldIndex,
+          fieldOffset,
           dest: tempId,
           loc,
         } as Ir.Instruction.ComputeSlot);
@@ -297,12 +302,16 @@ export function* emitStorageChainAssignment(
         );
 
         if (fieldIndex >= 0) {
+          // For now, use simple layout where each field gets its own slot
+          // fieldOffset is in bytes, so multiply by 32 (bytes per slot)
+          const fieldOffset = fieldIndex * 32;
+
           const offsetTemp = yield* Process.Variables.newTemp();
           yield* Process.Instructions.emit({
             kind: "compute_slot",
             slotKind: "field",
             base: currentSlot,
-            fieldIndex,
+            fieldOffset,
             dest: offsetTemp,
             loc,
           } as Ir.Instruction.ComputeSlot);

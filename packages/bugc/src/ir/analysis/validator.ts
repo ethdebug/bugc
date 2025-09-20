@@ -272,8 +272,8 @@ export class Validator {
         // Arrays don't need additional params
         break;
       case "field":
-        if (inst.fieldIndex === undefined) {
-          this.error("Field compute_slot must have a fieldIndex");
+        if (inst.fieldOffset === undefined) {
+          this.error("Field compute_slot must have a fieldOffset");
         }
         break;
       default:

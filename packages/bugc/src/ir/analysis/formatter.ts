@@ -153,8 +153,8 @@ export class Formatter {
         const parts: string[] = [`compute_slot kind="${inst.slotKind}"`];
         parts.push(`base=${this.formatValue(inst.base)}`);
         if (inst.key) parts.push(`key=${this.formatValue(inst.key)}`);
-        if (inst.fieldIndex !== undefined)
-          parts.push(`field=${inst.fieldIndex}`);
+        if (inst.fieldOffset !== undefined)
+          parts.push(`offset=${inst.fieldOffset}`);
         return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = ${parts.join(", ")}`;
       }
 
