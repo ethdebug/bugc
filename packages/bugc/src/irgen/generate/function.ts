@@ -38,12 +38,11 @@ export function* buildFunction(
 
   // Compute predecessors from the control flow graph
   const blocks = computePredecessors(yield* Process.Functions.currentBlocks());
-  const locals = yield* Process.Functions.currentLocals();
+  const params = yield* Process.Functions.currentParameters();
 
   const function_: Ir.Function = {
     name,
-    locals: locals,
-    paramCount: parameters.length,
+    parameters: params,
     entry: "entry",
     blocks,
   };

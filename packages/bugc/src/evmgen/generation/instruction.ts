@@ -17,8 +17,6 @@ import {
   generateEnvOp,
   generateHashOp,
   generateLength,
-  generateLoadLocal,
-  generateStoreLocal,
   generateSlice,
   generateLoadStorage,
   generateStoreStorage,
@@ -49,10 +47,6 @@ export function generate<S extends Stack>(
       return generateLoadMapping(inst);
     case "store_mapping":
       return generateStoreMapping(inst);
-    case "load_local":
-      return generateLoadLocal(inst);
-    case "store_local":
-      return generateStoreLocal(inst);
     case "env":
       return generateEnvOp(inst);
     case "hash":

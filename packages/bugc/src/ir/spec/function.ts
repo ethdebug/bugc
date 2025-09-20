@@ -9,10 +9,8 @@ import type { Block } from "./block.js";
 export interface Function {
   /** Function name (for debugging) */
   name: string;
-  /** Local variables (parameters first, then local vars) */
-  locals: Function.LocalVariable[];
-  /** Number of parameters (first N locals are parameters) */
-  paramCount?: number;
+  /** Function parameters as temps (in SSA form) */
+  parameters: Function.Parameter[];
   /** Entry block ID */
   entry: string;
   /** All basic blocks in the function */
@@ -21,15 +19,15 @@ export interface Function {
 
 export namespace Function {
   /**
-   * Local variable declaration
+   * Function parameter in SSA form
    */
-  export interface LocalVariable {
-    /** Variable name */
+  export interface Parameter {
+    /** Parameter name (for debugging) */
     name: string;
-    /** Variable type */
+    /** Parameter type */
     type: Type;
-    /** Unique ID for this variable */
-    id: string;
+    /** Temp ID for this parameter */
+    tempId: string;
     /** Source location of declaration */
     loc?: Ast.SourceLocation;
   }

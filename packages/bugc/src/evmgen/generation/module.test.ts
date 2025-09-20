@@ -12,7 +12,7 @@ describe("Module.generate", () => {
       functions: new Map(),
       main: {
         name: "main",
-        locals: [],
+        parameters: [],
         entry: "entry",
         blocks: new Map([
           [
@@ -62,7 +62,7 @@ describe("Module.generate", () => {
       functions: new Map(),
       create: {
         name: "create",
-        locals: [],
+        parameters: [],
         entry: "entry",
         blocks: new Map([
           [
@@ -79,7 +79,7 @@ describe("Module.generate", () => {
       },
       main: {
         name: "main",
-        locals: [],
+        parameters: [],
         entry: "entry",
         blocks: new Map([
           [
@@ -145,7 +145,7 @@ describe("Module.generate", () => {
         functions: new Map(),
         main: {
           name: "main",
-          locals: [],
+          parameters: [],
           entry: "entry",
           blocks: new Map([
             [
@@ -229,7 +229,7 @@ describe("Module.generate", () => {
         functions: new Map(),
         main: {
           name: "main",
-          locals: [],
+          parameters: [],
           entry: "entry",
           blocks: new Map([
             [
@@ -318,7 +318,7 @@ describe("Module.generate", () => {
         functions: new Map(),
         main: {
           name: "main",
-          locals: [],
+          parameters: [],
           entry: "entry",
           blocks: new Map([
             [
@@ -404,7 +404,7 @@ describe("Module.generate", () => {
           functions: new Map(),
           main: {
             name: "main",
-            locals: [],
+            parameters: [],
             entry: "entry",
             blocks: new Map([
               [

@@ -154,7 +154,7 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
         result.slot = replaceValue(result.slot);
         break;
       case "store_mapping":
-      case "store_local":
+        result.key = replaceValue(result.key);
         result.value = replaceValue(result.value);
         break;
       case "load_mapping":
@@ -220,8 +220,6 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
       return `const:${value.value}`;
     } else if (value.kind === "temp") {
       return `temp:${value.id}`;
-    } else if (value.kind === "local") {
-      return `local:${value.name}`;
     }
     return "unknown";
   }
@@ -258,7 +256,6 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
     switch (inst.kind) {
       case "store_storage":
       case "store_mapping":
-      case "store_local":
       case "store_field":
       case "store_index":
         return true;

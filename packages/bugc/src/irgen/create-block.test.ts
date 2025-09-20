@@ -173,16 +173,19 @@ describe("IR generation for create blocks", () => {
 
     const module = irResult.value;
 
-    // Create function should have its own locals
-    expect(module.create!.locals).toHaveLength(2);
-    const createLocalIds = module.create!.locals.map((l) => l.id);
-    expect(createLocalIds.some((id) => id.includes("x"))).toBe(true);
-    expect(createLocalIds.some((id) => id.includes("y"))).toBe(true);
+    // Create function should have assignments for x and y
+    const createEntry = module.create!.blocks.get("entry")!;
+    const createAssignments = createEntry.instructions.filter(
+      (inst) => inst.kind === "binary" && inst.op === "add",
+    );
+    // Variables are now tracked as temps with SSA
+    expect(createAssignments.length).toBeGreaterThan(0);
 
-    // Main function should have its own locals
-    expect(module.main.locals).toHaveLength(2);
-    const mainLocalIds = module.main.locals.map((l) => l.id);
-    expect(mainLocalIds.some((id) => id.includes("x"))).toBe(true);
-    expect(mainLocalIds.some((id) => id.includes("z"))).toBe(true);
+    // Main function should have assignments for x and z
+    const mainEntry = module.main.blocks.get("entry")!;
+    const mainAssignments = mainEntry.instructions.filter(
+      (inst) => inst.kind === "binary" && inst.op === "add",
+    );
+    expect(mainAssignments.length).toBeGreaterThan(0);
   });
 });

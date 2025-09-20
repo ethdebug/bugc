@@ -24,32 +24,6 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
           // Track constant assignments
           if (inst.kind === "const" && "dest" in inst) {
             constants.set(inst.dest, inst.value);
-          } else if (
-            inst.kind === "load_local" &&
-            "dest" in inst &&
-            "local" in inst
-          ) {
-            // Check if the local has a known constant value
-            const constValue = constants.get(inst.local);
-            if (constValue !== undefined) {
-              // Replace load with const
-              newInst = {
-                kind: "const",
-                dest: inst.dest,
-                value: constValue,
-                type: this.getTypeForValue(constValue),
-                loc: inst.loc,
-              } as Ir.Instruction;
-              constants.set(inst.dest, constValue);
-
-              context.trackTransformation({
-                type: "replace",
-                pass: this.name,
-                original: inst.loc ? [inst.loc] : [],
-                result: newInst.loc ? [newInst.loc] : [],
-                reason: `Propagated constant value ${constValue} for local ${inst.local}`,
-              });
-            }
           } else {
             // Try to propagate constants into instruction operands
             const propagated = this.propagateConstantsIntoInstruction(
@@ -124,7 +98,7 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
         result.slot = propagateValue(result.slot);
         break;
       case "store_mapping":
-      case "store_local":
+        result.key = propagateValue(result.key);
         result.value = propagateValue(result.value);
         break;
       case "load_mapping":
@@ -200,7 +174,6 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
     switch (inst.kind) {
       case "store_storage":
       case "store_mapping":
-      case "store_local":
       case "store_field":
       case "store_index":
         return true;

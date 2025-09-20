@@ -3,6 +3,8 @@
  * Uses @ethereumjs/evm for in-process execution
  */
 
+/* eslint-disable no-console */
+
 import { EVM } from "@ethereumjs/evm";
 import { SimpleStateManager } from "@ethereumjs/statemanager";
 import { Common, Mainnet } from "@ethereumjs/common";

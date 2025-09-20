@@ -20,7 +20,7 @@ export namespace Process {
   export type Action =
     | { type: "modify"; fn: (state: State) => State }
     | { type: "peek" }
-    | { type: "value"; value: any };
+    | { type: "value"; value: unknown };
 
   export namespace Types {
     export const nodeType = lift(State.Types.nodeType);
@@ -127,32 +127,88 @@ export namespace Process {
    */
   export namespace Variables {
     /**
-     * Declare a new local variable in the current scope
+     * Declare a new SSA variable in the current scope
      */
     export function* declare(
       name: string,
       type: Ir.Type,
-    ): Process<Ir.Function.LocalVariable> {
+    ): Process<State.SsaVariable> {
       const scope = yield* lift(State.Scopes.current)();
+      const tempId = yield* newTemp();
 
-      const count = scope.usedNames.get(name) || 0;
-      const id = count === 0 ? name : `${name}_${count}`;
-      const local: Ir.Function.LocalVariable = { id, name, type };
+      const version = (scope.ssaVars.get(name)?.version ?? -1) + 1;
+      const ssaVar: State.SsaVariable = {
+        name,
+        currentTempId: tempId,
+        type,
+        version,
+      };
 
-      // Update scope with new local
+      // Update scope with new SSA variable
       const newScope = {
         ...scope,
-        locals: new Map([...scope.locals, [name, local]]),
-        usedNames: new Map([...scope.usedNames, [name, count + 1]]),
+        ssaVars: new Map([...scope.ssaVars, [name, ssaVar]]),
+        usedNames: new Map([...scope.usedNames, [name, version + 1]]),
       };
 
       // Update scopes
       yield* lift(State.Scopes.setCurrent)(newScope);
 
-      // Update function with new local
-      yield* lift(State.Function.addLocal)(local);
+      return ssaVar;
+    }
 
-      return local;
+    /**
+     * Create a new SSA version for a variable (for assignments)
+     */
+    export function* assignSsa(
+      name: string,
+      type: Ir.Type,
+    ): Process<State.SsaVariable> {
+      const tempId = yield* newTemp();
+
+      // Find the current scope that has this variable
+      const scopes = yield* lift(State.Scopes.extract)((s) => s.stack);
+      let scopeIndex = -1;
+
+      for (let i = scopes.length - 1; i >= 0; i--) {
+        if (scopes[i].ssaVars.has(name)) {
+          scopeIndex = i;
+          break;
+        }
+      }
+
+      if (scopeIndex === -1) {
+        // Variable doesn't exist, create it in current scope
+        return yield* declare(name, type);
+      }
+
+      const targetScope = scopes[scopeIndex];
+      const currentVar = targetScope.ssaVars.get(name)!;
+      const newVersion = currentVar.version + 1;
+
+      const ssaVar: State.SsaVariable = {
+        name,
+        currentTempId: tempId,
+        type,
+        version: newVersion,
+      };
+
+      // Update the target scope
+      const updatedScope = {
+        ...targetScope,
+        ssaVars: new Map([...targetScope.ssaVars, [name, ssaVar]]),
+      };
+
+      // Rebuild the scope stack
+      const newStack = [
+        ...scopes.slice(0, scopeIndex),
+        updatedScope,
+        ...scopes.slice(scopeIndex + 1),
+      ];
+
+      yield* lift(State.Scopes.update)(() => ({ stack: newStack }));
+
+      return ssaVar;
     }
 
     /**
@@ -216,10 +272,32 @@ export namespace Process {
       name: string,
       parameters: { name: string; type: Ir.Type }[],
     ): Process<void> {
+      // Convert parameters to SSA form
+      const ssaParams: Ir.Function.Parameter[] = [];
+      const paramSsaVars = new Map<string, State.SsaVariable>();
+
+      for (const param of parameters) {
+        const tempId = `t${ssaParams.length}`;
+        const ssaParam: Ir.Function.Parameter = {
+          name: param.name,
+          type: param.type,
+          tempId,
+        };
+        ssaParams.push(ssaParam);
+
+        // Track SSA variable for the parameter
+        paramSsaVars.set(param.name, {
+          name: param.name,
+          currentTempId: tempId,
+          type: param.type,
+          version: 0,
+        });
+      }
+
       // Create function context
       const functionContext: State.Function = {
         id: name,
-        locals: [],
+        parameters: ssaParams,
         blocks: new Map(),
       };
 
@@ -239,16 +317,11 @@ export namespace Process {
           ...state,
           function: functionContext,
           block: blockContext,
-          scopes: { stack: [{ locals: new Map(), usedNames: new Map() }] },
+          scopes: { stack: [{ ssaVars: paramSsaVars, usedNames: new Map() }] },
           loops: { stack: [] },
-          counters: { ...state.counters, block: 1, temp: 0 },
+          counters: { ...state.counters, block: 1, temp: parameters.length },
         }),
       };
-
-      // Declare parameters as locals
-      for (const param of parameters) {
-        yield* Variables.declare(param.name, param.type);
-      }
     }
 
     /**
@@ -260,11 +333,11 @@ export namespace Process {
     }
 
     /**
-     * Get the current function's locals
+     * Get the current function's parameters
      */
-    export function* currentLocals(): Process<Ir.Function.LocalVariable[]> {
+    export function* currentParameters(): Process<Ir.Function.Parameter[]> {
       const state: State = yield { type: "peek" };
-      return state.function.locals;
+      return state.function.parameters;
     }
 
     /**
@@ -279,8 +352,7 @@ export namespace Process {
 
       return {
         name: func.id,
-        locals: func.locals,
-        paramCount: 0, // This should be tracked properly
+        parameters: func.parameters,
         entry: "entry",
         blocks: func.blocks,
       };
@@ -419,7 +491,7 @@ export namespace Process {
           break;
         }
         default:
-          throw new Error(`Unknown action type: ${(action as any).type}`);
+          assertExhausted(action);
       }
     }
 

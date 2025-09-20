@@ -12,20 +12,11 @@ import { Process } from "../process.js";
 export function* buildIdentifier(
   expr: Ast.Expression.Identifier,
 ): Process<Ir.Value> {
-  const local = yield* Process.Variables.lookup(expr.name);
+  const ssaVar = yield* Process.Variables.lookup(expr.name);
 
-  if (local) {
-    // Load the local variable
-    const tempId = yield* Process.Variables.newTemp();
-
-    yield* Process.Instructions.emit({
-      kind: "load_local",
-      local: local.id,
-      dest: tempId,
-      loc: expr.loc ?? undefined,
-    } as Ir.Instruction.LoadLocal);
-
-    return Ir.Value.temp(tempId, local.type);
+  if (ssaVar) {
+    // Return the current SSA temp for this variable
+    return Ir.Value.temp(ssaVar.currentTempId, ssaVar.type);
   }
 
   // Check if it's a storage variable

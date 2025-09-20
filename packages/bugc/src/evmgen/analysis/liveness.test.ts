@@ -7,7 +7,7 @@ describe("Liveness Analysis", () => {
   it("should identify live-in and live-out sets for a simple function", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -66,7 +66,7 @@ describe("Liveness Analysis", () => {
   it("should track values across blocks", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -157,7 +157,7 @@ describe("Liveness Analysis", () => {
   it("should handle phi nodes correctly", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [

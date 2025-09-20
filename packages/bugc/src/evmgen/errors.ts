@@ -40,4 +40,13 @@ class EvmgenError extends BugError {
   }
 }
 
+export function assertExhausted(_: never) {
+  throw new EvmgenError(
+    ErrorCode.INTERNAL_ERROR,
+    `Unexpected code path; expected exhaustive conditionals`,
+    undefined,
+    Severity.Error,
+  );
+}
+
 export { EvmgenError as Error };

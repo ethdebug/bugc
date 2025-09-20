@@ -74,7 +74,7 @@ export namespace State {
    */
   export interface Function {
     readonly id: string;
-    readonly locals: Ir.Function.LocalVariable[]; // All locals in function
+    readonly parameters: Ir.Function.Parameter[]; // Function parameters
     readonly blocks: Map<string, Ir.Block>; // All blocks in function
   }
 
@@ -84,10 +84,10 @@ export namespace State {
       function: modify(state.function),
     }));
 
-    export const addLocal = (local: Ir.Function.LocalVariable) =>
+    export const addParameter = (param: Ir.Function.Parameter) =>
       update((function_) => ({
         ...function_,
-        locals: [...function_.locals, local],
+        parameters: [...function_.parameters, param],
       }));
 
     export const addBlock = (id: string, block: Ir.Block) =>
@@ -155,23 +155,33 @@ export namespace State {
   }
 
   export interface Scope {
-    readonly locals: Map<string, Ir.Function.LocalVariable>;
+    readonly ssaVars: Map<string, SsaVariable>; // SSA variable tracking
     readonly usedNames: Map<string, number>; // For handling shadowing
   }
 
+  /**
+   * SSA variable information
+   */
+  export interface SsaVariable {
+    readonly name: string; // Original variable name
+    readonly currentTempId: string; // Current SSA temp
+    readonly type: Ir.Type;
+    readonly version: number; // SSA version number
+  }
+
   export namespace Scopes {
-    const update = makeUpdate<State.Scopes>((modify) => (state) => ({
+    export const update = makeUpdate<State.Scopes>((modify) => (state) => ({
       ...state,
       scopes: modify(state.scopes),
     }));
 
-    const extract = makeExtract<State.Scopes>(
+    export const extract = makeExtract<State.Scopes>(
       (read) => (state) => read(state.scopes),
     );
 
     export const push = () =>
       update((scopes) => ({
-        stack: [...scopes.stack, { locals: new Map(), usedNames: new Map() }],
+        stack: [...scopes.stack, { ssaVars: new Map(), usedNames: new Map() }],
       }));
 
     export const pop = () =>
@@ -202,9 +212,9 @@ export namespace State {
       extract((scopes) => {
         // Search from innermost to outermost scope
         for (let i = scopes.stack.length - 1; i >= 0; i--) {
-          const local = scopes.stack[i].locals.get(name);
-          if (local) {
-            return local;
+          const ssaVar = scopes.stack[i].ssaVars.get(name);
+          if (ssaVar) {
+            return ssaVar;
           }
         }
         return null;

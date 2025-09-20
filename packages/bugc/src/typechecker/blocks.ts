@@ -1,7 +1,7 @@
 import * as Ast from "#ast";
 import { Type } from "#types";
 import type { Visitor } from "#ast";
-import type { Symbol } from "./symbols.js";
+import type { Symbol as BugSymbol } from "./symbols.js";
 import type { Context, Report } from "./context.js";
 import { enterFunctionScope } from "./symbols.js";
 import { Error as TypeError, ErrorCode, ErrorMessages } from "./errors.js";
@@ -211,7 +211,7 @@ export const blockChecker: Pick<
 
           // Still define the variable with error type
           const errorType = Type.failure("missing initializer");
-          const symbol: Symbol = {
+          const symbol: BugSymbol = {
             name: node.name,
             type: errorType,
             mutable: true,
@@ -261,7 +261,7 @@ export const blockChecker: Pick<
           type = initResult.type || Type.failure("invalid initializer");
         }
 
-        const symbol: Symbol = {
+        const symbol: BugSymbol = {
           name: node.name,
           type,
           mutable: true,

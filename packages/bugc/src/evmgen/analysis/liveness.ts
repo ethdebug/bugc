@@ -215,7 +215,8 @@ function valueId(val: Ir.Value): string {
   } else if (val.kind === "temp") {
     return val.id;
   } else {
-    return val.name;
+    // @ts-expect-error should be exhausted
+    throw new Error(`Unknown value kind: ${val.kind}`);
   }
 }
 
@@ -264,12 +265,6 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
       break;
     case "compute_field_offset":
       addValue(inst.baseSlot);
-      break;
-    case "load_local":
-      used.add(inst.local);
-      break;
-    case "store_local":
-      addValue(inst.value);
       break;
     case "load_field":
       addValue(inst.object);
@@ -328,7 +323,6 @@ function getDefinedValue(inst: Ir.Instruction): string | undefined {
     case "compute_slot":
     case "compute_array_slot":
     case "compute_field_offset":
-    case "load_local":
     case "load_field":
     case "load_index":
     case "slice":
@@ -338,8 +332,6 @@ function getDefinedValue(inst: Ir.Instruction): string | undefined {
     case "length":
     case "call":
       return inst.dest; // May be undefined for void functions
-    case "store_local":
-      return inst.local;
     // These instructions don't define values
     case "store_storage":
     case "store_mapping":

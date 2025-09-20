@@ -23,7 +23,7 @@ describe("ConstantFoldingStep", () => {
       functions: new Map(),
       main: {
         name: "main",
-        locals: [],
+        parameters: [],
         entry: "entry",
         blocks: new Map([["entry", block]]),
       },
@@ -69,8 +69,9 @@ describe("ConstantFoldingStep", () => {
   it("should not fold keccak256 on non-constant values", () => {
     const module = createTestModule([
       {
-        kind: "load_local",
-        local: "input",
+        kind: "const",
+        value: 123n,
+        type: { kind: "uint", bits: 256 },
         dest: "t0",
       },
       {

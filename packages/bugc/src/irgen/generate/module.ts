@@ -83,10 +83,12 @@ export function* buildModule(
   // Get module state to build final IR module
   const module_ = yield* Process.Modules.current();
 
-  return new PhiInserter().insertPhiNodes({
+  const result = new PhiInserter().insertPhiNodes({
     ...module_,
     main: module_.main || createEmptyFunction("main"),
   });
+
+  return result;
 }
 
 /**
@@ -116,8 +118,7 @@ function* withErrorHandling<T>(gen: Process<T>): Process<T | undefined> {
 function createEmptyFunction(name: string): Ir.Function {
   return {
     name,
-    locals: [],
-    paramCount: 0,
+    parameters: [],
     entry: "entry",
     blocks: new Map([
       [

@@ -126,8 +126,6 @@ export class ReturnMergingStep extends BaseOptimizationStep {
       return `const:${value.type.kind}:${value.value}`;
     } else if (value.kind === "temp") {
       return `temp:${value.id}`;
-    } else if (value.kind === "local") {
-      return `local:${value.name}`;
     }
 
     return "unknown";

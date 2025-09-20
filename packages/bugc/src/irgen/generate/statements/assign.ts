@@ -30,13 +30,25 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): Process<void> {
   if (node.type === "IdentifierExpression") {
     const name = (node as Ast.Expression.Identifier).name;
 
-    // Check if it's a local
-    const local = yield* Process.Variables.lookup(name);
-    if (local) {
+    // Check if it's a variable
+    const ssaVar = yield* Process.Variables.lookup(name);
+    if (ssaVar) {
+      // Create new SSA version for assignment
+      const newSsaVar = yield* Process.Variables.assignSsa(name, ssaVar.type);
+
+      // Generate assignment to new SSA temp
+      if (value.kind === "temp" && value.id === newSsaVar.currentTempId) {
+        // Already assigned to correct temp, no need to copy
+        return;
+      }
+
+      // Copy the value to the new SSA temp
       yield* Process.Instructions.emit({
-        kind: "store_local",
-        local: local.id,
-        value,
+        kind: "binary",
+        op: "add",
+        left: value,
+        right: Ir.Value.constant(0n, ssaVar.type),
+        dest: newSsaVar.currentTempId,
         loc: node.loc ?? undefined,
       } as Ir.Instruction);
       return;

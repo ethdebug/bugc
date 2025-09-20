@@ -51,20 +51,41 @@ function* buildVariableDeclaration(
     ? fromBugType(type)
     : ({ kind: "uint", bits: 256 } as Ir.Type);
 
-  // Declare the local variable
-  const local = yield* Process.Variables.declare(decl.name, irType);
-  if (!local) {
-    return;
-  }
-
-  // If there's an initializer, evaluate it and assign
+  // If there's an initializer, evaluate it and create SSA variable
   if (decl.initializer) {
     const value = yield* buildExpression(decl.initializer);
+    const ssaVar = yield* Process.Variables.declare(decl.name, irType);
+
+    // Generate assignment to the new SSA temp
+    if (value.kind === "temp" && value.id !== ssaVar.currentTempId) {
+      // Copy from existing temp
+      yield* Process.Instructions.emit({
+        kind: "binary",
+        op: "add",
+        left: value,
+        right: Ir.Value.constant(0n, irType),
+        dest: ssaVar.currentTempId,
+        loc: decl.loc ?? undefined,
+      } as Ir.Instruction.BinaryOp);
+    } else if (value.kind === "const") {
+      // Create const instruction for constants
+      yield* Process.Instructions.emit({
+        kind: "const",
+        value: value.value,
+        type: irType,
+        dest: ssaVar.currentTempId,
+        loc: decl.loc ?? undefined,
+      } as Ir.Instruction.Const);
+    }
+  } else {
+    // No initializer - declare with default value
+    const ssaVar = yield* Process.Variables.declare(decl.name, irType);
     yield* Process.Instructions.emit({
-      kind: "store_local",
-      local: local.id,
-      value,
+      kind: "const",
+      value: 0n,
+      type: irType,
+      dest: ssaVar.currentTempId,
       loc: decl.loc ?? undefined,
-    } as Ir.Instruction.StoreLocal);
+    } as Ir.Instruction.Const);
   }
 }

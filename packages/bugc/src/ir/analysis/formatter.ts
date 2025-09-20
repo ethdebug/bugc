@@ -56,24 +56,12 @@ export class Formatter {
 
   private formatFunction(func: Ir.Function): void {
     // Format function signature with parameters
-    const paramCount = func.paramCount || 0;
     const params: string[] = [];
-    for (let i = 0; i < paramCount; i++) {
-      const local = func.locals[i];
-      params.push(`^${local.id}: ${this.formatType(local.type)}`);
+    for (const param of func.parameters) {
+      params.push(`^${param.tempId}: ${this.formatType(param.type)}`);
     }
     this.line(`function ${func.name}(${params.join(", ")}) {`);
     this.indent++;
-
-    // Format remaining locals (non-parameters) as first-class declarations
-    if (func.locals.length > paramCount) {
-      for (let i = paramCount; i < func.locals.length; i++) {
-        const local = func.locals[i];
-        // Just show ID and type, since ID is already meaningful
-        this.line(`local ^${local.id}: ${this.formatType(local.type)}`);
-      }
-      this.line("");
-    }
 
     // Get blocks in topological order
     const sortedBlocks = this.topologicalSort(func);
@@ -101,7 +89,7 @@ export class Formatter {
     this.indent++;
 
     // Phi nodes
-    if (block.phis) {
+    if (block.phis && block.phis.length > 0) {
       for (const phi of block.phis) {
         this.line(this.formatPhiInstruction(phi));
       }
@@ -154,14 +142,6 @@ export class Formatter {
 
       case "store_mapping":
         return `store_mapping slot=${inst.slot}, key=${this.formatValue(inst.key)}, value=${this.formatValue(inst.value)}`;
-
-      case "load_local":
-        // Use the local ID with ^ prefix
-        return `${destWithType(inst.dest)} = load_local ^${inst.local}`;
-
-      case "store_local":
-        // Use the local ID with ^ prefix
-        return `store_local ^${inst.local}, ${this.formatValue(inst.value)}`;
 
       case "load_field":
         return `${destWithType(inst.dest, inst.type)} = load_field object=${this.formatValue(inst.object)}, field="${inst.field}", index=${inst.fieldIndex}`;
@@ -265,9 +245,6 @@ export class Formatter {
           return this.formatConstValue(value.value, value.type);
         case "temp":
           return `%${value.id}`; // Add % prefix for temps for clarity
-        case "local":
-          // Use the local's name directly
-          return value.name;
         default:
           return "?";
       }

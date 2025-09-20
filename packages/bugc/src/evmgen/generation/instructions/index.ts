@@ -5,7 +5,6 @@ export { generateConst } from "./const.js";
 export { generateEnvOp } from "./env.js";
 export { generateHashOp } from "./hash.js";
 export { generateLength } from "./length.js";
-export { generateLoadLocal, generateStoreLocal } from "./local.js";
 export { generateSlice } from "./slice.js";
 export {
   generateLoadStorage,

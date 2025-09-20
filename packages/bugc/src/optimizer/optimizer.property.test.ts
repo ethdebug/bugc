@@ -239,7 +239,7 @@ function createModuleWithBinaryOp(a: bigint, b: bigint, op: string): Ir.Module {
     name: "Test",
     main: {
       name: "main",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -334,7 +334,7 @@ function createModuleWithDeadCode(useFlags: boolean[]): Ir.Module {
     name: "Test",
     main: {
       name: "main",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -359,7 +359,7 @@ function createModuleWithDuplicateExpressions(a: bigint, b: bigint): Ir.Module {
     name: "Test",
     main: {
       name: "main",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -498,7 +498,7 @@ function createModuleWithMergeableBlocks(
 
   return {
     name: "Test",
-    main: { name: "main", locals: [], entry: "entry", blocks },
+    main: { name: "main", parameters: [], entry: "entry", blocks },
     storage: { slots: [] },
     functions: new Map(),
   };
@@ -516,13 +516,13 @@ function generateRandomModule(): fc.Arbitrary<Ir.Module> {
 
 function generateRandomFunction(): fc.Arbitrary<{
   name: string;
-  locals: never[];
+  parameters: never[];
   entry: string;
   blocks: Map<string, Ir.Block>;
 }> {
   return fc.record({
     name: fc.constant("main"),
-    locals: fc.constant([]),
+    parameters: fc.constant([]),
     entry: fc.constant("entry"),
     blocks: fc.constant(createSimpleBlocks()),
   });

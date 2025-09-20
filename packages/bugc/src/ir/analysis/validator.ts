@@ -9,7 +9,6 @@ export class Validator {
   private warnings: string[] = [];
   private tempDefs: Set<string> = new Set();
   private tempUses: Set<string> = new Set();
-  private localDefs: Set<string> = new Set();
   private blockIds: Set<string> = new Set();
 
   validate(module: Ir.Module): Validator.Result {
@@ -17,7 +16,6 @@ export class Validator {
     this.warnings = [];
     this.tempDefs = new Set();
     this.tempUses = new Set();
-    this.localDefs = new Set();
     this.blockIds = new Set();
 
     // Validate module structure
@@ -81,13 +79,13 @@ export class Validator {
       this.error(`Entry block '${func.entry}' not found in function`);
     }
 
-    // Validate locals
-    for (const local of func.locals) {
-      if (!local.id || !local.name) {
-        this.error("Local variable must have id and name");
+    // Validate parameters
+    for (const param of func.parameters) {
+      if (!param.tempId || !param.name) {
+        this.error("Parameter must have tempId and name");
       }
-      this.localDefs.add(local.id);
-      this.validateType(local.type);
+      this.tempDefs.add(param.tempId);
+      this.validateType(param.type);
     }
 
     // Validate each block
@@ -143,12 +141,6 @@ export class Validator {
         break;
       case "store_storage":
         this.validateStoreStorageInstruction(inst);
-        break;
-      case "load_local":
-        this.validateLoadLocalInstruction(inst);
-        break;
-      case "store_local":
-        this.validateStoreLocalInstruction(inst);
         break;
       case "binary":
         this.validateBinaryInstruction(inst);
@@ -238,38 +230,6 @@ export class Validator {
 
     if (!inst.value) {
       this.error("Store storage instruction must have a value");
-    } else {
-      this.validateValue(inst.value);
-    }
-  }
-
-  private validateLoadLocalInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "load_local") return;
-
-    if (!inst.dest) {
-      this.error("Load local instruction must have a destination");
-    } else {
-      this.tempDefs.add(inst.dest);
-    }
-
-    if (!inst.local) {
-      this.error("Load local instruction must specify a local");
-    } else if (!this.localDefs.has(inst.local)) {
-      this.error(`Load local references undefined local '${inst.local}'`);
-    }
-  }
-
-  private validateStoreLocalInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "store_local") return;
-
-    if (!inst.local) {
-      this.error("Store local instruction must specify a local");
-    } else if (!this.localDefs.has(inst.local)) {
-      this.error(`Store local references undefined local '${inst.local}'`);
-    }
-
-    if (!inst.value) {
-      this.error("Store local instruction must have a value");
     } else {
       this.validateValue(inst.value);
     }
@@ -608,15 +568,6 @@ export class Validator {
           this.error("Temp value must have an id");
         } else {
           this.tempUses.add(value.id);
-        }
-        break;
-
-      case "local":
-        if (!value.name) {
-          this.error("Local value must have a name");
-        } else if (!this.localDefs.has(`local_${value.name}`)) {
-          // Note: local names in values don't have the local_ prefix
-          // but we need to check against the defined locals
         }
         break;
 

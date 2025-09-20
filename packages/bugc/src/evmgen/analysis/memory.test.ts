@@ -9,7 +9,7 @@ describe("Memory Planning", () => {
   it("should allocate memory for phi destinations", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -90,7 +90,7 @@ describe("Memory Planning", () => {
   it("should allocate memory for cross-block values", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -157,7 +157,7 @@ describe("Memory Planning", () => {
   it("should allocate memory for deeply nested stack values", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -197,7 +197,7 @@ describe("Memory Planning", () => {
   it("should use sequential memory slots", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [

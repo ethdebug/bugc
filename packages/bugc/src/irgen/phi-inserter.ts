@@ -48,6 +48,9 @@ export class PhiInserter {
     // Step 4: Compute liveness information
     const liveness = this.computeLiveness(func);
 
+    // Step 5: Compute reaching definitions - which temp reaches the end of each block
+    const reachingDefs = this.computeReachingDefinitions(func);
+
     // For each variable, insert phi nodes at dominance frontier
     for (const [varName, defBlocks] of Object.entries(definitions)) {
       const phiBlocks = new Set<string>();
@@ -64,8 +67,8 @@ export class PhiInserter {
 
             if (liveAtBlock.has(varName)) {
               phiBlocks.add(frontierBlock);
-              // Insert phi node
-              this.insertPhiNode(func, frontierBlock, varName);
+              // Insert phi node with reaching definitions
+              this.insertPhiNode(func, frontierBlock, varName, reachingDefs);
               // If we inserted a phi, that block now defines the variable
               if (!defBlocks.has(frontierBlock)) {
                 workList.push(frontierBlock);
@@ -88,15 +91,6 @@ export class PhiInserter {
             definitions[inst.dest] = new Set();
           }
           definitions[inst.dest].add(blockId);
-        }
-
-        // Special handling for store_local - it defines the local
-        if (inst.kind === "store_local") {
-          const localName = inst.local;
-          if (!definitions[localName]) {
-            definitions[localName] = new Set();
-          }
-          definitions[localName].add(blockId);
         }
       }
     }
@@ -259,29 +253,65 @@ export class PhiInserter {
     func: Ir.Function,
     blockId: string,
     varName: string,
+    _reachingDefs: ReachingDefinitions,
   ): void {
     const block = func.blocks.get(blockId);
-    if (!block) return;
+    if (!block) {
+      return;
+    }
+
+    // Initialize phis array if needed
+    if (!block.phis) {
+      block.phis = [];
+    }
 
     // Check if phi already exists for this variable
     const existingPhi = block.phis.find((phi) => phi.dest === varName);
-    if (existingPhi) return;
+    if (existingPhi) {
+      return;
+    }
 
     // Determine the type of the variable
     const varType = this.getVariableType(func, varName);
-    if (!varType) return;
+    if (!varType) {
+      return;
+    }
 
-    // Create phi node with sources from all predecessors
+    // Create phi node with sources from reaching definitions
     const sources = new Map<string, Ir.Value>();
+
+    // Analyze parallel structure to find corresponding temps
+    const parallelTemps = this.findParallelTempsForMerge(
+      func,
+      blockId,
+      varName,
+    );
+
     for (const pred of block.predecessors) {
-      // Initially, use the variable itself as the source
-      // A later pass will resolve these to the actual reaching definitions
-      sources.set(pred, {
-        kind: varName.startsWith("t") ? "temp" : "local",
-        id: varName.startsWith("t") ? varName : undefined,
-        name: varName.startsWith("t") ? undefined : varName,
-        type: varType,
-      } as Ir.Value);
+      let tempForPred: string | undefined = parallelTemps.get(pred);
+
+      if (!tempForPred) {
+        // Fallback: try to find the reaching temp
+        const predBlock = func.blocks.get(pred);
+        if (predBlock) {
+          tempForPred =
+            this.findReachingTempInBlock(predBlock, varName) ?? undefined;
+        }
+      }
+
+      if (tempForPred) {
+        sources.set(pred, {
+          kind: "temp",
+          id: tempForPred,
+          type: varType,
+        } as Ir.Value);
+      } else {
+        sources.set(pred, {
+          kind: "temp",
+          id: varName,
+          type: varType,
+        } as Ir.Value);
+      }
     }
 
     const phi: Ir.Block.Phi = {
@@ -293,6 +323,304 @@ export class PhiInserter {
 
     // Insert at the beginning of phi nodes
     block.phis.push(phi);
+  }
+
+  private findParallelTempsForMerge(
+    func: Ir.Function,
+    mergeBlockId: string,
+    targetTemp: string,
+  ): Map<string, string> {
+    const result = new Map<string, string>();
+    const mergeBlock = func.blocks.get(mergeBlockId);
+    if (!mergeBlock) return result;
+
+    // Find the branch point that leads to this merge
+    const branchBlock = this.findBranchPointForMerge(func, mergeBlockId);
+    if (!branchBlock) {
+      return result;
+    }
+
+    // Find parallel assignments in the branches
+    if (branchBlock.block.terminator.kind === "branch") {
+      const trueTarget = branchBlock.block.terminator.trueTarget;
+      const falseTarget = branchBlock.block.terminator.falseTarget;
+
+      // Get assignments from each branch
+      const trueAssignments = this.collectAssignmentsToMerge(
+        func,
+        trueTarget,
+        mergeBlockId,
+      );
+      const falseAssignments = this.collectAssignmentsToMerge(
+        func,
+        falseTarget,
+        mergeBlockId,
+      );
+
+      // Match parallel assignments by position
+      // The last assignment in each branch likely corresponds to the same logical variable
+      if (trueAssignments.length > 0 && falseAssignments.length > 0) {
+        // For the target temp, find which position it corresponds to
+        let position = -1;
+
+        // Check if targetTemp appears in either branch
+        for (
+          let i = 0;
+          i < Math.max(trueAssignments.length, falseAssignments.length);
+          i++
+        ) {
+          if (
+            trueAssignments[i] === targetTemp ||
+            falseAssignments[i] === targetTemp
+          ) {
+            position = i;
+            break;
+          }
+        }
+
+        // If we found a position, use the corresponding temps
+        if (position >= 0) {
+          if (position < trueAssignments.length) {
+            // Find which predecessor corresponds to the true branch
+            for (const pred of mergeBlock.predecessors) {
+              if (this.isReachableFrom(func, pred, trueTarget)) {
+                result.set(pred, trueAssignments[position]);
+                break;
+              }
+            }
+          }
+          if (position < falseAssignments.length) {
+            // Find which predecessor corresponds to the false branch
+            for (const pred of mergeBlock.predecessors) {
+              if (this.isReachableFrom(func, pred, falseTarget)) {
+                result.set(pred, falseAssignments[position]);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  private findBranchPointForMerge(
+    func: Ir.Function,
+    mergeBlockId: string,
+  ): { id: string; block: Ir.Block } | null {
+    const mergeBlock = func.blocks.get(mergeBlockId);
+    if (!mergeBlock) return null;
+
+    const predecessors = Array.from(mergeBlock.predecessors);
+
+    // We need to find the most immediate branch point
+    // Start from the predecessors and work backwards
+    const candidates: { id: string; block: Ir.Block; distance: number }[] = [];
+
+    for (const [blockId, block] of func.blocks.entries()) {
+      if (block.terminator.kind === "branch") {
+        const { trueTarget, falseTarget } = block.terminator;
+
+        // Check if the predecessors come from different branches
+        let fromTrue = 0;
+        let fromFalse = 0;
+        const trueReaches: string[] = [];
+        const falseReaches: string[] = [];
+
+        for (const pred of predecessors) {
+          if (
+            pred === trueTarget ||
+            this.canReachWithoutMerge(func, trueTarget, pred, mergeBlockId)
+          ) {
+            fromTrue++;
+            trueReaches.push(pred);
+          }
+          if (
+            pred === falseTarget ||
+            this.canReachWithoutMerge(func, falseTarget, pred, mergeBlockId)
+          ) {
+            fromFalse++;
+            falseReaches.push(pred);
+          }
+        }
+
+        // This is a potential branch point if predecessors come from both branches
+        if (fromTrue > 0 && fromFalse > 0) {
+          // Calculate distance (number of blocks) from branch to merge
+          const distance = this.calculateDistance(func, blockId, mergeBlockId);
+          candidates.push({ id: blockId, block, distance });
+        }
+      }
+    }
+
+    // Choose the closest branch point
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => a.distance - b.distance);
+      const closest = candidates[0];
+      return { id: closest.id, block: closest.block };
+    }
+
+    return null;
+  }
+
+  private calculateDistance(
+    func: Ir.Function,
+    from: string,
+    to: string,
+  ): number {
+    const visited = new Map<string, number>();
+    const queue: { block: string; distance: number }[] = [
+      { block: from, distance: 0 },
+    ];
+    let minDistance = Infinity;
+
+    while (queue.length > 0) {
+      const { block: current, distance } = queue.shift()!;
+
+      if (current === to) {
+        minDistance = Math.min(minDistance, distance);
+        continue;
+      }
+
+      if (visited.has(current) && visited.get(current)! <= distance) {
+        continue;
+      }
+      visited.set(current, distance);
+
+      const block = func.blocks.get(current);
+      if (!block) continue;
+
+      if (block.terminator.kind === "jump") {
+        queue.push({ block: block.terminator.target, distance: distance + 1 });
+      } else if (block.terminator.kind === "branch") {
+        queue.push({
+          block: block.terminator.trueTarget,
+          distance: distance + 1,
+        });
+        queue.push({
+          block: block.terminator.falseTarget,
+          distance: distance + 1,
+        });
+      }
+    }
+
+    return minDistance;
+  }
+
+  private canReachWithoutMerge(
+    func: Ir.Function,
+    from: string,
+    to: string,
+    avoid: string,
+  ): boolean {
+    if (from === to) return true;
+    if (from === avoid) return false;
+
+    const visited = new Set<string>();
+    const queue = [from];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (current === to) return true;
+      if (current === avoid || visited.has(current)) continue;
+      visited.add(current);
+
+      const block = func.blocks.get(current);
+      if (!block) continue;
+
+      if (block.terminator.kind === "jump") {
+        queue.push(block.terminator.target);
+      } else if (block.terminator.kind === "branch") {
+        queue.push(block.terminator.trueTarget);
+        queue.push(block.terminator.falseTarget);
+      }
+    }
+
+    return false;
+  }
+
+  private canReach(func: Ir.Function, from: string, to: string): boolean {
+    if (from === to) return true;
+
+    const visited = new Set<string>();
+    const queue = [from];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (current === to) return true;
+      if (visited.has(current)) continue;
+      visited.add(current);
+
+      const block = func.blocks.get(current);
+      if (!block) continue;
+
+      if (block.terminator.kind === "jump") {
+        queue.push(block.terminator.target);
+      } else if (block.terminator.kind === "branch") {
+        queue.push(block.terminator.trueTarget);
+        queue.push(block.terminator.falseTarget);
+      }
+    }
+
+    return false;
+  }
+
+  private isReachableFrom(
+    func: Ir.Function,
+    block: string,
+    from: string,
+  ): boolean {
+    return block === from || this.canReach(func, from, block);
+  }
+
+  private collectAssignmentsToMerge(
+    func: Ir.Function,
+    startBlock: string,
+    mergeBlock: string,
+  ): string[] {
+    const assignments: string[] = [];
+    const visited = new Set<string>();
+
+    const collect = (blockId: string): void => {
+      if (visited.has(blockId) || blockId === mergeBlock) return;
+      visited.add(blockId);
+
+      const block = func.blocks.get(blockId);
+      if (!block) return;
+
+      // Collect assignments in this block
+      for (const inst of block.instructions) {
+        if ("dest" in inst && inst.dest) {
+          assignments.push(inst.dest);
+        }
+      }
+
+      // Continue to successors
+      if (block.terminator.kind === "jump") {
+        collect(block.terminator.target);
+      } else if (block.terminator.kind === "branch") {
+        collect(block.terminator.trueTarget);
+        collect(block.terminator.falseTarget);
+      }
+    };
+
+    collect(startBlock);
+    return assignments;
+  }
+
+  private findReachingTempInBlock(
+    block: Ir.Block,
+    _varName: string,
+  ): string | null {
+    // Look for the last assignment in this block
+    for (let i = block.instructions.length - 1; i >= 0; i--) {
+      const inst = block.instructions[i];
+      if ("dest" in inst && inst.dest) {
+        return inst.dest;
+      }
+    }
+    return null;
   }
 
   private computeLiveness(func: Ir.Function): LivenessInfo {
@@ -312,8 +640,6 @@ export class PhiInserter {
       const addValue = (val: Ir.Value | undefined): void => {
         if (val && val.kind === "temp") {
           used.add(val.id);
-        } else if (val && val.kind === "local") {
-          used.add(val.name);
         }
       };
 
@@ -330,12 +656,6 @@ export class PhiInserter {
           break;
         case "store_storage":
           addValue(inst.slot);
-          addValue(inst.value);
-          break;
-        case "load_local":
-          // No values to add, uses local name
-          break;
-        case "store_local":
           addValue(inst.value);
           break;
         case "load_field":
@@ -411,14 +731,10 @@ export class PhiInserter {
       if (term.kind === "branch" && term.condition) {
         if (term.condition.kind === "temp") {
           used.add(term.condition.id);
-        } else if (term.condition.kind === "local") {
-          used.add(term.condition.name);
         }
       } else if (term.kind === "return" && term.value) {
         if (term.value.kind === "temp") {
           used.add(term.value.id);
-        } else if (term.value.kind === "local") {
-          used.add(term.value.name);
         }
       }
       return used;
@@ -502,21 +818,113 @@ export class PhiInserter {
     // Search through instructions to find the type of this variable
     for (const block of func.blocks.values()) {
       for (const inst of block.instructions) {
-        if ("dest" in inst && inst.dest === varName && "type" in inst) {
-          return inst.type as Ir.Type;
+        if ("dest" in inst && inst.dest === varName) {
+          // Get type based on instruction kind
+          if ("type" in inst && inst.type) {
+            return inst.type as Ir.Type;
+          }
+
+          // For binary ops, infer type from operands
+          if (inst.kind === "binary") {
+            const binOp = inst as Ir.Instruction.BinaryOp;
+            return (
+              binOp.left.type ||
+              binOp.right.type ||
+              ({ kind: "uint", bits: 256 } as Ir.Type)
+            );
+          }
+
+          // For unary ops
+          if (inst.kind === "unary") {
+            const unOp = inst as Ir.Instruction.UnaryOp;
+            return (
+              unOp.operand.type || ({ kind: "uint", bits: 256 } as Ir.Type)
+            );
+          }
+
+          // Default to uint256
+          return { kind: "uint", bits: 256 } as Ir.Type;
         }
       }
     }
 
-    // Check locals
-    const local = func.locals.find(
-      (l) => l.id === varName || l.name === varName,
+    // Check parameters
+    const param = func.parameters.find(
+      (p) => p.tempId === varName || p.name === varName,
     );
-    if (local) {
-      return local.type;
+    if (param) {
+      return param.type;
     }
 
     return null;
+  }
+
+  private computeReachingDefinitions(func: Ir.Function): ReachingDefinitions {
+    const reachingDefs: ReachingDefinitions = {};
+
+    // Initialize empty maps for each block
+    for (const blockId of func.blocks.keys()) {
+      reachingDefs[blockId] = new Map();
+    }
+
+    // Perform a dataflow analysis to compute reaching definitions
+    // We'll iterate until we reach a fixed point
+    let changed = true;
+    let iterations = 0;
+    const maxIterations = 100;
+
+    while (changed && iterations < maxIterations) {
+      changed = false;
+      iterations++;
+
+      // Process blocks in topological order if possible
+      for (const [blockId, block] of func.blocks.entries()) {
+        const oldDefs = new Map(reachingDefs[blockId]);
+        const newDefs = new Map<string, string>();
+
+        // First, collect definitions from predecessors (IN set)
+        for (const pred of block.predecessors) {
+          const predDefs = reachingDefs[pred];
+          if (predDefs) {
+            for (const [varId, tempId] of predDefs.entries()) {
+              // Keep the most recent definition
+              if (!newDefs.has(varId)) {
+                newDefs.set(varId, tempId);
+              }
+            }
+          }
+        }
+
+        // Then, process definitions in this block (GEN set)
+        for (const inst of block.instructions) {
+          if ("dest" in inst && inst.dest) {
+            // This instruction defines a temp
+            // We need to map this to the "logical variable" it represents
+            // For now, we'll use the temp ID itself as the variable ID
+            newDefs.set(inst.dest, inst.dest);
+          }
+        }
+
+        // Check if anything changed
+        if (!this.mapsEqual(oldDefs, newDefs)) {
+          changed = true;
+          reachingDefs[blockId] = newDefs;
+        }
+      }
+    }
+
+    return reachingDefs;
+  }
+
+  private mapsEqual(
+    map1: Map<string, string>,
+    map2: Map<string, string>,
+  ): boolean {
+    if (map1.size !== map2.size) return false;
+    for (const [key, value] of map1.entries()) {
+      if (map2.get(key) !== value) return false;
+    }
+    return true;
   }
 }
 
@@ -535,4 +943,9 @@ interface DominanceFrontier {
 
 interface VariableDefinitions {
   [varName: string]: Set<string>; // Maps variable to blocks where it's defined
+}
+
+interface ReachingDefinitions {
+  // For each block, for each original variable, which temp reaches the end of that block
+  [blockId: string]: Map<string, string>; // original var -> temp that represents it
 }

@@ -369,7 +369,6 @@ function showStats(ir: Ir.Module): void {
   console.log(`Blocks: ${statistics.blockCount}`);
   console.log(`Instructions: ${statistics.instructionCount}`);
   console.log(`Temporaries: ${statistics.tempCount}`);
-  console.log(`Locals: ${statistics.localCount}`);
   console.log(`Max block size: ${statistics.maxBlockSize}`);
   console.log(`Avg block size: ${statistics.avgBlockSize.toFixed(2)}`);
   console.log(`CFG edges: ${statistics.cfgEdges}`);

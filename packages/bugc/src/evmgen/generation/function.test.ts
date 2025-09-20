@@ -9,7 +9,7 @@ describe("Function.generate", () => {
   it("should generate bytecode for simple constants", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -64,10 +64,10 @@ describe("Function.generate", () => {
     });
   });
 
-  it("should handle local variable operations", () => {
+  it("should handle SSA temporary operations", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [{ id: "local_i", name: "i", type: { kind: "uint", bits: 256 } }],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -82,21 +82,8 @@ describe("Function.generate", () => {
                 type: { kind: "uint", bits: 256 },
                 dest: "%1",
               },
-              {
-                kind: "store_local",
-                local: "local_i",
-                localType: { kind: "uint", bits: 256 },
-                value: {
-                  kind: "temp",
-                  id: "%1",
-                  type: { kind: "uint", bits: 256 },
-                },
-              },
-              {
-                kind: "load_local",
-                local: "local_i",
-                dest: "%2",
-              },
+              // In SSA form, we don't have store_local/load_local
+              // %1 is directly used where needed
               {
                 kind: "const",
                 value: 1n,
@@ -108,7 +95,7 @@ describe("Function.generate", () => {
                 op: "add",
                 left: {
                   kind: "temp",
-                  id: "%2",
+                  id: "%1",
                   type: { kind: "uint", bits: 256 },
                 },
                 right: {
@@ -117,16 +104,6 @@ describe("Function.generate", () => {
                   type: { kind: "uint", bits: 256 },
                 },
                 dest: "%4",
-              },
-              {
-                kind: "store_local",
-                local: "local_i",
-                localType: { kind: "uint", bits: 256 },
-                value: {
-                  kind: "temp",
-                  id: "%4",
-                  type: { kind: "uint", bits: 256 },
-                },
               },
             ],
             terminator: { kind: "return" },
@@ -144,22 +121,19 @@ describe("Function.generate", () => {
     if (!layoutResult.success) throw new Error("Block layout failed");
     const layout = layoutResult.value;
 
-    // Note: local_i might not be allocated to memory if it doesn't cross blocks
-    // The memory planner only allocates values that need to persist across stack operations
+    // In SSA form, temporaries are directly used without locals
+    // The memory planner allocates values that need to persist across stack operations
 
     const { instructions } = generate(func, memory, layout);
 
-    // The instructions should handle the local operations correctly
-    // Whether through stack manipulation or memory depends on the implementation
-
-    // Should contain ADD for the increment
+    // Should contain the constants and ADD operation
     expect(instructions.some((inst) => inst.mnemonic === "ADD")).toBe(true);
   });
 
   it("should generate slice operation with MCOPY", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -269,7 +243,7 @@ describe("Function.generate", () => {
   it("should generate binary operations", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -339,7 +313,7 @@ describe("Function.generate", () => {
   it("should handle jumps between blocks", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -406,7 +380,7 @@ describe("Function.generate", () => {
   it("should handle conditional branches", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -486,7 +460,7 @@ describe("Function.generate", () => {
   it("should handle storage operations", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -550,7 +524,7 @@ describe("Function.generate", () => {
   it("should handle environment operations", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -602,7 +576,7 @@ describe("Function.generate", () => {
   it("should handle array slot computation", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -704,7 +678,7 @@ describe("Function.generate", () => {
   it("should handle array element load", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -803,7 +777,7 @@ describe("Function.generate", () => {
   it("should handle mapping slot computation", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -890,7 +864,7 @@ describe("Function.generate", () => {
   it("should handle mapping value load", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -981,7 +955,7 @@ describe("Function.generate", () => {
     // users[msg.sender][index]
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -1104,7 +1078,7 @@ describe("Function.generate", () => {
   it("should handle slice with zero length", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -1185,7 +1159,7 @@ describe("Function.generate", () => {
   it("should handle slice operation on calldata (msg.data)", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -1265,7 +1239,7 @@ describe("Function.generate", () => {
   it("should handle msg.data.length using CALLDATASIZE", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -1330,7 +1304,7 @@ describe("Function.generate", () => {
   it("should handle slice operation on bytes", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -1417,7 +1391,7 @@ describe("Function.generate", () => {
   it("should handle string constants with UTF-8 encoding", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [
@@ -1475,7 +1449,7 @@ describe("Function.generate", () => {
   it("should handle UTF-8 multi-byte characters correctly", () => {
     const func: Ir.Function = {
       name: "test",
-      locals: [],
+      parameters: [],
       entry: "entry",
       blocks: new Map([
         [

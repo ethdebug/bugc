@@ -229,8 +229,7 @@ export abstract class BaseOptimizationStep implements OptimizationStep {
 
     return {
       name: func.name,
-      locals: [...func.locals],
-      paramCount: func.paramCount,
+      parameters: [...func.parameters],
       entry: func.entry,
       blocks: clonedBlocks,
     };

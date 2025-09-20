@@ -12,7 +12,8 @@ export function valueId(val: Ir.Value): string {
   } else if (val.kind === "temp") {
     return val.id;
   } else {
-    return val.name;
+    // @ts-expect-error should be exhausted
+    throw new Error(`Unknown value kind: ${val.kind}`);
   }
 }
 

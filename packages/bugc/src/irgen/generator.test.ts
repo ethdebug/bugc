@@ -120,10 +120,11 @@ describe("generateModule", () => {
         op: "add",
       });
 
-      // Check local variable storage
+      // In SSA form, the result is assigned to a temp via an add instruction
+      // The assignment pattern is: value + 0 -> temp
       expect(entry.instructions[5]).toMatchObject({
-        kind: "store_local",
-        local: "x",
+        kind: "binary",
+        op: "add",
       });
     });
 

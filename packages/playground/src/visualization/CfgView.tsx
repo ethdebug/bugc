@@ -306,10 +306,6 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
         return `${inst.dest} = ${formatValue(inst.left)} ${inst.op} ${formatValue(inst.right)}`;
       case "unary":
         return `${inst.dest} = ${inst.op}${formatValue(inst.operand)}`;
-      case "load_local":
-        return `${inst.dest} = ${inst.local}`;
-      case "store_local":
-        return `${inst.local} = ${formatValue(inst.value)}`;
       case "load_storage":
         return `${inst.dest} = storage[${formatValue(inst.slot)}]`;
       case "store_storage":

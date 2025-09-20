@@ -73,7 +73,7 @@ function createInitialState(program: Ast.Program, types: Types): State {
   // Create empty function context (will be replaced when building functions)
   const function_: State.Function = {
     id: "",
-    locals: [],
+    parameters: [],
     blocks: new Map(),
   };
 
@@ -88,7 +88,7 @@ function createInitialState(program: Ast.Program, types: Types): State {
 
   // Create initial scope
   const scopes = {
-    stack: [{ locals: new Map(), usedNames: new Map() }],
+    stack: [{ ssaVars: new Map(), usedNames: new Map() }],
   };
 
   // Create initial counters

@@ -15,9 +15,6 @@ export type Instruction =
   | Instruction.ComputeSlot
   | Instruction.ComputeArraySlot
   | Instruction.ComputeFieldOffset
-  // Local variable operations
-  | Instruction.LoadLocal
-  | Instruction.StoreLocal
   // Struct field operations
   | Instruction.LoadField
   | Instruction.StoreField
@@ -100,21 +97,6 @@ export namespace Instruction {
     baseSlot: Value; // Base slot (struct start)
     fieldIndex: number; // Field index in the struct
     dest: string;
-    loc?: Ast.SourceLocation;
-  }
-
-  export interface LoadLocal {
-    kind: "load_local";
-    local: string;
-    dest: string;
-    loc?: Ast.SourceLocation;
-  }
-
-  export interface StoreLocal {
-    kind: "store_local";
-    local: string;
-    localType: Type; // The declared type of the local variable
-    value: Value;
     loc?: Ast.SourceLocation;
   }
 

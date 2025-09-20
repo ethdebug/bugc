@@ -135,9 +135,9 @@ export namespace Function {
 
       const needsMemory = identifyMemoryValues(func, liveness);
 
-      // Also allocate memory for all locals (they always need memory)
-      for (const local of func.locals || []) {
-        needsMemory.set(local.id, local.type);
+      // Also allocate memory for all parameters (they always need memory)
+      for (const param of func.parameters || []) {
+        needsMemory.set(param.tempId, param.type);
       }
 
       // Check if we have too many values for memory
@@ -230,7 +230,6 @@ function simulateInstruction(stack: string[], inst: Ir.Instruction): string[] {
       newStack.pop(); // One operand (baseSlot)
       break;
     case "unary":
-    case "store_local":
     case "cast":
     case "length":
       newStack.pop(); // One operand
@@ -257,7 +256,6 @@ function simulateInstruction(stack: string[], inst: Ir.Instruction): string[] {
     case "env":
     case "load_storage":
     case "load_mapping":
-    case "load_local":
     case "load_field":
       break;
   }
@@ -265,9 +263,6 @@ function simulateInstruction(stack: string[], inst: Ir.Instruction): string[] {
   // Push produced value
   if ("dest" in inst && inst.dest) {
     newStack.push(inst.dest);
-  } else if (inst.kind === "store_local") {
-    // store_local defines the local
-    newStack.push(inst.local);
   }
 
   return newStack;
@@ -282,7 +277,8 @@ function valueId(val: Ir.Value): string {
   } else if (val.kind === "temp") {
     return val.id;
   } else {
-    return val.name;
+    // @ts-expect-error should be exhausted
+    throw new Error(`Unknown value kind: ${val.kind}`);
   }
 }
 
@@ -331,12 +327,6 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
       break;
     case "compute_field_offset":
       addValue(inst.baseSlot);
-      break;
-    case "load_local":
-      used.add(inst.local);
-      break;
-    case "store_local":
-      addValue(inst.value);
       break;
     case "load_field":
       addValue(inst.object);
@@ -419,10 +409,10 @@ function getTypeSize(type: Ir.Type): number {
  * Get type information for a value ID
  */
 function getValueType(valueId: string, func: Ir.Function): Ir.Type | undefined {
-  // Check if it's a local variable
-  for (const local of func.locals || []) {
-    if (local.id === valueId) {
-      return local.type;
+  // Check if it's a parameter
+  for (const param of func.parameters || []) {
+    if (param.tempId === valueId) {
+      return param.type;
     }
   }
 

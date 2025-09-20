@@ -12,18 +12,14 @@ export function IrView({ ir, optimized = false }: IrViewProps) {
 
   // Calculate stats for all functions
   const mainBlocks = ir.main.blocks.size;
-  const mainLocals = ir.main.locals.length;
   const createBlocks = ir.create?.blocks.size || 0;
-  const createLocals = ir.create?.locals.length || 0;
 
   // Count user-defined functions
   const userFunctionCount = ir.functions?.size || 0;
   let userFunctionBlocks = 0;
-  let userFunctionLocals = 0;
   if (ir.functions) {
     for (const func of ir.functions.values()) {
       userFunctionBlocks += func.blocks.size;
-      userFunctionLocals += func.locals.length;
     }
   }
 
@@ -34,18 +30,11 @@ export function IrView({ ir, optimized = false }: IrViewProps) {
         <div className="ir-stats">
           {userFunctionCount > 0 && (
             <span>
-              Functions: {userFunctionCount} ({userFunctionBlocks} blocks,{" "}
-              {userFunctionLocals} locals)
+              Functions: {userFunctionCount} ({userFunctionBlocks} blocks)
             </span>
           )}
-          {ir.create && (
-            <span>
-              Create: {createBlocks} blocks, {createLocals} locals
-            </span>
-          )}
-          <span>
-            Main: {mainBlocks} blocks, {mainLocals} locals
-          </span>
+          {ir.create && <span>Create: {createBlocks} blocks</span>}
+          <span>Main: {mainBlocks} blocks</span>
         </div>
       </div>
       <pre className="ir-code">{formatted}</pre>

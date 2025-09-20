@@ -10,7 +10,7 @@ import { Error as TypeError } from "./errors.js";
  */
 export class Symbols {
   constructor(
-    private readonly scopes: readonly Map<string, Symbol>[] = [new Map()],
+    private readonly scopes: readonly Map<string, BugSymbol>[] = [new Map()],
   ) {}
 
   static empty(): Symbols {
@@ -28,7 +28,7 @@ export class Symbols {
     return new Symbols(this.scopes.slice(0, -1));
   }
 
-  define(symbol: Symbol): Symbols {
+  define(symbol: BugSymbol): Symbols {
     const newScopes = [...this.scopes];
     const lastScope = new Map(newScopes[newScopes.length - 1]);
     lastScope.set(symbol.name, symbol);
@@ -36,7 +36,7 @@ export class Symbols {
     return new Symbols(newScopes);
   }
 
-  lookup(name: string): Symbol | undefined {
+  lookup(name: string): BugSymbol | undefined {
     // Search from innermost to outermost scope
     for (let i = this.scopes.length - 1; i >= 0; i--) {
       const symbol = this.scopes[i].get(name);
@@ -58,13 +58,15 @@ export class Symbols {
 }
 
 // Symbol table entry
-export interface Symbol {
+interface BugSymbol {
   name: string;
   type: Type;
   mutable: boolean;
   location: "storage" | "memory" | "builtin";
   slot?: number; // For storage variables
 }
+
+export { type BugSymbol as Symbol };
 
 /**
  * Builds the initial symbol table from declarations without traversing expressions.
@@ -84,7 +86,7 @@ export function buildInitialSymbols(
 
   // Add all function signatures to global scope
   for (const [name, functionType] of functions) {
-    const symbol: Symbol = {
+    const symbol: BugSymbol = {
       name,
       type: functionType,
       mutable: false,
@@ -101,7 +103,7 @@ export function buildInitialSymbols(
         ? resolveType(decl.declaredType, structs)
         : Type.failure("missing type");
 
-      const symbol: Symbol = {
+      const symbol: BugSymbol = {
         name: decl.name,
         type,
         mutable: true,
@@ -134,7 +136,7 @@ export function enterFunctionScope(
   const parameters = funcDecl.parameters;
   for (let i = 0; i < parameters.length; i++) {
     const param = parameters[i];
-    const symbol: Symbol = {
+    const symbol: BugSymbol = {
       name: param.name,
       type: funcType.parameters[i],
       mutable: true,

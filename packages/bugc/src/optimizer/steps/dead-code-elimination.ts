@@ -110,6 +110,7 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
         this.collectValueUse(inst.slot, used);
         break;
       case "store_mapping":
+        this.collectValueUse(inst.key, used);
         this.collectValueUse(inst.value, used);
         break;
       case "load_mapping":
@@ -126,9 +127,6 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
         break;
       case "compute_field_offset":
         this.collectValueUse(inst.baseSlot, used);
-        break;
-      case "store_local":
-        this.collectValueUse(inst.value, used);
         break;
       case "load_field":
       case "store_field":
@@ -175,8 +173,6 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
   private collectValueUse(value: Ir.Value, used: Set<string>): void {
     if (value.kind === "temp") {
       used.add(value.id);
-    } else if (value.kind === "local") {
-      used.add(value.name);
     }
   }
 
@@ -184,7 +180,6 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
     switch (inst.kind) {
       case "store_storage":
       case "store_mapping":
-      case "store_local":
       case "store_field":
       case "store_index":
       case "call": // Function calls may have side effects

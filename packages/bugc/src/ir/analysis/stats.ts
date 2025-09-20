@@ -8,7 +8,7 @@ export interface Statistics {
   blockCount: number;
   instructionCount: number;
   tempCount: number;
-  localCount: number;
+  parameterCount: number;
   maxBlockSize: number;
   avgBlockSize: number;
   cfgEdges: number;
@@ -53,9 +53,9 @@ export namespace Statistics {
       const maxBlockSize = Math.max(...blockSizes);
       const avgBlockSize = blockSizes.reduce((a, b) => a + b, 0) / blockCount;
 
-      // Count temporaries and locals
+      // Count temporaries and parameters
       const tempCount = this.countTemporaries(func);
-      const localCount = func.locals.length;
+      const parameterCount = func.parameters.length;
 
       // CFG edges
       const cfgEdges = this.countCfgEdges(func);
@@ -69,7 +69,7 @@ export namespace Statistics {
         blockCount,
         instructionCount,
         tempCount,
-        localCount,
+        parameterCount,
         maxBlockSize,
         avgBlockSize: Math.round(avgBlockSize * 10) / 10,
         cfgEdges,
