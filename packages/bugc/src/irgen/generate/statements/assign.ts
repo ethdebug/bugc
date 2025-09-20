@@ -58,14 +58,17 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): Process<void> {
     const storageSlot = yield* Process.Storage.findSlot(name);
     if (storageSlot) {
       yield* Process.Instructions.emit({
-        kind: "store_storage",
+        kind: "write",
+        location: "storage",
         slot: Ir.Value.constant(BigInt(storageSlot.slot), {
           kind: "uint",
           bits: 256,
         }),
+        offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
+        length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }), // 32 bytes for uint256
         value,
         loc: node.loc ?? undefined,
-      } as Ir.Instruction);
+      } as Ir.Instruction.Write);
       return;
     }
 
@@ -105,14 +108,29 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): Process<void> {
             fieldIndex++;
           }
 
+          // First compute the offset for the field
+          const offsetTemp = yield* Process.Variables.newTemp();
+          // Calculate field offset - assuming 32 bytes per field for now
+          const fieldOffset = fieldIndex * 32;
           yield* Process.Instructions.emit({
-            kind: "store_field",
-            object,
+            kind: "compute_offset",
+            location: "memory",
+            base: object,
             field: fieldName,
-            fieldIndex,
+            fieldOffset,
+            dest: offsetTemp,
+            loc: node.loc ?? undefined,
+          } as Ir.Instruction.ComputeOffset);
+
+          // Then write to that offset
+          yield* Process.Instructions.emit({
+            kind: "write",
+            location: "memory",
+            offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
+            length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
             value,
             loc: node.loc ?? undefined,
-          } as Ir.Instruction);
+          } as Ir.Instruction.Write);
           return;
         }
       }
@@ -129,13 +147,27 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): Process<void> {
         const object = yield* buildExpression(accessNode.object);
         const index = yield* buildExpression(accessNode.index);
 
+        // Compute offset for the byte at the index
+        const offsetTemp = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit({
-          kind: "store_index",
-          array: object,
+          kind: "compute_offset",
+          location: "memory",
+          base: object,
           index,
+          stride: 1, // bytes are 1 byte each
+          dest: offsetTemp,
+          loc: node.loc ?? undefined,
+        } as Ir.Instruction.ComputeOffset);
+
+        // Write the byte at that offset
+        yield* Process.Instructions.emit({
+          kind: "write",
+          location: "memory",
+          offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
+          length: Ir.Value.constant(1n, { kind: "uint", bits: 256 }),
           value,
           loc: node.loc ?? undefined,
-        } as Ir.Instruction);
+        } as Ir.Instruction.Write);
         return;
       }
 
@@ -151,13 +183,27 @@ function* buildLValue(node: Ast.Expression, value: Ir.Value): Process<void> {
       const index = yield* buildExpression(accessNode.index);
 
       if (objectType && Type.isArray(objectType)) {
+        // Compute offset for array element
+        const offsetTemp = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit({
-          kind: "store_index",
-          array: object,
+          kind: "compute_offset",
+          location: "memory",
+          base: object,
           index,
+          stride: 32, // array elements are 32 bytes each
+          dest: offsetTemp,
+          loc: node.loc ?? undefined,
+        } as Ir.Instruction.ComputeOffset);
+
+        // Write the element at that offset
+        yield* Process.Instructions.emit({
+          kind: "write",
+          location: "memory",
+          offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
+          length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
           value,
           loc: node.loc ?? undefined,
-        } as Ir.Instruction);
+        } as Ir.Instruction.Write);
         return;
       }
     }

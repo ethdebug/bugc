@@ -303,13 +303,24 @@ describe("generateModule", () => {
       const entry = ir.main.blocks.get("entry")!;
 
       const loadInst = entry.instructions.find(
-        (i) => i.kind === "load_storage",
+        (i) => i.kind === "read" && i.location === "storage",
       );
       expect(loadInst).toMatchObject({
-        kind: "load_storage",
+        kind: "read",
+        location: "storage",
         slot: {
           kind: "const",
           value: 0n,
+          type: { kind: "uint", bits: 256 },
+        },
+        offset: {
+          kind: "const",
+          value: 0n,
+          type: { kind: "uint", bits: 256 },
+        },
+        length: {
+          kind: "const",
+          value: 32n,
           type: { kind: "uint", bits: 256 },
         },
         dest: expect.stringMatching(/^t\d+$/),
@@ -331,13 +342,24 @@ describe("generateModule", () => {
       const entry = ir.main.blocks.get("entry")!;
 
       const storeInst = entry.instructions.find(
-        (i) => i.kind === "store_storage",
+        (i) => i.kind === "write" && i.location === "storage",
       );
       expect(storeInst).toMatchObject({
-        kind: "store_storage",
+        kind: "write",
+        location: "storage",
         slot: {
           kind: "const",
           value: 0n,
+          type: { kind: "uint", bits: 256 },
+        },
+        offset: {
+          kind: "const",
+          value: 0n,
+          type: { kind: "uint", bits: 256 },
+        },
+        length: {
+          kind: "const",
+          value: 32n,
           type: { kind: "uint", bits: 256 },
         },
       });
@@ -439,7 +461,9 @@ describe("generateModule", () => {
       for (const block of ir.main.blocks.values()) {
         if (
           block.instructions.some(
-            (i) => i.kind === "load_storage" || i.kind === "store_storage",
+            (i) =>
+              (i.kind === "read" && i.location === "storage") ||
+              (i.kind === "write" && i.location === "storage"),
           )
         ) {
           hasStorageOps = true;
@@ -491,22 +515,32 @@ describe("generateModule", () => {
       // Should no longer have warnings about simplified IR
       expect(warnings.length).toBe(0);
 
-      // Should generate compute_slot and load/store_storage with dynamic slots
+      // Should generate compute_slot and read/write storage with dynamic slots
       let hasComputeSlot = false;
-      let hasLoadStorageDynamic = false;
-      let hasStoreStorageDynamic = false;
+      let hasReadStorageDynamic = false;
+      let hasWriteStorageDynamic = false;
       for (const block of ir.main.blocks.values()) {
         for (const inst of block.instructions) {
           if (inst.kind === "compute_slot") hasComputeSlot = true;
-          if (inst.kind === "load_storage" && inst.slot.kind !== "const")
-            hasLoadStorageDynamic = true;
-          if (inst.kind === "store_storage" && inst.slot.kind !== "const")
-            hasStoreStorageDynamic = true;
+          if (
+            inst.kind === "read" &&
+            inst.location === "storage" &&
+            inst.slot &&
+            inst.slot.kind !== "const"
+          )
+            hasReadStorageDynamic = true;
+          if (
+            inst.kind === "write" &&
+            inst.location === "storage" &&
+            inst.slot &&
+            inst.slot.kind !== "const"
+          )
+            hasWriteStorageDynamic = true;
         }
       }
       expect(hasComputeSlot).toBe(true);
-      expect(hasLoadStorageDynamic).toBe(true);
-      expect(hasStoreStorageDynamic).toBe(true);
+      expect(hasReadStorageDynamic).toBe(true);
+      expect(hasWriteStorageDynamic).toBe(true);
     });
 
     it("should handle struct field access in mappings", () => {
@@ -536,25 +570,35 @@ describe("generateModule", () => {
       // Should generate compute_slot, compute_field_offset, and storage operations with dynamic slots
       let hasComputeSlot = false;
       let hasComputeFieldOffset = false;
-      let hasLoadStorageDynamic = false;
-      let hasStoreStorageDynamic = false;
+      let hasReadStorageDynamic = false;
+      let hasWriteStorageDynamic = false;
 
       for (const block of ir.main.blocks.values()) {
         for (const inst of block.instructions) {
           if (inst.kind === "compute_slot") hasComputeSlot = true;
           if (inst.kind === "compute_field_offset")
             hasComputeFieldOffset = true;
-          if (inst.kind === "load_storage" && inst.slot.kind !== "const")
-            hasLoadStorageDynamic = true;
-          if (inst.kind === "store_storage" && inst.slot.kind !== "const")
-            hasStoreStorageDynamic = true;
+          if (
+            inst.kind === "read" &&
+            inst.location === "storage" &&
+            inst.slot &&
+            inst.slot.kind !== "const"
+          )
+            hasReadStorageDynamic = true;
+          if (
+            inst.kind === "write" &&
+            inst.location === "storage" &&
+            inst.slot &&
+            inst.slot.kind !== "const"
+          )
+            hasWriteStorageDynamic = true;
         }
       }
 
       expect(hasComputeSlot).toBe(true);
       expect(hasComputeFieldOffset).toBe(true);
-      expect(hasLoadStorageDynamic).toBe(true);
-      expect(hasStoreStorageDynamic).toBe(true);
+      expect(hasReadStorageDynamic).toBe(true);
+      expect(hasWriteStorageDynamic).toBe(true);
     });
 
     it("should handle triple nested mappings", () => {
@@ -658,7 +702,9 @@ describe("generateModule", () => {
           if (inst.kind === "compute_array_slot") hasComputeArraySlot = true;
           if (inst.kind === "binary" && inst.op === "add") hasBinaryAdd = true;
           if (
-            (inst.kind === "load_storage" || inst.kind === "store_storage") &&
+            ((inst.kind === "read" && inst.location === "storage") ||
+              (inst.kind === "write" && inst.location === "storage")) &&
+            inst.slot &&
             inst.slot.kind !== "const"
           ) {
             hasStorageDynamic = true;

@@ -210,9 +210,13 @@ describe("IR Builder - Length Instructions", () => {
       const main = ir.value.main;
       const entryBlock = main.blocks.get(main.entry)!;
 
-      // For storage arrays, we use load_storage with dynamic slot instead of load_index
+      // For storage arrays, we use read storage with dynamic slot instead of load_index
       const loadStorageInst = entryBlock.instructions.find(
-        (inst) => inst.kind === "load_storage" && inst.slot.kind !== "const",
+        (inst) =>
+          inst.kind === "read" &&
+          inst.location === "storage" &&
+          inst.slot &&
+          inst.slot.kind !== "const",
       );
       expect(loadStorageInst).toBeDefined();
 

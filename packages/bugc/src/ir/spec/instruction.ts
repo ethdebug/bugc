@@ -6,21 +6,15 @@ import { Value } from "./value.js";
 export type Instruction =
   // Constants
   | Instruction.Const
-  // Storage operations
-  | Instruction.LoadStorage
-  | Instruction.StoreStorage
-  | Instruction.LoadMapping
-  | Instruction.StoreMapping
+  // Unified read/write operations
+  | Instruction.Read
+  | Instruction.Write
   // Storage slot computation
   | Instruction.ComputeSlot
   | Instruction.ComputeArraySlot
   | Instruction.ComputeFieldOffset
-  // Struct field operations
-  | Instruction.LoadField
-  | Instruction.StoreField
-  // Array operations
-  | Instruction.LoadIndex
-  | Instruction.StoreIndex
+  // Unified compute operations
+  | Instruction.ComputeOffset
   // Slice operations
   | Instruction.Slice
   // Arithmetic and logic
@@ -35,43 +29,73 @@ export type Instruction =
   | Instruction.Length;
 
 export namespace Instruction {
+  // Location types for unified read/write
+  export type Location =
+    | "storage"
+    | "transient"
+    | "memory"
+    | "calldata"
+    | "returndata"
+    | "code"
+    | "local";
+
+  // NEW: Unified Read instruction
+  export interface Read {
+    kind: "read";
+    location: Location;
+    // For storage/transient (segment-based)
+    slot?: Value;
+    // For all locations that need offset
+    offset?: Value;
+    // Length in bytes
+    length?: Value;
+    // For local variables
+    name?: string;
+    // Destination and type
+    dest: string;
+    type: Type;
+    loc?: Ast.SourceLocation;
+  }
+
+  // NEW: Unified Write instruction
+  export interface Write {
+    kind: "write";
+    location: Exclude<Location, "calldata" | "returndata" | "code">; // No writes to read-only locations
+    // For storage/transient (segment-based)
+    slot?: Value;
+    // For all locations that need offset
+    offset?: Value;
+    // Length in bytes
+    length?: Value;
+    // For local variables
+    name?: string;
+    // Value to write
+    value: Value;
+    loc?: Ast.SourceLocation;
+  }
+
+  // NEW: Unified compute offset instruction
+  export interface ComputeOffset {
+    kind: "compute_offset";
+    location: "memory" | "calldata" | "returndata" | "code";
+    base: Value;
+    // For array access
+    index?: Value;
+    stride?: number;
+    // For struct field access
+    field?: string;
+    fieldOffset?: number;
+    // For raw byte offset
+    byteOffset?: Value;
+    dest: string;
+    loc?: Ast.SourceLocation;
+  }
+
   export interface Const {
     kind: "const";
     value: bigint | string | boolean;
     type: Type;
     dest: string;
-    loc?: Ast.SourceLocation;
-  }
-
-  export interface LoadStorage {
-    kind: "load_storage";
-    slot: Value; // Can be constant or computed
-    type: Type;
-    dest: string;
-    loc?: Ast.SourceLocation;
-  }
-
-  export interface StoreStorage {
-    kind: "store_storage";
-    slot: Value; // Can be constant or computed
-    value: Value;
-    loc?: Ast.SourceLocation;
-  }
-
-  export interface LoadMapping {
-    kind: "load_mapping";
-    slot: number;
-    key: Value;
-    valueType: Type;
-    dest: string;
-    loc?: Ast.SourceLocation;
-  }
-
-  export interface StoreMapping {
-    kind: "store_mapping";
-    slot: number;
-    key: Value;
-    value: Value;
     loc?: Ast.SourceLocation;
   }
 
@@ -95,42 +119,6 @@ export namespace Instruction {
     baseSlot: Value; // Base slot (struct start)
     fieldIndex: number; // Field index in the struct
     dest: string;
-    loc?: Ast.SourceLocation;
-  }
-
-  export interface LoadField {
-    kind: "load_field";
-    object: Value;
-    field: string;
-    fieldIndex: number; // For struct layout
-    type: Type;
-    dest: string;
-    loc?: Ast.SourceLocation;
-  }
-
-  export interface StoreField {
-    kind: "store_field";
-    object: Value;
-    field: string;
-    fieldIndex: number;
-    value: Value;
-    loc?: Ast.SourceLocation;
-  }
-
-  export interface LoadIndex {
-    kind: "load_index";
-    array: Value;
-    index: Value;
-    elementType: Type;
-    dest: string;
-    loc?: Ast.SourceLocation;
-  }
-
-  export interface StoreIndex {
-    kind: "store_index";
-    array: Value;
-    index: Value;
-    value: Value;
     loc?: Ast.SourceLocation;
   }
 

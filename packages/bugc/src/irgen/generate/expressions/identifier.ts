@@ -15,6 +15,15 @@ export function* buildIdentifier(
   const ssaVar = yield* Process.Variables.lookup(expr.name);
 
   if (ssaVar) {
+    // Check if we need a phi node for this variable
+    const phiTemp = yield* Process.Variables.checkAndInsertPhi(
+      expr.name,
+      ssaVar,
+    );
+    if (phiTemp) {
+      return Ir.Value.temp(phiTemp, ssaVar.type);
+    }
+
     // Return the current SSA temp for this variable
     return Ir.Value.temp(ssaVar.currentTempId, ssaVar.type);
   }
@@ -23,18 +32,21 @@ export function* buildIdentifier(
   const storageSlot = yield* Process.Storage.findSlot(expr.name);
 
   if (storageSlot) {
-    // Build storage load directly
+    // Build storage load using new unified read instruction
     const tempId = yield* Process.Variables.newTemp();
     yield* Process.Instructions.emit({
-      kind: "load_storage",
+      kind: "read",
+      location: "storage",
       slot: Ir.Value.constant(BigInt(storageSlot.slot), {
         kind: "uint",
         bits: 256,
       }),
+      offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
+      length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }), // 32 bytes for uint256
       type: storageSlot.type,
       dest: tempId,
       loc: expr.loc ?? undefined,
-    } as Ir.Instruction.LoadStorage);
+    } as Ir.Instruction.Read);
     return Ir.Value.temp(tempId, storageSlot.type);
   }
 

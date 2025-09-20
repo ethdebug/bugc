@@ -18,12 +18,10 @@ import {
   generateHashOp,
   generateLength,
   generateSlice,
-  generateLoadStorage,
-  generateStoreStorage,
-  generateLoadMapping,
-  generateStoreMapping,
   generateComputeSlot,
   generateComputeArraySlot,
+  generateRead,
+  generateWrite,
 } from "./instructions/index.js";
 
 /**
@@ -39,14 +37,10 @@ export function generate<S extends Stack>(
       return generateBinary(inst);
     case "unary":
       return generateUnary(inst);
-    case "load_storage":
-      return generateLoadStorage(inst);
-    case "store_storage":
-      return generateStoreStorage(inst);
-    case "load_mapping":
-      return generateLoadMapping(inst);
-    case "store_mapping":
-      return generateStoreMapping(inst);
+    case "read":
+      return generateRead(inst);
+    case "write":
+      return generateWrite(inst);
     case "env":
       return generateEnvOp(inst);
     case "hash":
@@ -62,10 +56,6 @@ export function generate<S extends Stack>(
     case "slice":
       return generateSlice(inst);
     // Call instruction removed - calls are now block terminators
-    case "load_field":
-    case "load_index":
-    case "store_field":
-    case "store_index":
     case "compute_field_offset":
     default: {
       return (state) => {

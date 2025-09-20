@@ -90,19 +90,16 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
       case "unary":
         result.operand = propagateValue(result.operand);
         break;
-      case "store_storage":
-        result.slot = propagateValue(result.slot);
-        result.value = propagateValue(result.value);
+      case "write":
+        if (result.slot) result.slot = propagateValue(result.slot);
+        if (result.value) result.value = propagateValue(result.value);
+        if (result.offset) result.offset = propagateValue(result.offset);
+        if (result.length) result.length = propagateValue(result.length);
         break;
-      case "load_storage":
-        result.slot = propagateValue(result.slot);
-        break;
-      case "store_mapping":
-        result.key = propagateValue(result.key);
-        result.value = propagateValue(result.value);
-        break;
-      case "load_mapping":
-        result.key = propagateValue(result.key);
+      case "read":
+        if (result.slot) result.slot = propagateValue(result.slot);
+        if (result.offset) result.offset = propagateValue(result.offset);
+        if (result.length) result.length = propagateValue(result.length);
         break;
       case "compute_array_slot":
         if ("baseSlot" in result) {
@@ -115,21 +112,6 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
         break;
       case "compute_field_offset":
         result.baseSlot = propagateValue(result.baseSlot);
-        break;
-      case "store_field":
-      case "load_field":
-        result.object = propagateValue(result.object);
-        if (result.kind === "store_field") {
-          result.value = propagateValue(result.value);
-        }
-        break;
-      case "store_index":
-      case "load_index":
-        result.array = propagateValue(result.array);
-        result.index = propagateValue(result.index);
-        if (result.kind === "store_index") {
-          result.value = propagateValue(result.value);
-        }
         break;
       case "hash":
         result.value = propagateValue(result.value);
@@ -172,10 +154,7 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
 
   private hasSideEffects(inst: Ir.Instruction): boolean {
     switch (inst.kind) {
-      case "store_storage":
-      case "store_mapping":
-      case "store_field":
-      case "store_index":
+      case "write":
         return true;
       default:
         return false;

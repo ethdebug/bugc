@@ -146,19 +146,16 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
       case "unary":
         result.operand = replaceValue(result.operand);
         break;
-      case "store_storage":
-        result.slot = replaceValue(result.slot);
-        result.value = replaceValue(result.value);
+      case "write":
+        if (result.slot) result.slot = replaceValue(result.slot);
+        if (result.value) result.value = replaceValue(result.value);
+        if (result.offset) result.offset = replaceValue(result.offset);
+        if (result.length) result.length = replaceValue(result.length);
         break;
-      case "load_storage":
-        result.slot = replaceValue(result.slot);
-        break;
-      case "store_mapping":
-        result.key = replaceValue(result.key);
-        result.value = replaceValue(result.value);
-        break;
-      case "load_mapping":
-        result.key = replaceValue(result.key);
+      case "read":
+        if (result.slot) result.slot = replaceValue(result.slot);
+        if (result.offset) result.offset = replaceValue(result.offset);
+        if (result.length) result.length = replaceValue(result.length);
         break;
       case "compute_array_slot":
         if ("baseSlot" in result) {
@@ -171,21 +168,6 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
         break;
       case "compute_field_offset":
         result.baseSlot = replaceValue(result.baseSlot);
-        break;
-      case "store_field":
-      case "load_field":
-        result.object = replaceValue(result.object);
-        if (result.kind === "store_field") {
-          result.value = replaceValue(result.value);
-        }
-        break;
-      case "store_index":
-      case "load_index":
-        result.array = replaceValue(result.array);
-        result.index = replaceValue(result.index);
-        if (result.kind === "store_index") {
-          result.value = replaceValue(result.value);
-        }
         break;
       case "hash":
         result.value = replaceValue(result.value);
@@ -254,10 +236,7 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
 
   private hasSideEffects(inst: Ir.Instruction): boolean {
     switch (inst.kind) {
-      case "store_storage":
-      case "store_mapping":
-      case "store_field":
-      case "store_index":
+      case "write":
         return true;
       default:
         return false;

@@ -242,20 +242,6 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
     case "unary":
       addValue(inst.operand);
       break;
-    case "load_storage":
-      addValue(inst.slot);
-      break;
-    case "store_storage":
-      addValue(inst.slot);
-      addValue(inst.value);
-      break;
-    case "load_mapping":
-      addValue(inst.key);
-      break;
-    case "store_mapping":
-      addValue(inst.key);
-      addValue(inst.value);
-      break;
     case "compute_slot":
       addValue(inst.baseSlot);
       addValue(inst.key);
@@ -265,22 +251,6 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
       break;
     case "compute_field_offset":
       addValue(inst.baseSlot);
-      break;
-    case "load_field":
-      addValue(inst.object);
-      break;
-    case "store_field":
-      addValue(inst.object);
-      addValue(inst.value);
-      break;
-    case "load_index":
-      addValue(inst.array);
-      addValue(inst.index);
-      break;
-    case "store_index":
-      addValue(inst.array);
-      addValue(inst.index);
-      addValue(inst.value);
       break;
     case "slice":
       addValue(inst.object);
@@ -296,6 +266,25 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
     // Call instruction removed - calls are now block terminators
     case "length":
       addValue(inst.object);
+      break;
+    // NEW: unified read instruction
+    case "read":
+      addValue(inst.slot); // For storage/transient
+      addValue(inst.offset); // For memory/calldata/etc
+      addValue(inst.length);
+      break;
+    // NEW: unified write instruction
+    case "write":
+      addValue(inst.slot); // For storage/transient
+      addValue(inst.offset); // For memory/calldata/etc
+      addValue(inst.length);
+      addValue(inst.value);
+      break;
+    // NEW: unified compute offset
+    case "compute_offset":
+      addValue(inst.base);
+      addValue(inst.index);
+      addValue(inst.byteOffset);
       break;
     // These instructions don't use any values
     case "const":
@@ -314,13 +303,11 @@ function getDefinedValue(inst: Ir.Instruction): string | undefined {
     case "const":
     case "binary":
     case "unary":
-    case "load_storage":
-    case "load_mapping":
+    case "read": // NEW: unified read
     case "compute_slot":
     case "compute_array_slot":
     case "compute_field_offset":
-    case "load_field":
-    case "load_index":
+    case "compute_offset": // NEW: unified compute offset
     case "slice":
     case "env":
     case "hash":
@@ -328,10 +315,7 @@ function getDefinedValue(inst: Ir.Instruction): string | undefined {
     case "length":
       return inst.dest;
     // These instructions don't define values
-    case "store_storage":
-    case "store_mapping":
-    case "store_field":
-    case "store_index":
+    case "write": // NEW: unified write
       return undefined;
   }
 }

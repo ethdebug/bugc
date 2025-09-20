@@ -110,17 +110,32 @@ const makeBuildMemberAccess = (
           expr.property,
         );
         const irFieldType = fromBugType(fieldType);
-        const tempId = yield* Process.Variables.newTemp();
 
+        // First compute the offset for the field
+        const offsetTemp = yield* Process.Variables.newTemp();
+        // Calculate field offset - assuming 32 bytes per field for now
+        const fieldOffset = fieldIndex * 32;
         yield* Process.Instructions.emit({
-          kind: "load_field",
-          object,
+          kind: "compute_offset",
+          location: "memory",
+          base: object,
           field: expr.property,
-          fieldIndex,
+          fieldOffset,
+          dest: offsetTemp,
+          loc: expr.loc ?? undefined,
+        } as Ir.Instruction.ComputeOffset);
+
+        // Then read from that offset
+        const tempId = yield* Process.Variables.newTemp();
+        yield* Process.Instructions.emit({
+          kind: "read",
+          location: "memory",
+          offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
+          length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
           type: irFieldType,
           dest: tempId,
           loc: expr.loc ?? undefined,
-        } as Ir.Instruction);
+        } as Ir.Instruction.Read);
 
         return Ir.Value.temp(tempId, irFieldType);
       }
@@ -196,16 +211,30 @@ const makeBuildIndexAccess = (
       const index = yield* buildExpression(expr.index);
       // Bytes indexing returns uint8
       const elementType: Ir.Type = { kind: "uint", bits: 8 };
-      const tempId = yield* Process.Variables.newTemp();
 
+      // Compute offset for the byte at the index
+      const offsetTemp = yield* Process.Variables.newTemp();
       yield* Process.Instructions.emit({
-        kind: "load_index",
-        array: object,
+        kind: "compute_offset",
+        location: "memory",
+        base: object,
         index,
-        elementType,
+        stride: 1, // bytes are 1 byte each
+        dest: offsetTemp,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction.ComputeOffset);
+
+      // Read the byte at that offset
+      const tempId = yield* Process.Variables.newTemp();
+      yield* Process.Instructions.emit({
+        kind: "read",
+        location: "memory",
+        offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
+        length: Ir.Value.constant(1n, { kind: "uint", bits: 256 }),
+        type: elementType,
         dest: tempId,
         loc: expr.loc ?? undefined,
-      } as Ir.Instruction);
+      } as Ir.Instruction.Read);
 
       return Ir.Value.temp(tempId, elementType);
     }
@@ -227,16 +256,30 @@ const makeBuildIndexAccess = (
 
     if (objectType && Type.isArray(objectType)) {
       const elementType = fromBugType(objectType.element);
-      const tempId = yield* Process.Variables.newTemp();
 
+      // Compute offset for array element
+      const offsetTemp = yield* Process.Variables.newTemp();
       yield* Process.Instructions.emit({
-        kind: "load_index",
-        array: object,
+        kind: "compute_offset",
+        location: "memory",
+        base: object,
         index,
-        elementType,
+        stride: 32, // array elements are 32 bytes each
+        dest: offsetTemp,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction.ComputeOffset);
+
+      // Read the element at that offset
+      const tempId = yield* Process.Variables.newTemp();
+      yield* Process.Instructions.emit({
+        kind: "read",
+        location: "memory",
+        offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
+        length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        type: elementType,
         dest: tempId,
         loc: expr.loc ?? undefined,
-      } as Ir.Instruction);
+      } as Ir.Instruction.Read);
 
       return Ir.Value.temp(tempId, elementType);
     }
@@ -246,20 +289,37 @@ const makeBuildIndexAccess = (
       Type.isMapping(objectType) &&
       Ast.Expression.isIdentifier(expr.object)
     ) {
-      // Simple mapping access
+      // Simple mapping access - compute slot then read
       const storageVar = yield* Process.Storage.findSlot(expr.object.name);
       if (storageVar) {
         const valueType = fromBugType(objectType.value);
-        const tempId = yield* Process.Variables.newTemp();
 
+        // First compute the slot for the mapping key
+        const slotTempId = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit({
-          kind: "load_mapping",
-          slot: storageVar.slot,
+          kind: "compute_slot",
+          baseSlot: Ir.Value.constant(BigInt(storageVar.slot), {
+            kind: "uint",
+            bits: 256,
+          }),
           key: index,
-          valueType,
+          keyType: fromBugType(objectType.key),
+          dest: slotTempId,
+          loc: expr.loc ?? undefined,
+        } as Ir.Instruction.ComputeSlot);
+
+        // Then read from that computed slot
+        const tempId = yield* Process.Variables.newTemp();
+        yield* Process.Instructions.emit({
+          kind: "read",
+          location: "storage",
+          slot: Ir.Value.temp(slotTempId, { kind: "uint", bits: 256 }),
+          offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
+          length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+          type: valueType,
           dest: tempId,
           loc: expr.loc ?? undefined,
-        } as Ir.Instruction);
+        } as Ir.Instruction.Read);
 
         return Ir.Value.temp(tempId, valueType);
       }

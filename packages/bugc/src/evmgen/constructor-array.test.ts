@@ -57,11 +57,11 @@ code {}
     );
     expect(addInstructions.length).toBe(3);
 
-    // Instructions are verified by checking store_storage count below
+    // Instructions are verified by checking write instructions below
 
-    // Check store_storage instructions
+    // Check write instructions (new unified format for storage writes)
     const storeInstructions = entry.instructions.filter(
-      (i) => i.kind === "store_storage",
+      (i) => i.kind === "write" && i.location === "storage",
     );
     expect(storeInstructions.length).toBe(3);
 

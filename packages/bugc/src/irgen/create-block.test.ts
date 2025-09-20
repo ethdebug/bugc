@@ -49,9 +49,9 @@ describe("IR generation for create blocks", () => {
     expect(createEntry).toBeDefined();
     expect(createEntry!.instructions.length).toBeGreaterThan(0);
 
-    // Should have store_storage instructions for totalSupply and owner
+    // Should have write storage instructions for totalSupply and owner
     const storeInstructions = createEntry!.instructions.filter(
-      (inst) => inst.kind === "store_storage",
+      (inst) => inst.kind === "write" && inst.location === "storage",
     );
     expect(storeInstructions).toHaveLength(2);
 
@@ -60,9 +60,9 @@ describe("IR generation for create blocks", () => {
     const mainEntry = module.main.blocks.get("entry");
     expect(mainEntry).toBeDefined();
 
-    // Should have load_storage for totalSupply
+    // Should have read storage for totalSupply
     const loadInstructions = mainEntry!.instructions.filter(
-      (inst) => inst.kind === "load_storage",
+      (inst) => inst.kind === "read" && inst.location === "storage",
     );
     expect(loadInstructions).toHaveLength(1);
   });

@@ -76,6 +76,7 @@ export namespace State {
     readonly id: string;
     readonly parameters: Ir.Function.Parameter[]; // Function parameters
     readonly blocks: Map<string, Ir.Block>; // All blocks in function
+    readonly ssaMetadata?: Map<string, Ir.Function.SsaVariable>; // SSA variable metadata for phi insertion
   }
 
   export namespace Function {
@@ -106,6 +107,8 @@ export namespace State {
     readonly terminator?: Ir.Block.Terminator; // Optional during building
     readonly predecessors: Set<string>;
     readonly phis: Ir.Block.Phi[]; // Phi nodes for the block
+    /** Track which temp each predecessor uses for each variable */
+    readonly predecessorTemps?: Map<string, Map<string, string>>; // varName -> (predBlock -> tempId)
   }
 
   export namespace Block {
@@ -145,6 +148,12 @@ export namespace State {
           };
         }),
       );
+
+    export const addPhi = (phi: Ir.Block.Phi) =>
+      update((block) => ({
+        ...block,
+        phis: [...block.phis, phi],
+      }));
   }
 
   /**

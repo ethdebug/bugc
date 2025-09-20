@@ -40,11 +40,15 @@ export function* buildFunction(
   const blocks = computePredecessors(yield* Process.Functions.currentBlocks());
   const params = yield* Process.Functions.currentParameters();
 
+  // Collect SSA variable metadata
+  const ssaVariables = yield* Process.Functions.collectSsaMetadata();
+
   const function_: Ir.Function = {
     name,
     parameters: params,
     entry: "entry",
     blocks,
+    ssaVariables: ssaVariables.size > 0 ? ssaVariables : undefined,
   };
 
   return function_;

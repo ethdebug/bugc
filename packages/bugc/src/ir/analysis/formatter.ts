@@ -131,30 +131,6 @@ export class Formatter {
       case "const":
         return `${destWithType(inst.dest, inst.type)} = const ${this.formatConstValue(inst.value, inst.type)}`;
 
-      case "load_storage":
-        return `${destWithType(inst.dest, inst.type)} = load_storage ${this.formatValue(inst.slot)}`;
-
-      case "store_storage":
-        return `store_storage ${this.formatValue(inst.slot)}, ${this.formatValue(inst.value)}`;
-
-      case "load_mapping":
-        return `${destWithType(inst.dest, inst.valueType)} = load_mapping slot=${inst.slot}, key=${this.formatValue(inst.key)}`;
-
-      case "store_mapping":
-        return `store_mapping slot=${inst.slot}, key=${this.formatValue(inst.key)}, value=${this.formatValue(inst.value)}`;
-
-      case "load_field":
-        return `${destWithType(inst.dest, inst.type)} = load_field object=${this.formatValue(inst.object)}, field="${inst.field}", index=${inst.fieldIndex}`;
-
-      case "store_field":
-        return `store_field object=${this.formatValue(inst.object)}, field="${inst.field}", index=${inst.fieldIndex}, value=${this.formatValue(inst.value)}`;
-
-      case "load_index":
-        return `${destWithType(inst.dest)} = load_index array=${this.formatValue(inst.array)}, index=${this.formatValue(inst.index)}`;
-
-      case "store_index":
-        return `store_index array=${this.formatValue(inst.array)}, index=${this.formatValue(inst.index)}, value=${this.formatValue(inst.value)}`;
-
       case "slice":
         return `${destWithType(inst.dest)} = slice object=${this.formatValue(inst.object)}, start=${this.formatValue(inst.start)}, end=${this.formatValue(inst.end)}`;
 
@@ -186,6 +162,43 @@ export class Formatter {
 
       case "length":
         return `${destWithType(inst.dest)} = length ${this.formatValue(inst.object)}`;
+
+      // NEW: unified read instruction
+      case "read": {
+        const location = inst.location;
+        const parts: string[] = [`read.${location}`];
+        if (inst.slot) parts.push(`slot=${this.formatValue(inst.slot)}`);
+        if (inst.offset) parts.push(`offset=${this.formatValue(inst.offset)}`);
+        if (inst.length) parts.push(`length=${this.formatValue(inst.length)}`);
+        if (inst.name) parts.push(`name="${inst.name}"`);
+        return `${destWithType(inst.dest, inst.type)} = ${parts.join(", ")}`;
+      }
+
+      // NEW: unified write instruction
+      case "write": {
+        const location = inst.location;
+        const parts: string[] = [`write.${location}`];
+        if (inst.slot) parts.push(`slot=${this.formatValue(inst.slot)}`);
+        if (inst.offset) parts.push(`offset=${this.formatValue(inst.offset)}`);
+        if (inst.length) parts.push(`length=${this.formatValue(inst.length)}`);
+        if (inst.name) parts.push(`name="${inst.name}"`);
+        parts.push(`value=${this.formatValue(inst.value)}`);
+        return parts.join(", ");
+      }
+
+      // NEW: unified compute offset
+      case "compute_offset": {
+        const parts: string[] = [`compute_offset.${inst.location}`];
+        parts.push(`base=${this.formatValue(inst.base)}`);
+        if (inst.index) parts.push(`index=${this.formatValue(inst.index)}`);
+        if (inst.stride !== undefined) parts.push(`stride=${inst.stride}`);
+        if (inst.field) parts.push(`field="${inst.field}"`);
+        if (inst.fieldOffset !== undefined)
+          parts.push(`fieldOffset=${inst.fieldOffset}`);
+        if (inst.byteOffset)
+          parts.push(`byteOffset=${this.formatValue(inst.byteOffset)}`);
+        return `${inst.dest} = ${parts.join(", ")}`;
+      }
 
       default:
         return `; unknown instruction: ${(inst as unknown as { kind: string }).kind}`;

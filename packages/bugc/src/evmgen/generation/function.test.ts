@@ -482,7 +482,8 @@ describe("Function.generate", () => {
                 dest: "%value",
               },
               {
-                kind: "store_storage",
+                kind: "write",
+                location: "storage",
                 slot: {
                   kind: "temp",
                   id: "%slot",
@@ -622,7 +623,8 @@ describe("Function.generate", () => {
                 dest: "%slot",
               },
               {
-                kind: "store_storage",
+                kind: "write",
+                location: "storage",
                 slot: {
                   kind: "temp",
                   id: "%slot",
@@ -718,7 +720,8 @@ describe("Function.generate", () => {
                 dest: "%slot",
               },
               {
-                kind: "load_storage",
+                kind: "read",
+                location: "storage",
                 slot: {
                   kind: "temp",
                   id: "%slot",
@@ -813,7 +816,8 @@ describe("Function.generate", () => {
                 dest: "%slot",
               },
               {
-                kind: "store_storage",
+                kind: "write",
+                location: "storage",
                 slot: {
                   kind: "temp",
                   id: "%slot",
@@ -894,7 +898,8 @@ describe("Function.generate", () => {
                 dest: "%slot",
               },
               {
-                kind: "load_storage",
+                kind: "read",
+                location: "storage",
                 slot: {
                   kind: "temp",
                   id: "%slot",
@@ -1018,7 +1023,8 @@ describe("Function.generate", () => {
                 dest: "%finalSlot",
               },
               {
-                kind: "load_storage",
+                kind: "read",
+                location: "storage",
                 slot: {
                   kind: "temp",
                   id: "%finalSlot",

@@ -8,7 +8,6 @@ import { Error as IrgenError } from "#irgen/errors";
 import { fromBugType } from "#irgen/type";
 
 import { State } from "./state.js";
-import { PhiInserter } from "../phi-inserter.js";
 import { buildFunction } from "./function.js";
 import { Process } from "./process.js";
 
@@ -83,12 +82,10 @@ export function* buildModule(
   // Get module state to build final IR module
   const module_ = yield* Process.Modules.current();
 
-  const result = new PhiInserter().insertPhiNodes({
+  return {
     ...module_,
     main: module_.main || createEmptyFunction("main"),
-  });
-
-  return result;
+  };
 }
 
 /**

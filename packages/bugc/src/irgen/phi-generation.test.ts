@@ -53,18 +53,18 @@ code {
     const formatted = formatter.format(ir);
 
     // Should contain phi nodes
-    expect(formatted).toContain("phi");
-
-    // Log for debugging
+    // console.debug("Formatted IR:", formatted);
 
     // Check that merge blocks have phi nodes
     let foundPhiInMergeBlock = false;
-    for (const [blockId, block] of ir.main.blocks.entries()) {
-      if (blockId.includes("merge") && block.phis.length > 0) {
+    for (const [_blockId, _block] of ir.main.blocks.entries()) {
+      // console.debug(`Block ${_blockId}: phis = ${_block.phis.length}`);
+      if (_blockId.includes("merge") && _block.phis.length > 0) {
         foundPhiInMergeBlock = true;
       }
     }
 
+    expect(formatted).toContain("phi");
     expect(foundPhiInMergeBlock).toBe(true);
   });
 
@@ -122,6 +122,10 @@ code {
     }
 
     // Should have phi nodes for the nested structure
+    // console.debug("Total phi nodes found:", totalPhiNodes);
+    for (const [_blockId, _block] of ir.main.blocks.entries()) {
+      // console.debug(`Block ${blockId}: phis = ${block.phis.length}`);
+    }
     expect(totalPhiNodes).toBeGreaterThan(0);
   });
 
@@ -167,16 +171,25 @@ code {
 
     // Loop headers should have phi nodes for loop-carried values
     let foundLoopPhi = false;
-    for (const [blockId, block] of ir.main.blocks.entries()) {
+    for (const [_blockId, _block] of ir.main.blocks.entries()) {
       if (
-        (blockId.includes("loop") || blockId.includes("header")) &&
-        block.phis.length > 0
+        (_blockId.includes("loop") || _blockId.includes("header")) &&
+        _block.phis.length > 0
       ) {
         foundLoopPhi = true;
       }
     }
 
     // Loops should definitely have phi nodes
+    // console.debug("Found loop phi:", foundLoopPhi);
+    for (const [_blockId, _block] of ir.main.blocks.entries()) {
+      // console.debug(`Block ${_blockId}: phis = ${_block.phis.length}, preds = ${Array.from(_block.predecessors).join(', ')}`);
+      if (_block.phis.length > 0) {
+        for (const _phi of _block.phis) {
+          // console.debug(`  Phi: dest=${phi.dest}, sources=${Array.from(phi.sources.entries()).map(([k,v]) => `${k}:${v.kind === 'temp' ? v.id : v.value}`).join(', ')}`);
+        }
+      }
+    }
     expect(foundLoopPhi).toBe(true);
   });
 });

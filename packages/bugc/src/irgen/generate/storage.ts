@@ -167,15 +167,18 @@ export function* emitStorageChainLoad(
     }
   }
 
-  // Generate the final load_storage instruction
+  // Generate the final read instruction using new unified format
   const loadTempId = yield* Process.Variables.newTemp();
   yield* Process.Instructions.emit({
-    kind: "load_storage",
+    kind: "read",
+    location: "storage",
     slot: currentSlot,
+    offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
+    length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
     type: valueType,
     dest: loadTempId,
     loc,
-  } as Ir.Instruction.LoadStorage);
+  } as Ir.Instruction.Read);
 
   return Ir.Value.temp(loadTempId, valueType);
 }
@@ -189,16 +192,19 @@ export function* emitStorageChainAssignment(
   loc: Ast.SourceLocation | undefined,
 ): Process<void> {
   if (chain.accesses.length === 0) {
-    // Direct storage assignment
+    // Direct storage assignment using new unified format
     yield* Process.Instructions.emit({
-      kind: "store_storage",
+      kind: "write",
+      location: "storage",
       slot: Ir.Value.constant(BigInt(chain.slot.slot), {
         kind: "uint",
         bits: 256,
       }),
+      offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
+      length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
       value,
       loc,
-    } as Ir.Instruction);
+    } as Ir.Instruction.Write);
     return;
   }
 
@@ -292,13 +298,16 @@ export function* emitStorageChainAssignment(
     }
   }
 
-  // Store to the computed slot
+  // Store to the computed slot using new unified format
   yield* Process.Instructions.emit({
-    kind: "store_storage",
+    kind: "write",
+    location: "storage",
     slot: currentSlot,
+    offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
+    length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
     value,
     loc,
-  } as Ir.Instruction);
+  } as Ir.Instruction.Write);
 }
 
 // export interface StorageAccessChain {

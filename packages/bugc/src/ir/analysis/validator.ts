@@ -136,12 +136,6 @@ export class Validator {
       case "const":
         this.validateConstInstruction(inst);
         break;
-      case "load_storage":
-        this.validateLoadStorageInstruction(inst);
-        break;
-      case "store_storage":
-        this.validateStoreStorageInstruction(inst);
-        break;
       case "binary":
         this.validateBinaryInstruction(inst);
         break;
@@ -151,12 +145,6 @@ export class Validator {
       case "env":
         this.validateEnvInstruction(inst);
         break;
-      case "load_mapping":
-        this.validateLoadMappingInstruction(inst);
-        break;
-      case "store_mapping":
-        this.validateStoreMappingInstruction(inst);
-        break;
       case "compute_slot":
         this.validateComputeSlotInstruction(inst);
         break;
@@ -165,18 +153,6 @@ export class Validator {
         break;
       case "compute_field_offset":
         this.validateComputeFieldOffsetInstruction(inst);
-        break;
-      case "load_field":
-        this.validateLoadFieldInstruction(inst);
-        break;
-      case "store_field":
-        this.validateStoreFieldInstruction(inst);
-        break;
-      case "load_index":
-        this.validateLoadIndexInstruction(inst);
-        break;
-      case "store_index":
-        this.validateStoreIndexInstruction(inst);
         break;
       case "hash":
         this.validateHashInstruction(inst);
@@ -199,40 +175,6 @@ export class Validator {
     }
 
     this.validateType(inst.type);
-  }
-
-  private validateLoadStorageInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "load_storage") return;
-
-    if (!inst.dest) {
-      this.error("Load storage instruction must have a destination");
-    } else {
-      this.tempDefs.add(inst.dest);
-    }
-
-    if (!inst.slot) {
-      this.error("Load storage instruction must have a slot");
-    } else {
-      this.validateValue(inst.slot);
-    }
-
-    this.validateType(inst.type);
-  }
-
-  private validateStoreStorageInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "store_storage") return;
-
-    if (!inst.slot) {
-      this.error("Store storage instruction must have a slot");
-    } else {
-      this.validateValue(inst.slot);
-    }
-
-    if (!inst.value) {
-      this.error("Store storage instruction must have a value");
-    } else {
-      this.validateValue(inst.value);
-    }
   }
 
   private validateBinaryInstruction(inst: Ir.Instruction): void {
@@ -305,48 +247,6 @@ export class Validator {
     }
   }
 
-  private validateLoadMappingInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "load_mapping") return;
-
-    if (!inst.dest) {
-      this.error("Load mapping instruction must have a destination");
-    } else {
-      this.tempDefs.add(inst.dest);
-    }
-
-    if (inst.slot === undefined) {
-      this.error("Load mapping instruction must have a slot");
-    }
-
-    if (!inst.key) {
-      this.error("Load mapping instruction must have a key");
-    } else {
-      this.validateValue(inst.key);
-    }
-
-    this.validateType(inst.valueType);
-  }
-
-  private validateStoreMappingInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "store_mapping") return;
-
-    if (inst.slot === undefined) {
-      this.error("Store mapping instruction must have a slot");
-    }
-
-    if (!inst.key) {
-      this.error("Store mapping instruction must have a key");
-    } else {
-      this.validateValue(inst.key);
-    }
-
-    if (!inst.value) {
-      this.error("Store mapping instruction must have a value");
-    } else {
-      this.validateValue(inst.value);
-    }
-  }
-
   private validateComputeSlotInstruction(inst: Ir.Instruction): void {
     if (inst.kind !== "compute_slot") return;
 
@@ -404,102 +304,6 @@ export class Validator {
 
     if (inst.fieldIndex === undefined) {
       this.error("Compute field offset instruction must have a field index");
-    }
-  }
-
-  private validateLoadFieldInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "load_field") return;
-
-    if (!inst.dest) {
-      this.error("Load field instruction must have a destination");
-    } else {
-      this.tempDefs.add(inst.dest);
-    }
-
-    if (!inst.object) {
-      this.error("Load field instruction must have an object");
-    } else {
-      this.validateValue(inst.object);
-    }
-
-    if (!inst.field) {
-      this.error("Load field instruction must have a field name");
-    }
-
-    if (inst.fieldIndex === undefined) {
-      this.error("Load field instruction must have a field index");
-    }
-
-    this.validateType(inst.type);
-  }
-
-  private validateStoreFieldInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "store_field") return;
-
-    if (!inst.object) {
-      this.error("Store field instruction must have an object");
-    } else {
-      this.validateValue(inst.object);
-    }
-
-    if (!inst.field) {
-      this.error("Store field instruction must have a field name");
-    }
-
-    if (inst.fieldIndex === undefined) {
-      this.error("Store field instruction must have a field index");
-    }
-
-    if (!inst.value) {
-      this.error("Store field instruction must have a value");
-    } else {
-      this.validateValue(inst.value);
-    }
-  }
-
-  private validateLoadIndexInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "load_index") return;
-
-    if (!inst.dest) {
-      this.error("Load index instruction must have a destination");
-    } else {
-      this.tempDefs.add(inst.dest);
-    }
-
-    if (!inst.array) {
-      this.error("Load index instruction must have an array");
-    } else {
-      this.validateValue(inst.array);
-    }
-
-    if (!inst.index) {
-      this.error("Load index instruction must have an index");
-    } else {
-      this.validateValue(inst.index);
-    }
-
-    this.validateType(inst.elementType);
-  }
-
-  private validateStoreIndexInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "store_index") return;
-
-    if (!inst.array) {
-      this.error("Store index instruction must have an array");
-    } else {
-      this.validateValue(inst.array);
-    }
-
-    if (!inst.index) {
-      this.error("Store index instruction must have an index");
-    } else {
-      this.validateValue(inst.index);
-    }
-
-    if (!inst.value) {
-      this.error("Store index instruction must have a value");
-    } else {
-      this.validateValue(inst.value);
     }
   }
 

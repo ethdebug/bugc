@@ -287,10 +287,16 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
         return `${inst.dest} = ${formatValue(inst.left)} ${inst.op} ${formatValue(inst.right)}`;
       case "unary":
         return `${inst.dest} = ${inst.op}${formatValue(inst.operand)}`;
-      case "load_storage":
-        return `${inst.dest} = storage[${formatValue(inst.slot)}]`;
-      case "store_storage":
-        return `storage[${formatValue(inst.slot)}] = ${formatValue(inst.value)}`;
+      case "read":
+        if (inst.location === "storage" && inst.slot) {
+          return `${inst.dest} = storage[${formatValue(inst.slot)}]`;
+        }
+        return `${inst.dest} = read.${inst.location}`;
+      case "write":
+        if (inst.location === "storage" && inst.slot) {
+          return `storage[${formatValue(inst.slot)}] = ${formatValue(inst.value)}`;
+        }
+        return `write.${inst.location} = ${formatValue(inst.value)}`;
       case "env": {
         const envInst = inst;
         switch (envInst.op) {
@@ -314,18 +320,6 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
         return `${inst.dest} = ${formatValue(inst.object)}[${formatValue(inst.start)}:${formatValue(inst.end)}]`;
       case "cast":
         return `${inst.dest} = cast ${formatValue(inst.value)} to ${inst.targetType.kind}`;
-      case "load_field":
-        return `${inst.dest} = ${formatValue(inst.object)}.${inst.field}`;
-      case "store_field":
-        return `${formatValue(inst.object)}.${inst.field} = ${formatValue(inst.value)}`;
-      case "load_index":
-        return `${inst.dest} = ${formatValue(inst.array)}[${formatValue(inst.index)}]`;
-      case "store_index":
-        return `${formatValue(inst.array)}[${formatValue(inst.index)}] = ${formatValue(inst.value)}`;
-      case "load_mapping":
-        return `${inst.dest} = mapping[${inst.slot}][${formatValue(inst.key)}]`;
-      case "store_mapping":
-        return `mapping[${inst.slot}][${formatValue(inst.key)}] = ${formatValue(inst.value)}`;
       case "compute_slot":
         return `${inst.dest} = compute_slot(${formatValue(inst.baseSlot)}, ${formatValue(inst.key)})`;
       case "compute_array_slot":

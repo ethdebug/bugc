@@ -218,8 +218,6 @@ function simulateInstruction(stack: string[], inst: Ir.Instruction): string[] {
   // Pop consumed values based on instruction type
   switch (inst.kind) {
     case "binary":
-    case "store_storage":
-    case "store_mapping":
     case "compute_slot":
     case "hash":
       newStack.pop(); // Two operands
@@ -234,24 +232,34 @@ function simulateInstruction(stack: string[], inst: Ir.Instruction): string[] {
     case "length":
       newStack.pop(); // One operand
       break;
-    case "store_field":
-    case "load_index":
-      newStack.pop(); // Two operands
-      newStack.pop();
-      break;
-    case "store_index":
     case "slice":
       newStack.pop(); // Three operands
       newStack.pop();
       newStack.pop();
       break;
+    // NEW: unified read - pops slot/offset/length as needed
+    case "read":
+      if (inst.slot) newStack.pop();
+      if (inst.offset) newStack.pop();
+      if (inst.length) newStack.pop();
+      break;
+    // NEW: unified write - pops slot/offset/length/value as needed
+    case "write":
+      if (inst.slot) newStack.pop();
+      if (inst.offset) newStack.pop();
+      if (inst.length) newStack.pop();
+      newStack.pop(); // value
+      break;
+    // NEW: compute offset
+    case "compute_offset":
+      newStack.pop(); // base
+      if (inst.index) newStack.pop();
+      if (inst.byteOffset) newStack.pop();
+      break;
     // Call instruction removed - calls are now block terminators
     // These don't pop anything
     case "const":
     case "env":
-    case "load_storage":
-    case "load_mapping":
-    case "load_field":
       break;
   }
 
@@ -299,20 +307,6 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
     case "unary":
       addValue(inst.operand);
       break;
-    case "load_storage":
-      addValue(inst.slot);
-      break;
-    case "store_storage":
-      addValue(inst.slot);
-      addValue(inst.value);
-      break;
-    case "load_mapping":
-      addValue(inst.key);
-      break;
-    case "store_mapping":
-      addValue(inst.key);
-      addValue(inst.value);
-      break;
     case "compute_slot":
       addValue(inst.baseSlot);
       addValue(inst.key);
@@ -322,22 +316,6 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
       break;
     case "compute_field_offset":
       addValue(inst.baseSlot);
-      break;
-    case "load_field":
-      addValue(inst.object);
-      break;
-    case "store_field":
-      addValue(inst.object);
-      addValue(inst.value);
-      break;
-    case "load_index":
-      addValue(inst.array);
-      addValue(inst.index);
-      break;
-    case "store_index":
-      addValue(inst.array);
-      addValue(inst.index);
-      addValue(inst.value);
       break;
     case "slice":
       addValue(inst.object);

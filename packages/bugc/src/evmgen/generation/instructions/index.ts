@@ -6,12 +6,7 @@ export { generateEnvOp } from "./env.js";
 export { generateHashOp } from "./hash.js";
 export { generateLength } from "./length.js";
 export { generateSlice } from "./slice.js";
-export {
-  generateLoadStorage,
-  generateStoreStorage,
-  generateLoadMapping,
-  generateStoreMapping,
-} from "./storage.js";
+export { generateRead, generateWrite } from "./storage.js";
 export {
   generateComputeSlot,
   generateComputeArraySlot,

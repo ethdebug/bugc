@@ -107,19 +107,16 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
       case "unary":
         this.collectValueUse(inst.operand, used);
         break;
-      case "store_storage":
-        this.collectValueUse(inst.slot, used);
-        this.collectValueUse(inst.value, used);
+      case "write":
+        if (inst.slot) this.collectValueUse(inst.slot, used);
+        if (inst.value) this.collectValueUse(inst.value, used);
+        if (inst.offset) this.collectValueUse(inst.offset, used);
+        if (inst.length) this.collectValueUse(inst.length, used);
         break;
-      case "load_storage":
-        this.collectValueUse(inst.slot, used);
-        break;
-      case "store_mapping":
-        this.collectValueUse(inst.key, used);
-        this.collectValueUse(inst.value, used);
-        break;
-      case "load_mapping":
-        this.collectValueUse(inst.key, used);
+      case "read":
+        if (inst.slot) this.collectValueUse(inst.slot, used);
+        if (inst.offset) this.collectValueUse(inst.offset, used);
+        if (inst.length) this.collectValueUse(inst.length, used);
         break;
       case "compute_array_slot":
         if ("baseSlot" in inst) {
@@ -132,21 +129,6 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
         break;
       case "compute_field_offset":
         this.collectValueUse(inst.baseSlot, used);
-        break;
-      case "load_field":
-      case "store_field":
-        this.collectValueUse(inst.object, used);
-        if (inst.kind === "store_field") {
-          this.collectValueUse(inst.value, used);
-        }
-        break;
-      case "load_index":
-      case "store_index":
-        this.collectValueUse(inst.array, used);
-        this.collectValueUse(inst.index, used);
-        if (inst.kind === "store_index") {
-          this.collectValueUse(inst.value, used);
-        }
         break;
       case "hash":
         this.collectValueUse(inst.value, used);
@@ -179,10 +161,7 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
 
   private hasSideEffects(inst: Ir.Instruction): boolean {
     switch (inst.kind) {
-      case "store_storage":
-      case "store_mapping":
-      case "store_field":
-      case "store_index":
+      case "write":
         return true;
       default:
         return false;

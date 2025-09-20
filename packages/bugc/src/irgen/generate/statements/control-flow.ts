@@ -7,6 +7,7 @@ import { buildExpression } from "../expressions/index.js";
 import { makeBuildBlock } from "./block.js";
 
 import { Process } from "../process.js";
+import type { State } from "../state.js";
 
 /**
  * Build a control flow statement
@@ -139,6 +140,9 @@ const makeBuildLoop = (
       ? yield* Process.Blocks.create(`${config.prefix}_update`)
       : null;
 
+    // Track variables before entering loop for phi insertion
+    const preLoopVars = yield* Process.Variables.captureCurrentVariables();
+
     // Jump to header
     yield* Process.Blocks.terminate({
       kind: "jump",
@@ -147,6 +151,10 @@ const makeBuildLoop = (
 
     // Header: evaluate condition and branch
     yield* Process.Blocks.switchTo(headerBlock);
+
+    // On first entry to header, create phi nodes for loop variables
+    // We'll update these after processing the loop body
+    const loopPhis = Process.Variables.createLoopPhis(preLoopVars, headerBlock);
 
     const condVal = config.condition
       ? yield* buildExpression(config.condition)
@@ -186,6 +194,13 @@ const makeBuildLoop = (
       yield* Process.Blocks.switchTo(updateBlock);
       yield* buildStatement(config.update);
 
+      // Before jumping back to header, update phi sources with loop values
+      yield* Process.Variables.updateLoopPhis(
+        loopPhis,
+        updateBlock,
+        headerBlock,
+      );
+
       const terminator = yield* Process.Blocks.currentTerminator();
       if (!terminator) {
         yield* Process.Blocks.terminate({
@@ -193,6 +208,16 @@ const makeBuildLoop = (
           target: headerBlock,
         });
       }
+    } else if (!config.update) {
+      // For while loops, update phis before jumping from body to header
+      // This needs to happen at the end of the body block
+      const state: State = yield { type: "peek" };
+      const currentBlockId = state.block.id;
+      yield* Process.Variables.updateLoopPhis(
+        loopPhis,
+        currentBlockId,
+        headerBlock,
+      );
     }
 
     // Continue from exit block
