@@ -7,7 +7,4 @@ export { generateHashOp } from "./hash.js";
 export { generateLength } from "./length.js";
 export { generateSlice } from "./slice.js";
 export { generateRead, generateWrite } from "./storage.js";
-export {
-  generateComputeSlot,
-  generateComputeArraySlot,
-} from "./compute-slot.js";
+export { generateComputeSlot } from "./compute-slot.js";

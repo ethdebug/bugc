@@ -148,12 +148,6 @@ export class Validator {
       case "compute_slot":
         this.validateComputeSlotInstruction(inst);
         break;
-      case "compute_array_slot":
-        this.validateComputeArraySlotInstruction(inst);
-        break;
-      case "compute_field_offset":
-        this.validateComputeFieldOffsetInstruction(inst);
-        break;
       case "hash":
         this.validateHashInstruction(inst);
         break;
@@ -256,54 +250,34 @@ export class Validator {
       this.tempDefs.add(inst.dest);
     }
 
-    if (!inst.baseSlot) {
-      this.error("Compute slot instruction must have a base slot");
+    if (!inst.base) {
+      this.error("Compute slot instruction must have a base");
     } else {
-      this.validateValue(inst.baseSlot);
+      this.validateValue(inst.base);
     }
 
-    if (!inst.key) {
-      this.error("Compute slot instruction must have a key");
-    } else {
-      this.validateValue(inst.key);
-    }
-
-    this.validateType(inst.keyType);
-  }
-
-  private validateComputeArraySlotInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "compute_array_slot") return;
-
-    if (!inst.dest) {
-      this.error("Compute array slot instruction must have a destination");
-    } else {
-      this.tempDefs.add(inst.dest);
-    }
-
-    if (!inst.baseSlot) {
-      this.error("Compute array slot instruction must have a base slot");
-    } else {
-      this.validateValue(inst.baseSlot);
-    }
-  }
-
-  private validateComputeFieldOffsetInstruction(inst: Ir.Instruction): void {
-    if (inst.kind !== "compute_field_offset") return;
-
-    if (!inst.dest) {
-      this.error("Compute field offset instruction must have a destination");
-    } else {
-      this.tempDefs.add(inst.dest);
-    }
-
-    if (!inst.baseSlot) {
-      this.error("Compute field offset instruction must have a base slot");
-    } else {
-      this.validateValue(inst.baseSlot);
-    }
-
-    if (inst.fieldIndex === undefined) {
-      this.error("Compute field offset instruction must have a field index");
+    // Validate based on slot kind
+    switch (inst.slotKind) {
+      case "mapping":
+        if (!inst.key) {
+          this.error("Mapping compute_slot must have a key");
+        } else {
+          this.validateValue(inst.key);
+        }
+        if (inst.keyType) {
+          this.validateType(inst.keyType);
+        }
+        break;
+      case "array":
+        // Arrays don't need additional params
+        break;
+      case "field":
+        if (inst.fieldIndex === undefined) {
+          this.error("Field compute_slot must have a fieldIndex");
+        }
+        break;
+      default:
+        this.error(`Unknown compute_slot kind: ${inst.slotKind}`);
     }
   }
 

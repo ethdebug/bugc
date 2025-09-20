@@ -321,11 +321,14 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
       case "cast":
         return `${inst.dest} = cast ${formatValue(inst.value)} to ${inst.targetType.kind}`;
       case "compute_slot":
-        return `${inst.dest} = compute_slot(${formatValue(inst.baseSlot)}, ${formatValue(inst.key)})`;
-      case "compute_array_slot":
-        return `${inst.dest} = array_slot(${formatValue(inst.baseSlot)})`;
-      case "compute_field_offset":
-        return `${inst.dest} = field_offset(${formatValue(inst.baseSlot)}, ${inst.fieldIndex})`;
+        if (inst.slotKind === "mapping") {
+          return `${inst.dest} = compute_slot[mapping](${formatValue(inst.base)}, ${formatValue(inst.key)})`;
+        } else if (inst.slotKind === "array") {
+          return `${inst.dest} = compute_slot[array](${formatValue(inst.base)})`;
+        } else if (inst.slotKind === "field") {
+          return `${inst.dest} = compute_slot[field](${formatValue(inst.base)}, field_${inst.fieldIndex})`;
+        }
+        return `${inst.dest} = compute_slot[${inst.slotKind}](${formatValue(inst.base)})`;
       // Call instruction removed - calls are now block terminators
       default: {
         const unknownInst = inst as { dest?: string; kind?: string };

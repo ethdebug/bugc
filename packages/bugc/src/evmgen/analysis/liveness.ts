@@ -243,14 +243,8 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
       addValue(inst.operand);
       break;
     case "compute_slot":
-      addValue(inst.baseSlot);
-      addValue(inst.key);
-      break;
-    case "compute_array_slot":
-      addValue(inst.baseSlot);
-      break;
-    case "compute_field_offset":
-      addValue(inst.baseSlot);
+      addValue(inst.base);
+      if (inst.key) addValue(inst.key);
       break;
     case "slice":
       addValue(inst.object);
@@ -305,8 +299,6 @@ function getDefinedValue(inst: Ir.Instruction): string | undefined {
     case "unary":
     case "read": // NEW: unified read
     case "compute_slot":
-    case "compute_array_slot":
-    case "compute_field_offset":
     case "compute_offset": // NEW: unified compute offset
     case "slice":
     case "env":

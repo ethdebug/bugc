@@ -567,17 +567,18 @@ describe("generateModule", () => {
 
       const ir = buildIR(source);
 
-      // Should generate compute_slot, compute_field_offset, and storage operations with dynamic slots
-      let hasComputeSlot = false;
-      let hasComputeFieldOffset = false;
+      // Should generate compute_slot for both mapping and field operations
+      let hasMappingSlot = false;
+      let hasFieldSlot = false;
       let hasReadStorageDynamic = false;
       let hasWriteStorageDynamic = false;
 
       for (const block of ir.main.blocks.values()) {
         for (const inst of block.instructions) {
-          if (inst.kind === "compute_slot") hasComputeSlot = true;
-          if (inst.kind === "compute_field_offset")
-            hasComputeFieldOffset = true;
+          if (inst.kind === "compute_slot") {
+            if (inst.slotKind === "mapping") hasMappingSlot = true;
+            if (inst.slotKind === "field") hasFieldSlot = true;
+          }
           if (
             inst.kind === "read" &&
             inst.location === "storage" &&
@@ -595,8 +596,8 @@ describe("generateModule", () => {
         }
       }
 
-      expect(hasComputeSlot).toBe(true);
-      expect(hasComputeFieldOffset).toBe(true);
+      expect(hasMappingSlot).toBe(true);
+      expect(hasFieldSlot).toBe(true);
       expect(hasReadStorageDynamic).toBe(true);
       expect(hasWriteStorageDynamic).toBe(true);
     });
@@ -691,15 +692,17 @@ describe("generateModule", () => {
       expect(warnings.length).toBe(0);
 
       // Check that the proper instructions are generated
-      let hasComputeSlot = false;
-      let hasComputeArraySlot = false;
+      let hasMappingSlot = false;
+      let hasArraySlot = false;
       let hasBinaryAdd = false;
       let hasStorageDynamic = false;
 
       for (const block of buildResult.value.main.blocks.values()) {
         for (const inst of block.instructions) {
-          if (inst.kind === "compute_slot") hasComputeSlot = true;
-          if (inst.kind === "compute_array_slot") hasComputeArraySlot = true;
+          if (inst.kind === "compute_slot") {
+            if (inst.slotKind === "mapping") hasMappingSlot = true;
+            if (inst.slotKind === "array") hasArraySlot = true;
+          }
           if (inst.kind === "binary" && inst.op === "add") hasBinaryAdd = true;
           if (
             ((inst.kind === "read" && inst.location === "storage") ||
@@ -712,9 +715,9 @@ describe("generateModule", () => {
         }
       }
 
-      expect(hasComputeSlot).toBe(true);
-      // Both fixed and dynamic arrays now use compute_array_slot for proper storage layout
-      expect(hasComputeArraySlot).toBe(true);
+      expect(hasMappingSlot).toBe(true);
+      // Both fixed and dynamic arrays now use compute_slot with kind="array" for proper storage layout
+      expect(hasArraySlot).toBe(true);
       expect(hasBinaryAdd).toBe(true); // For adding index to computed base slot
       expect(hasStorageDynamic).toBe(true);
     });

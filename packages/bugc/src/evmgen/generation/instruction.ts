@@ -19,7 +19,6 @@ import {
   generateLength,
   generateSlice,
   generateComputeSlot,
-  generateComputeArraySlot,
   generateRead,
   generateWrite,
 } from "./instructions/index.js";
@@ -49,15 +48,12 @@ export function generate<S extends Stack>(
       return generateLength(inst);
     case "compute_slot":
       return generateComputeSlot(inst);
-    case "compute_array_slot":
-      return generateComputeArraySlot(inst);
     case "cast":
       return generateCast(inst);
     case "slice":
       return generateSlice(inst);
     // Call instruction removed - calls are now block terminators
     case "compute_offset":
-    case "compute_field_offset":
     default: {
       return (state) => {
         // Add warning for unsupported instructions

@@ -298,7 +298,8 @@ const makeBuildIndexAccess = (
         const slotTempId = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit({
           kind: "compute_slot",
-          baseSlot: Ir.Value.constant(BigInt(storageVar.slot), {
+          slotKind: "mapping",
+          base: Ir.Value.constant(BigInt(storageVar.slot), {
             kind: "uint",
             bits: 256,
           }),

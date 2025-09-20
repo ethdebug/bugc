@@ -599,8 +599,9 @@ describe("Function.generate", () => {
                 dest: "%index",
               },
               {
-                kind: "compute_array_slot",
-                baseSlot: {
+                kind: "compute_slot",
+                slotKind: "array",
+                base: {
                   kind: "const",
                   value: 0n,
                   type: { kind: "uint", bits: 256 },
@@ -696,8 +697,9 @@ describe("Function.generate", () => {
                 dest: "%index",
               },
               {
-                kind: "compute_array_slot",
-                baseSlot: {
+                kind: "compute_slot",
+                slotKind: "array",
+                base: {
                   kind: "const",
                   value: 0n,
                   type: { kind: "uint", bits: 256 },
@@ -802,7 +804,8 @@ describe("Function.generate", () => {
               },
               {
                 kind: "compute_slot",
-                baseSlot: {
+                slotKind: "mapping",
+                base: {
                   kind: "const",
                   value: 1n,
                   type: { kind: "uint", bits: 256 },
@@ -884,7 +887,8 @@ describe("Function.generate", () => {
               },
               {
                 kind: "compute_slot",
-                baseSlot: {
+                slotKind: "mapping",
+                base: {
                   kind: "const",
                   value: 1n,
                   type: { kind: "uint", bits: 256 },
@@ -983,7 +987,8 @@ describe("Function.generate", () => {
               // First compute mapping slot for users[msg.sender]
               {
                 kind: "compute_slot",
-                baseSlot: {
+                slotKind: "mapping",
+                base: {
                   kind: "const",
                   value: 0n,
                   type: { kind: "uint", bits: 256 },
@@ -998,8 +1003,9 @@ describe("Function.generate", () => {
               },
               // Then compute array base from that slot
               {
-                kind: "compute_array_slot",
-                baseSlot: {
+                kind: "compute_slot",
+                slotKind: "array",
+                base: {
                   kind: "temp",
                   id: "%userSlot",
                   type: { kind: "uint", bits: 256 },

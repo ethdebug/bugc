@@ -157,17 +157,9 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
         if (result.offset) result.offset = replaceValue(result.offset);
         if (result.length) result.length = replaceValue(result.length);
         break;
-      case "compute_array_slot":
-        if ("baseSlot" in result) {
-          result.baseSlot = replaceValue(result.baseSlot);
-        }
-        break;
       case "compute_slot":
-        result.baseSlot = replaceValue(result.baseSlot);
-        result.key = replaceValue(result.key);
-        break;
-      case "compute_field_offset":
-        result.baseSlot = replaceValue(result.baseSlot);
+        result.base = replaceValue(result.base);
+        if (result.key) result.key = replaceValue(result.key);
         break;
       case "hash":
         result.value = replaceValue(result.value);

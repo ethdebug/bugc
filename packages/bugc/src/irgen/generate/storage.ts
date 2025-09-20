@@ -125,22 +125,43 @@ export function* emitStorageChainLoad(
     if (access.kind === "index" && access.key) {
       // For mapping/array access
       const tempId = yield* Process.Variables.newTemp();
-      yield* Process.Instructions.emit({
-        kind: "compute_slot",
-        baseSlot: currentSlot,
-        key: access.key,
-        dest: tempId,
-        loc,
-      } as Ir.Instruction);
 
-      currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
-
-      // Update type based on mapping/array element type
       if (currentType.kind === "mapping") {
+        // Mapping access
+        yield* Process.Instructions.emit({
+          kind: "compute_slot",
+          slotKind: "mapping",
+          base: currentSlot,
+          key: access.key,
+          keyType: currentType.key || { kind: "address" },
+          dest: tempId,
+          loc,
+        } as Ir.Instruction.ComputeSlot);
         currentType = currentType.value || { kind: "uint", bits: 256 };
       } else if (currentType.kind === "array") {
+        // Array access - first compute array base
+        const baseSlotTemp = yield* Process.Variables.newTemp();
+        yield* Process.Instructions.emit({
+          kind: "compute_slot",
+          slotKind: "array",
+          base: currentSlot,
+          dest: baseSlotTemp,
+          loc,
+        } as Ir.Instruction.ComputeSlot);
+
+        // Then add the index
+        yield* Process.Instructions.emit({
+          kind: "binary",
+          op: "add",
+          left: Ir.Value.temp(baseSlotTemp, { kind: "uint", bits: 256 }),
+          right: access.key,
+          dest: tempId,
+          loc,
+        } as Ir.Instruction.BinaryOp);
         currentType = currentType.element || { kind: "uint", bits: 256 };
       }
+
+      currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
     } else if (access.kind === "member" && access.fieldName) {
       // For struct field access
       if (currentType.kind === "struct") {
@@ -151,12 +172,13 @@ export function* emitStorageChainLoad(
 
         const tempId = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit({
-          kind: "compute_field_offset",
-          baseSlot: currentSlot,
+          kind: "compute_slot",
+          slotKind: "field",
+          base: currentSlot,
           fieldIndex,
           dest: tempId,
           loc,
-        } as Ir.Instruction);
+        } as Ir.Instruction.ComputeSlot);
 
         currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
         currentType = currentType.fields[fieldIndex]?.type || {
@@ -223,11 +245,13 @@ export function* emitStorageChainAssignment(
         const slotTemp = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit({
           kind: "compute_slot",
-          baseSlot: currentSlot,
+          slotKind: "mapping",
+          base: currentSlot,
           key: access.key,
+          keyType: currentType.key || { kind: "address" },
           dest: slotTemp,
           loc,
-        } as Ir.Instruction);
+        } as Ir.Instruction.ComputeSlot);
         currentSlot = Ir.Value.temp(slotTemp, { kind: "uint", bits: 256 });
         currentType = (currentType as { kind: "mapping"; value: Ir.Type })
           .value;
@@ -235,11 +259,12 @@ export function* emitStorageChainAssignment(
         // Array access
         const baseSlotTemp = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit({
-          kind: "compute_array_slot",
-          baseSlot: currentSlot,
+          kind: "compute_slot",
+          slotKind: "array",
+          base: currentSlot,
           dest: baseSlotTemp,
           loc,
-        } as Ir.Instruction);
+        } as Ir.Instruction.ComputeSlot);
 
         // Add the index to get the final slot
         const finalSlotTemp = yield* Process.Variables.newTemp();
@@ -250,7 +275,7 @@ export function* emitStorageChainAssignment(
           right: access.key,
           dest: finalSlotTemp,
           loc,
-        } as Ir.Instruction);
+        } as Ir.Instruction.BinaryOp);
 
         currentSlot = Ir.Value.temp(finalSlotTemp, {
           kind: "uint",
@@ -274,12 +299,13 @@ export function* emitStorageChainAssignment(
         if (fieldIndex >= 0) {
           const offsetTemp = yield* Process.Variables.newTemp();
           yield* Process.Instructions.emit({
-            kind: "compute_field_offset",
-            baseSlot: currentSlot,
+            kind: "compute_slot",
+            slotKind: "field",
+            base: currentSlot,
             fieldIndex,
             dest: offsetTemp,
             loc,
-          } as Ir.Instruction);
+          } as Ir.Instruction.ComputeSlot);
           currentSlot = Ir.Value.temp(offsetTemp, {
             kind: "uint",
             bits: 256,

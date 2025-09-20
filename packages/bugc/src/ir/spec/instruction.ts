@@ -11,8 +11,6 @@ export type Instruction =
   | Instruction.Write
   // Storage slot computation
   | Instruction.ComputeSlot
-  | Instruction.ComputeArraySlot
-  | Instruction.ComputeFieldOffset
   // Unified compute operations
   | Instruction.ComputeOffset
   // Slice operations
@@ -99,25 +97,17 @@ export namespace Instruction {
     loc?: Ast.SourceLocation;
   }
 
+  export type ComputeSlotKind = "mapping" | "array" | "field";
+
   export interface ComputeSlot {
     kind: "compute_slot";
-    baseSlot: Value; // Base storage slot (or computed slot for nested mappings)
-    key: Value; // Mapping key
-    keyType: Type; // Type of the key for proper encoding
-    dest: string;
-    loc?: Ast.SourceLocation;
-  }
-  export interface ComputeArraySlot {
-    kind: "compute_array_slot";
-    baseSlot: Value; // Array base storage slot
-    dest: string;
-    loc?: Ast.SourceLocation;
-  }
-
-  export interface ComputeFieldOffset {
-    kind: "compute_field_offset";
-    baseSlot: Value; // Base slot (struct start)
-    fieldIndex: number; // Field index in the struct
+    slotKind: ComputeSlotKind;
+    base: Value; // Base storage slot
+    // For mapping kind
+    key?: Value; // Mapping key
+    keyType?: Type; // Type of the key for proper encoding
+    // For field kind
+    fieldIndex?: number; // Field index in the struct
     dest: string;
     loc?: Ast.SourceLocation;
   }

@@ -149,14 +149,14 @@ export class Formatter {
       case "cast":
         return `${destWithType(inst.dest, inst.targetType)} = cast ${this.formatValue(inst.value)} to ${this.formatType(inst.targetType)}`;
 
-      case "compute_slot":
-        return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = compute_slot base=${this.formatValue(inst.baseSlot)}, key=${this.formatValue(inst.key)}`;
-
-      case "compute_array_slot":
-        return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = compute_array_slot base=${this.formatValue(inst.baseSlot)}`;
-
-      case "compute_field_offset":
-        return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = compute_field_offset base=${this.formatValue(inst.baseSlot)}, field_index=${inst.fieldIndex}`;
+      case "compute_slot": {
+        const parts: string[] = [`compute_slot kind="${inst.slotKind}"`];
+        parts.push(`base=${this.formatValue(inst.base)}`);
+        if (inst.key) parts.push(`key=${this.formatValue(inst.key)}`);
+        if (inst.fieldIndex !== undefined)
+          parts.push(`field=${inst.fieldIndex}`);
+        return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = ${parts.join(", ")}`;
+      }
 
       // Call instruction removed - calls are now block terminators
 

@@ -101,17 +101,9 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
         if (result.offset) result.offset = propagateValue(result.offset);
         if (result.length) result.length = propagateValue(result.length);
         break;
-      case "compute_array_slot":
-        if ("baseSlot" in result) {
-          result.baseSlot = propagateValue(result.baseSlot);
-        }
-        break;
       case "compute_slot":
-        result.baseSlot = propagateValue(result.baseSlot);
-        result.key = propagateValue(result.key);
-        break;
-      case "compute_field_offset":
-        result.baseSlot = propagateValue(result.baseSlot);
+        result.base = propagateValue(result.base);
+        if (result.key) result.key = propagateValue(result.key);
         break;
       case "hash":
         result.value = propagateValue(result.value);

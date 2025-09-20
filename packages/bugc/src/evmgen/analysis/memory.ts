@@ -218,14 +218,16 @@ function simulateInstruction(stack: string[], inst: Ir.Instruction): string[] {
   // Pop consumed values based on instruction type
   switch (inst.kind) {
     case "binary":
-    case "compute_slot":
     case "hash":
       newStack.pop(); // Two operands
       newStack.pop();
       break;
-    case "compute_array_slot":
-    case "compute_field_offset":
-      newStack.pop(); // One operand (baseSlot)
+    case "compute_slot":
+      // Depends on kind
+      newStack.pop(); // base
+      if (inst.kind === "compute_slot" && inst.key) {
+        newStack.pop(); // key for mappings
+      }
       break;
     case "unary":
     case "cast":
@@ -308,14 +310,8 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
       addValue(inst.operand);
       break;
     case "compute_slot":
-      addValue(inst.baseSlot);
-      addValue(inst.key);
-      break;
-    case "compute_array_slot":
-      addValue(inst.baseSlot);
-      break;
-    case "compute_field_offset":
-      addValue(inst.baseSlot);
+      addValue(inst.base);
+      if (inst.key) addValue(inst.key);
       break;
     case "slice":
       addValue(inst.object);
@@ -463,15 +459,14 @@ function identifyMemoryValues(
         }
       }
 
-      // Values used in array slot computation need memory
-      // because KECCAK256 will consume the base slot
-      if (inst.kind === "compute_array_slot") {
-        // The baseSlot might need to be preserved
-        const baseSlotId = valueId(inst.baseSlot);
-        if (liveAtEntry.has(baseSlotId)) {
-          const type = getValueType(baseSlotId, func);
+      // Values used in compute_slot need memory for hashing
+      if (inst.kind === "compute_slot" && inst.slotKind === "array") {
+        // The base might need to be preserved
+        const baseId = valueId(inst.base);
+        if (liveAtEntry.has(baseId)) {
+          const type = getValueType(baseId, func);
           if (type) {
-            needsMemory.set(baseSlotId, type);
+            needsMemory.set(baseId, type);
           }
         }
       }

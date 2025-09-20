@@ -860,11 +860,12 @@ export namespace Process {
       const tempId = yield* Variables.newTemp();
       yield* Process.Instructions.emit({
         kind: "compute_slot",
-        baseSlot,
+        slotKind: "mapping",
+        base: baseSlot,
         key,
         dest: tempId,
         loc,
-      } as Ir.Instruction);
+      } as Ir.Instruction.ComputeSlot);
       return Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
     }
 
