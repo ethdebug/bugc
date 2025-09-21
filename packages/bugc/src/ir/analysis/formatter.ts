@@ -183,8 +183,12 @@ export class Formatter {
         const location = inst.location;
 
         // Check if we're using defaults
-        const isDefaultOffset = !inst.offset || (inst.offset.kind === "const" && inst.offset.value === 0n);
-        const isDefaultLength = !inst.length || (inst.length.kind === "const" && inst.length.value === 32n);
+        const isDefaultOffset =
+          !inst.offset ||
+          (inst.offset.kind === "const" && inst.offset.value === 0n);
+        const isDefaultLength =
+          !inst.length ||
+          (inst.length.kind === "const" && inst.length.value === 32n);
 
         let locationStr: string;
         if (location === "storage" || location === "transient") {
@@ -232,8 +236,12 @@ export class Formatter {
         const value = this.formatValue(inst.value);
 
         // Check if we're using defaults
-        const isDefaultOffset = !inst.offset || (inst.offset.kind === "const" && inst.offset.value === 0n);
-        const isDefaultLength = !inst.length || (inst.length.kind === "const" && inst.length.value === 32n);
+        const isDefaultOffset =
+          !inst.offset ||
+          (inst.offset.kind === "const" && inst.offset.value === 0n);
+        const isDefaultLength =
+          !inst.length ||
+          (inst.length.kind === "const" && inst.length.value === 32n);
 
         if (location === "storage" || location === "transient") {
           // For storage/transient, slot is required

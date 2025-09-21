@@ -2,30 +2,83 @@ import { Type } from "../types/index.js";
 
 /**
  * Compute storage layout for a struct's fields.
- * For now, uses simple non-packed layout (each field gets its own slot).
- * Future: implement Solidity-style packing for fields that fit together.
+ * Implements Solidity-style packing where fields are packed together
+ * if they fit within 32-byte slots.
  */
 export function computeStructLayout(
   fields: Map<string, Type>,
 ): Map<string, Type.FieldLayout> {
   const layout = new Map<string, Type.FieldLayout>();
-  let currentOffset = 0;
+  let currentSlotOffset = 0; // Byte offset from start of struct
+  let currentSlotUsed = 0; // Bytes used in current slot
+  const SLOT_SIZE = 32;
 
   for (const [fieldName, fieldType] of fields) {
     const size = getTypeSize(fieldType);
+    const isDynamic = isTypeDynamic(fieldType);
 
-    // Simple layout: each field starts at a 32-byte boundary
-    // This ensures each field gets its own storage slot
-    layout.set(fieldName, {
-      byteOffset: currentOffset,
-      size: size,
-    });
+    // Dynamic types always start a new slot
+    if (isDynamic) {
+      // If we've used any of the current slot, move to next slot
+      if (currentSlotUsed > 0) {
+        currentSlotOffset += SLOT_SIZE;
+        currentSlotUsed = 0;
+      }
 
-    // Move to next 32-byte slot
-    currentOffset += 32;
+      layout.set(fieldName, {
+        byteOffset: currentSlotOffset,
+        size: SLOT_SIZE, // Dynamic types use full slot for reference
+      });
+
+      // Move to next slot
+      currentSlotOffset += SLOT_SIZE;
+      currentSlotUsed = 0;
+    } else {
+      // For non-dynamic types, try to pack them
+      // If this field doesn't fit in the current slot, start a new slot
+      if (currentSlotUsed + size > SLOT_SIZE) {
+        currentSlotOffset += SLOT_SIZE;
+        currentSlotUsed = 0;
+      }
+
+      // Place field in current slot
+      layout.set(fieldName, {
+        byteOffset: currentSlotOffset + currentSlotUsed,
+        size: size,
+      });
+
+      currentSlotUsed += size;
+
+      // If we've filled the slot exactly, prepare for next slot
+      if (currentSlotUsed >= SLOT_SIZE) {
+        currentSlotOffset += SLOT_SIZE;
+        currentSlotUsed = 0;
+      }
+    }
   }
 
   return layout;
+}
+
+/**
+ * Check if a type is dynamic (requires its own slot).
+ */
+function isTypeDynamic(type: Type): boolean {
+  switch (type.kind) {
+    case "string":
+    case "array":
+    case "mapping":
+      return true;
+    case "bytes":
+      // Dynamic bytes (no fixed size) are dynamic
+      return type.size === undefined;
+    case "struct":
+      // Structs are considered dynamic for simplicity
+      // (in reality, they could be packed if all fields are static)
+      return true;
+    default:
+      return false;
+  }
 }
 
 /**

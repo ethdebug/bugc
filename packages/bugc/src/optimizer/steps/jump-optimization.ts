@@ -221,6 +221,9 @@ export class JumpOptimizationStep extends BaseOptimizationStep {
       } else if (block.terminator.kind === "branch") {
         worklist.push(block.terminator.trueTarget);
         worklist.push(block.terminator.falseTarget);
+      } else if (block.terminator.kind === "call") {
+        // Call instructions have a continuation block
+        worklist.push(block.terminator.continuation);
       }
     }
 

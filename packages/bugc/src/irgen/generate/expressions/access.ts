@@ -235,7 +235,7 @@ const makeBuildIndexAccess = (
           Severity.Error,
         );
       }
-      
+
       // Dynamic bytes can be indexed
       const object = yield* buildExpression(expr.object, { kind: "rvalue" });
       const index = yield* buildExpression(expr.index, { kind: "rvalue" });
@@ -419,4 +419,4 @@ const makeBuildIndexAccess = (
       expr.loc ?? undefined,
       Severity.Error,
     );
-  };;
+  };

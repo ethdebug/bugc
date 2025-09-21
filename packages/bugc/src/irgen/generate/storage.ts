@@ -14,6 +14,7 @@ export interface StorageAccessChain {
     key?: Ir.Value; // For index access
     fieldName?: string; // For member access
     fieldOffset?: number; // Slot offset for member access
+    fieldType?: Ir.Type; // Type of the field for member access
   }>;
 }
 
@@ -177,22 +178,53 @@ export function* emitStorageChainLoad(
           );
         }
 
-        // Use the byte offset from the IR struct field
-        const fieldOffset = field.offset;
+        // For structs in mappings, we need to generate compute_slot.field
+        // to compute the field's slot offset
+        const fieldSlotOffset = Math.floor(field.offset / 32);
 
-        const tempId = yield* Process.Variables.newTemp();
-        yield* Process.Instructions.emit(
-          Ir.Instruction.ComputeSlot.field(
-            currentSlot,
-            fieldOffset,
-            tempId,
-            loc,
-          ),
-        );
+        if (fieldSlotOffset > 0) {
+          // Field is in a different slot, generate compute_slot.field
+          const tempId = yield* Process.Variables.newTemp();
+          yield* Process.Instructions.emit(
+            Ir.Instruction.ComputeSlot.field(
+              currentSlot,
+              fieldSlotOffset,
+              tempId,
+              loc,
+            ),
+          );
+          currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
+        }
 
-        currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
+        // Store field info for later use in read/write
+        access.fieldOffset = field.offset;
+        // Store the field type so we know the correct size
+        access.fieldType = field.type;
         currentType = field.type;
       }
+    }
+  }
+
+  // Check if the last access was a struct field to get packed field info
+  let byteOffset = 0;
+  let fieldSize = 32; // Default to full slot
+  const lastAccess = chain.accesses[chain.accesses.length - 1];
+  if (
+    lastAccess &&
+    lastAccess.kind === "member" &&
+    lastAccess.fieldOffset !== undefined
+  ) {
+    const fieldOffset = lastAccess.fieldOffset;
+    // For packed fields, get the byte offset within the slot
+    byteOffset = fieldOffset % 32;
+
+    // Use the field type we stored to determine field size
+    const fieldType = lastAccess.fieldType;
+    if (fieldType) {
+      fieldSize = getTypeSize(fieldType);
+    } else {
+      // Fallback to valueType if fieldType not available
+      fieldSize = getTypeSize(valueType);
     }
   }
 
@@ -202,14 +234,38 @@ export function* emitStorageChainLoad(
     kind: "read",
     location: "storage",
     slot: currentSlot,
-    offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-    length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+    offset: Ir.Value.constant(BigInt(byteOffset), { kind: "uint", bits: 256 }),
+    length: Ir.Value.constant(BigInt(fieldSize), { kind: "uint", bits: 256 }),
     type: valueType,
     dest: loadTempId,
     loc,
   } as Ir.Instruction.Read);
 
   return Ir.Value.temp(loadTempId, valueType);
+}
+
+/**
+ * Get the size of a type in bytes
+ */
+function getTypeSize(type: Ir.Type): number {
+  switch (type.kind) {
+    case "bool":
+      return 1;
+    case "uint":
+    case "int":
+      return Math.ceil((type.bits || 256) / 8);
+    case "address":
+      return 20;
+    case "bytes":
+      return type.size || 32;
+    case "string":
+    case "array":
+    case "mapping":
+    case "struct":
+      return 32;
+    default:
+      return 32;
+  }
 }
 
 /**
@@ -282,7 +338,7 @@ export function* emitStorageChainAssignment(
           .element;
       }
     } else if (access.kind === "member" && access.fieldName) {
-      // Struct field access: add field offset
+      // Struct field access: handle packed fields properly
       if (currentType.kind === "struct") {
         const structType = currentType as {
           kind: "struct";
@@ -294,22 +350,28 @@ export function* emitStorageChainAssignment(
         );
 
         if (field) {
-          // Use the precomputed byte offset from the struct layout
-          const fieldOffset = field.offset;
+          // For structs in mappings, we need to generate compute_slot.field
+          // to compute the field's slot offset
+          const fieldSlotOffset = Math.floor(field.offset / 32);
 
-          const offsetTemp = yield* Process.Variables.newTemp();
-          yield* Process.Instructions.emit(
-            Ir.Instruction.ComputeSlot.field(
-              currentSlot,
-              fieldOffset,
-              offsetTemp,
-              loc,
-            ),
-          );
-          currentSlot = Ir.Value.temp(offsetTemp, {
-            kind: "uint",
-            bits: 256,
-          });
+          if (fieldSlotOffset > 0) {
+            // Field is in a different slot, generate compute_slot.field
+            const tempId = yield* Process.Variables.newTemp();
+            yield* Process.Instructions.emit(
+              Ir.Instruction.ComputeSlot.field(
+                currentSlot,
+                fieldSlotOffset,
+                tempId,
+                loc,
+              ),
+            );
+            currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
+          }
+
+          // Store field info for later use in write
+          access.fieldOffset = field.offset;
+          // Store the field type so we know the correct size
+          access.fieldType = field.type;
           currentType = field.type;
         } else {
           yield* Process.Errors.report(
@@ -324,13 +386,39 @@ export function* emitStorageChainAssignment(
     }
   }
 
+  // Check if the last access was a struct field to get packed field info
+  let byteOffset = 0;
+  let fieldSize: number | undefined = undefined;
+  const lastAccess = chain.accesses[chain.accesses.length - 1];
+  if (
+    lastAccess &&
+    lastAccess.kind === "member" &&
+    lastAccess.fieldOffset !== undefined
+  ) {
+    const fieldOffset = lastAccess.fieldOffset;
+    // For packed fields, get the byte offset within the slot
+    byteOffset = fieldOffset % 32;
+
+    // Use the field type we stored to determine field size
+    const fieldType = lastAccess.fieldType;
+    if (fieldType) {
+      fieldSize = getTypeSize(fieldType);
+    }
+  }
+
+  // Determine the actual field size to write
+  const actualFieldSize = fieldSize !== undefined ? fieldSize : 32;
+
   // Store to the computed slot using new unified format
   yield* Process.Instructions.emit({
     kind: "write",
     location: "storage",
     slot: currentSlot,
-    offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-    length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+    offset: Ir.Value.constant(BigInt(byteOffset), { kind: "uint", bits: 256 }),
+    length: Ir.Value.constant(BigInt(actualFieldSize), {
+      kind: "uint",
+      bits: 256,
+    }),
     value,
     loc,
   } as Ir.Instruction.Write);
