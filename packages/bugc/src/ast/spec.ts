@@ -552,6 +552,8 @@ export namespace Statement {
 export type Expression =
   | Expression.Identifier
   | Expression.Literal
+  | Expression.ArrayLiteral
+  | Expression.StructLiteral
   | Expression.Operator
   | Expression.Access
   | Expression.Call
@@ -563,6 +565,8 @@ export const isExpression = (node: unknown): node is Expression =>
   [
     Expression.isIdentifier,
     Expression.isLiteral,
+    Expression.isArrayLiteral,
+    Expression.isStructLiteral,
     Expression.isOperator,
     Expression.isAccess,
     Expression.isCall,
@@ -627,6 +631,72 @@ export namespace Expression {
       kind,
       value,
       unit,
+      loc: loc ?? null,
+    };
+  }
+
+  export interface ArrayLiteral extends Node.Base {
+    type: "ArrayLiteralExpression";
+    elements: readonly Expression[];
+  }
+
+  export const isArrayLiteral = (
+    expression: Node.Base,
+  ): expression is Expression.ArrayLiteral =>
+    expression.type === "ArrayLiteralExpression" &&
+    "elements" in expression &&
+    Array.isArray(expression.elements) &&
+    expression.elements.every(isExpression);
+
+  export function arrayLiteral(
+    id: Id,
+    elements: readonly Expression[],
+    loc?: SourceLocation,
+  ): Expression.ArrayLiteral {
+    return {
+      id,
+      type: "ArrayLiteralExpression",
+      elements,
+      loc: loc ?? null,
+    };
+  }
+
+  export interface StructLiteral extends Node.Base {
+    type: "StructLiteralExpression";
+    structName?: string; // Optional struct type name
+    fields: readonly {
+      name: string;
+      value: Expression;
+    }[];
+  }
+
+  export const isStructLiteral = (
+    expression: Node.Base,
+  ): expression is Expression.StructLiteral =>
+    expression.type === "StructLiteralExpression" &&
+    "fields" in expression &&
+    Array.isArray(expression.fields) &&
+    expression.fields.every(
+      (field: unknown) =>
+        typeof field === "object" &&
+        field !== null &&
+        "name" in field &&
+        typeof field.name === "string" &&
+        "value" in field &&
+        isExpression(field.value),
+    );
+
+  export function structLiteral(
+    id: Id,
+    fields: readonly { name: string; value: Expression }[],
+    structName?: string,
+    loc?: SourceLocation,
+  ): Expression.StructLiteral {
+    return {
+      id,
+      type: "StructLiteralExpression",
+      structName,
+      fields,
       loc: loc ?? null,
     };
   }

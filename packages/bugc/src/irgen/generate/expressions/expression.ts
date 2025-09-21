@@ -36,6 +36,12 @@ export function* buildExpression(expr: Ast.Expression): Process<Ir.Value> {
       return yield* buildCast(expr as Ast.Expression.Cast);
     case "SpecialExpression":
       return yield* buildSpecial(expr as Ast.Expression.Special);
+    case "ArrayLiteralExpression":
+      // TODO: Implement array literal generation
+      throw new Error("Array literals not yet implemented in IR generation");
+    case "StructLiteralExpression":
+      // TODO: Implement struct literal generation
+      throw new Error("Struct literals not yet implemented in IR generation");
     default:
       assertExhausted(expr);
   }

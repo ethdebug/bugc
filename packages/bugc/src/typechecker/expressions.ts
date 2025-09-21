@@ -22,6 +22,8 @@ export const expressionChecker: Pick<
   | "castExpression"
   | "accessExpression"
   | "literalExpression"
+  | "arrayLiteralExpression"
+  | "structLiteralExpression"
   | "specialExpression"
   | "operatorExpression"
 > = {
@@ -768,6 +770,195 @@ export const expressionChecker: Pick<
       nodeTypes,
       errors,
     };
+  },
+
+  arrayLiteralExpression(
+    node: Ast.Expression.ArrayLiteral,
+    context: Context,
+  ): Report {
+    const errors: TypeError[] = [];
+    let nodeTypes = new Map(context.nodeTypes);
+    let symbols = context.symbols;
+
+    // Type check all elements
+    const elementTypes: Type[] = [];
+    for (let i = 0; i < node.elements.length; i++) {
+      const elementContext: Context = {
+        ...context,
+        nodeTypes,
+        symbols,
+        pointer: context.pointer + "/elements/" + i,
+      };
+      const elementResult = Ast.visit(
+        context.visitor,
+        node.elements[i],
+        elementContext,
+      );
+      nodeTypes = elementResult.nodeTypes;
+      symbols = elementResult.symbols;
+      errors.push(...elementResult.errors);
+      if (elementResult.type) {
+        elementTypes.push(elementResult.type);
+      }
+    }
+
+    // If any element failed to type check, bail out
+    if (elementTypes.length !== node.elements.length) {
+      return { symbols, nodeTypes, errors };
+    }
+
+    // Determine common element type
+    let elementType: Type | undefined;
+    if (elementTypes.length > 0) {
+      elementType = elementTypes[0];
+      for (let i = 1; i < elementTypes.length; i++) {
+        const common = commonType(elementType, elementTypes[i]);
+        if (!common) {
+          const error = new TypeError(
+            `Array elements must have compatible types. Element at index ${i} has type ${Type.format(elementTypes[i])} which is incompatible with ${Type.format(elementType)}`,
+            node.loc || undefined,
+            undefined,
+            undefined,
+            ErrorCode.TYPE_MISMATCH,
+          );
+          errors.push(error);
+          return { symbols, nodeTypes, errors };
+        }
+        elementType = common;
+      }
+    } else {
+      // Empty array - default to uint256[]
+      elementType = Type.Elementary.uint(256);
+    }
+
+    // Create dynamic array type
+    const arrayType = Type.array(elementType);
+    nodeTypes.set(node.id, arrayType);
+
+    return {
+      type: arrayType,
+      symbols,
+      nodeTypes,
+      errors,
+    };
+  },
+
+  structLiteralExpression(
+    node: Ast.Expression.StructLiteral,
+    context: Context,
+  ): Report {
+    const errors: TypeError[] = [];
+    let nodeTypes = new Map(context.nodeTypes);
+    let symbols = context.symbols;
+
+    // If a struct name is provided, look it up
+    let structType: Type | undefined;
+    if (node.structName) {
+      const symbol = symbols.lookup(node.structName);
+      if (!symbol || !Type.isStruct(symbol.type)) {
+        const error = new TypeError(
+          `${node.structName} is not a struct type`,
+          node.loc || undefined,
+          undefined,
+          undefined,
+          ErrorCode.TYPE_MISMATCH,
+        );
+        errors.push(error);
+        return { symbols, nodeTypes, errors };
+      }
+      structType = symbol.type;
+    }
+
+    // Type check all fields
+    const fieldTypes = new Map<string, Type>();
+    for (let i = 0; i < node.fields.length; i++) {
+      const field = node.fields[i];
+      const fieldContext: Context = {
+        ...context,
+        nodeTypes,
+        symbols,
+        pointer: context.pointer + "/fields/" + i + "/value",
+      };
+      const fieldResult = Ast.visit(context.visitor, field.value, fieldContext);
+      nodeTypes = fieldResult.nodeTypes;
+      symbols = fieldResult.symbols;
+      errors.push(...fieldResult.errors);
+
+      if (fieldResult.type) {
+        if (fieldTypes.has(field.name)) {
+          const error = new TypeError(
+            `Duplicate field ${field.name} in struct literal`,
+            node.loc || undefined,
+            undefined,
+            undefined,
+            ErrorCode.TYPE_MISMATCH,
+          );
+          errors.push(error);
+        } else {
+          fieldTypes.set(field.name, fieldResult.type);
+        }
+      }
+    }
+
+    // If a struct type was specified, validate fields match
+    if (structType && Type.isStruct(structType)) {
+      // Check all required fields are present
+      for (const [fieldName, fieldType] of structType.fields) {
+        const providedType = fieldTypes.get(fieldName);
+        if (!providedType) {
+          const error = new TypeError(
+            `Missing field ${fieldName} in struct literal`,
+            node.loc || undefined,
+            undefined,
+            undefined,
+            ErrorCode.TYPE_MISMATCH,
+          );
+          errors.push(error);
+        } else if (!isAssignable(fieldType, providedType)) {
+          const error = new TypeError(
+            `Field ${fieldName} type mismatch: expected ${Type.format(fieldType)}, got ${Type.format(providedType)}`,
+            node.loc || undefined,
+            Type.format(fieldType),
+            Type.format(providedType),
+            ErrorCode.TYPE_MISMATCH,
+          );
+          errors.push(error);
+        }
+      }
+
+      // Check no extra fields
+      for (const fieldName of fieldTypes.keys()) {
+        if (!structType.fields.has(fieldName)) {
+          const error = new TypeError(
+            `Unknown field ${fieldName} in struct literal`,
+            node.loc || undefined,
+            undefined,
+            undefined,
+            ErrorCode.TYPE_MISMATCH,
+          );
+          errors.push(error);
+        }
+      }
+
+      nodeTypes.set(node.id, structType);
+      return {
+        type: structType,
+        symbols,
+        nodeTypes,
+        errors,
+      };
+    } else {
+      // Create anonymous struct type
+      // Use empty layout for now since we're creating a memory struct literal
+      const anonStructType = Type.struct("anonymous", fieldTypes, new Map());
+      nodeTypes.set(node.id, anonStructType);
+      return {
+        type: anonStructType,
+        symbols,
+        nodeTypes,
+        errors,
+      };
+    }
   },
 
   specialExpression(node: Ast.Expression.Special, context: Context): Report {
