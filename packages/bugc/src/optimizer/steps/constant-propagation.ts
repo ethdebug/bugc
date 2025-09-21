@@ -120,6 +120,18 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
       case "cast":
         result.value = propagateValue(result.value);
         break;
+      case "compute_offset":
+        result.base = propagateValue(result.base);
+        if (result.index) result.index = propagateValue(result.index);
+        if (result.byteOffset)
+          result.byteOffset = propagateValue(result.byteOffset);
+        break;
+      case "allocate":
+        result.size = propagateValue(result.size);
+        break;
+      case "length":
+        result.object = propagateValue(result.object);
+        break;
     }
 
     // Check if we actually changed anything by comparing each field

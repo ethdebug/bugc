@@ -141,6 +141,14 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
       case "length":
         this.collectValueUse(inst.object, used);
         break;
+      case "compute_offset":
+        this.collectValueUse(inst.base, used);
+        if (inst.index) this.collectValueUse(inst.index, used);
+        if (inst.byteOffset) this.collectValueUse(inst.byteOffset, used);
+        break;
+      case "allocate":
+        this.collectValueUse(inst.size, used);
+        break;
       case "phi":
         for (const value of inst.sources.values()) {
           this.collectValueUse(value, used);
@@ -158,6 +166,7 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
   private hasSideEffects(inst: Ir.Instruction): boolean {
     switch (inst.kind) {
       case "write":
+      case "allocate": // Allocate modifies the free memory pointer
         return true;
       default:
         return false;
