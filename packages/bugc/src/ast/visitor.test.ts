@@ -44,11 +44,11 @@ describe("Visitor Pattern", () => {
     literalExpression(node: { kind: string; value: string }): string {
       return `Literal(${node.kind}:${node.value})`;
     }
-    arrayLiteralExpression(node: { elements: readonly unknown[] }): string {
-      return `ArrayLiteral(${node.elements.length} elements)`;
+    arrayExpression(node: { elements: readonly unknown[] }): string {
+      return `Array(${node.elements.length} elements)`;
     }
-    structLiteralExpression(node: { fields: readonly unknown[] }): string {
-      return `StructLiteral(${node.fields.length} fields)`;
+    structExpression(node: { fields: readonly unknown[] }): string {
+      return `Struct(${node.fields.length} fields)`;
     }
     operatorExpression(node: { operator: string }): string {
       return `Operator(${node.operator})`;

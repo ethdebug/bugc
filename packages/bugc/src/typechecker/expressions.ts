@@ -22,8 +22,8 @@ export const expressionChecker: Pick<
   | "castExpression"
   | "accessExpression"
   | "literalExpression"
-  | "arrayLiteralExpression"
-  | "structLiteralExpression"
+  | "arrayExpression"
+  | "structExpression"
   | "specialExpression"
   | "operatorExpression"
 > = {
@@ -772,10 +772,7 @@ export const expressionChecker: Pick<
     };
   },
 
-  arrayLiteralExpression(
-    node: Ast.Expression.ArrayLiteral,
-    context: Context,
-  ): Report {
+  arrayExpression(node: Ast.Expression.Array, context: Context): Report {
     const errors: TypeError[] = [];
     let nodeTypes = new Map(context.nodeTypes);
     let symbols = context.symbols;
@@ -843,10 +840,7 @@ export const expressionChecker: Pick<
     };
   },
 
-  structLiteralExpression(
-    node: Ast.Expression.StructLiteral,
-    context: Context,
-  ): Report {
+  structExpression(node: Ast.Expression.Struct, context: Context): Report {
     const errors: TypeError[] = [];
     let nodeTypes = new Map(context.nodeTypes);
     let symbols = context.symbols;

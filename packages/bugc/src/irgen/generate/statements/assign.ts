@@ -19,14 +19,109 @@ const findStorageAccessChain = makeFindStorageAccessChain(buildExpression);
 export function* buildAssignmentStatement(
   stmt: Ast.Statement.Assign,
 ): Process<void> {
-  const value = yield* buildExpression(stmt.value);
-  yield* buildLValue(stmt.target, value);
+  yield* buildLValue(stmt.target, stmt.value);
 }
 
 /**
  * Handle lvalue assignment
+ * @param target The target expression to assign to
+ * @param valueExpr The value expression being assigned
  */
-function* buildLValue(node: Ast.Expression, value: Ir.Value): Process<void> {
+function* buildLValue(
+  target: Ast.Expression,
+  valueExpr: Ast.Expression,
+): Process<void> {
+  // Special case: array expression assignment to storage array
+  if (
+    valueExpr.type === "ArrayExpression" &&
+    target.type === "IdentifierExpression"
+  ) {
+    const targetName = (target as Ast.Expression.Identifier).name;
+    const storageSlot = yield* Process.Storage.findSlot(targetName);
+
+    if (storageSlot && storageSlot.type.kind === "array") {
+      yield* expandArrayToStorage(
+        valueExpr as Ast.Expression.Array,
+        storageSlot,
+        target.loc ?? undefined,
+      );
+      return;
+    }
+  }
+
+  // Regular assignment - evaluate the value expression
+  const value = yield* buildExpression(valueExpr);
+  yield* assignToTarget(target, value);
+}
+
+/**
+ * Expand an array expression to individual storage writes
+ */
+function* expandArrayToStorage(
+  arrayExpr: Ast.Expression.Array,
+  storageSlot: { slot: number; type: Ir.Type },
+  loc: Ast.SourceLocation | undefined,
+): Process<void> {
+  // First, store the array length at the base slot
+  const lengthValue = Ir.Value.constant(BigInt(arrayExpr.elements.length), {
+    kind: "uint",
+    bits: 256,
+  });
+  yield* Process.Instructions.emit({
+    kind: "write",
+    location: "storage",
+    slot: Ir.Value.constant(BigInt(storageSlot.slot), {
+      kind: "uint",
+      bits: 256,
+    }),
+    offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
+    length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+    value: lengthValue,
+    loc,
+  } as Ir.Instruction.Write);
+
+  // Then write each element
+  for (let i = 0; i < arrayExpr.elements.length; i++) {
+    // Generate the value for this element
+    const elementValue = yield* buildExpression(arrayExpr.elements[i]);
+
+    // Generate the index value
+    const indexValue = Ir.Value.constant(BigInt(i), {
+      kind: "uint",
+      bits: 256,
+    });
+
+    // Compute slot for array[i]
+    const slotTemp = yield* Process.Variables.newTemp();
+    yield* Process.Instructions.emit(
+      Ir.Instruction.ComputeSlot.array(
+        Ir.Value.constant(BigInt(storageSlot.slot), {
+          kind: "uint",
+          bits: 256,
+        }),
+        indexValue,
+        slotTemp,
+        loc,
+      ),
+    );
+
+    // Write to storage
+    yield* Process.Instructions.emit({
+      kind: "write",
+      location: "storage",
+      slot: Ir.Value.temp(slotTemp, { kind: "uint", bits: 256 }),
+      offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
+      length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+      value: elementValue,
+      loc,
+    } as Ir.Instruction.Write);
+  }
+}
+
+/**
+ * Assign a value to a target expression (identifier or access expression)
+ */
+function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
   if (node.type === "IdentifierExpression") {
     const name = (node as Ast.Expression.Identifier).name;
 

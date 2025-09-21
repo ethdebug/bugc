@@ -552,8 +552,8 @@ export namespace Statement {
 export type Expression =
   | Expression.Identifier
   | Expression.Literal
-  | Expression.ArrayLiteral
-  | Expression.StructLiteral
+  | Expression.Array
+  | Expression.Struct
   | Expression.Operator
   | Expression.Access
   | Expression.Call
@@ -565,8 +565,8 @@ export const isExpression = (node: unknown): node is Expression =>
   [
     Expression.isIdentifier,
     Expression.isLiteral,
-    Expression.isArrayLiteral,
-    Expression.isStructLiteral,
+    Expression.isArray,
+    Expression.isStruct,
     Expression.isOperator,
     Expression.isAccess,
     Expression.isCall,
@@ -635,34 +635,35 @@ export namespace Expression {
     };
   }
 
-  export interface ArrayLiteral extends Node.Base {
-    type: "ArrayLiteralExpression";
+  // Use underscore pattern to avoid conflict with built-in Array
+  export interface Array extends Node.Base {
+    type: "ArrayExpression";
     elements: readonly Expression[];
   }
 
-  export const isArrayLiteral = (
+  export const isArray = (
     expression: Node.Base,
-  ): expression is Expression.ArrayLiteral =>
-    expression.type === "ArrayLiteralExpression" &&
+  ): expression is Expression.Array =>
+    expression.type === "ArrayExpression" &&
     "elements" in expression &&
-    Array.isArray(expression.elements) &&
+    Array_.isArray(expression.elements) &&
     expression.elements.every(isExpression);
 
-  export function arrayLiteral(
+  export function array(
     id: Id,
     elements: readonly Expression[],
     loc?: SourceLocation,
-  ): Expression.ArrayLiteral {
+  ): Expression.Array {
     return {
       id,
-      type: "ArrayLiteralExpression",
+      type: "ArrayExpression",
       elements,
       loc: loc ?? null,
     };
   }
 
-  export interface StructLiteral extends Node.Base {
-    type: "StructLiteralExpression";
+  export interface Struct extends Node.Base {
+    type: "StructExpression";
     structName?: string; // Optional struct type name
     fields: readonly {
       name: string;
@@ -670,12 +671,12 @@ export namespace Expression {
     }[];
   }
 
-  export const isStructLiteral = (
+  export const isStruct = (
     expression: Node.Base,
-  ): expression is Expression.StructLiteral =>
-    expression.type === "StructLiteralExpression" &&
+  ): expression is Expression.Struct =>
+    expression.type === "StructExpression" &&
     "fields" in expression &&
-    Array.isArray(expression.fields) &&
+    Array_.isArray(expression.fields) &&
     expression.fields.every(
       (field: unknown) =>
         typeof field === "object" &&
@@ -686,15 +687,15 @@ export namespace Expression {
         isExpression(field.value),
     );
 
-  export function structLiteral(
+  export function struct(
     id: Id,
     fields: readonly { name: string; value: Expression }[],
     structName?: string,
     loc?: SourceLocation,
-  ): Expression.StructLiteral {
+  ): Expression.Struct {
     return {
       id,
-      type: "StructLiteralExpression",
+      type: "StructExpression",
       structName,
       fields,
       loc: loc ?? null,
@@ -926,3 +927,6 @@ export namespace Expression {
     return { id, type: "SpecialExpression", kind, loc: loc ?? null };
   }
 }
+
+type Array_<T> = Array<T>;
+const Array_ = Array;

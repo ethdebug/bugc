@@ -13,8 +13,8 @@ export interface Visitor<T, C = never> {
   expressionStatement(node: Ast.Statement.Express, context: C): T;
   identifierExpression(node: Ast.Expression.Identifier, context: C): T;
   literalExpression(node: Ast.Expression.Literal, context: C): T;
-  arrayLiteralExpression(node: Ast.Expression.ArrayLiteral, context: C): T;
-  structLiteralExpression(node: Ast.Expression.StructLiteral, context: C): T;
+  arrayExpression(node: Ast.Expression.Array, context: C): T;
+  structExpression(node: Ast.Expression.Struct, context: C): T;
   operatorExpression(node: Ast.Expression.Operator, context: C): T;
   accessExpression(node: Ast.Expression.Access, context: C): T;
   callExpression(node: Ast.Expression.Call, context: C): T;
@@ -53,10 +53,10 @@ export function visit<N extends Ast.Node, T, C = never>(
       return visitor.identifierExpression(node, context);
     case "LiteralExpression":
       return visitor.literalExpression(node, context);
-    case "ArrayLiteralExpression":
-      return visitor.arrayLiteralExpression(node, context);
-    case "StructLiteralExpression":
-      return visitor.structLiteralExpression(node, context);
+    case "ArrayExpression":
+      return visitor.arrayExpression(node, context);
+    case "StructExpression":
+      return visitor.structExpression(node, context);
     case "OperatorExpression":
       return visitor.operatorExpression(node, context);
     case "AccessExpression":
