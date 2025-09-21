@@ -88,7 +88,7 @@ export const expressionChecker: Pick<
 
         // For fixed-size bytes types (bytes1 to bytes32)
         if (byteCount > 0 && byteCount <= 32) {
-          type = Type.Elementary.bytes(byteCount * 8);
+          type = Type.Elementary.bytes(byteCount);
         } else {
           // For larger hex literals, use dynamic bytes
           type = Type.Elementary.bytes();

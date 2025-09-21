@@ -257,27 +257,32 @@ export class Validator {
     }
 
     // Validate based on slot kind
-    switch (inst.slotKind) {
-      case "mapping":
-        if (!inst.key) {
-          this.error("Mapping compute_slot must have a key");
-        } else {
-          this.validateValue(inst.key);
-        }
-        if (inst.keyType) {
-          this.validateType(inst.keyType);
-        }
-        break;
-      case "array":
-        // Arrays don't need additional params
-        break;
-      case "field":
-        if (inst.fieldOffset === undefined) {
-          this.error("Field compute_slot must have a fieldOffset");
-        }
-        break;
-      default:
-        this.error(`Unknown compute_slot kind: ${inst.slotKind}`);
+    if (Ir.Instruction.ComputeSlot.isMapping(inst)) {
+      if (!inst.key) {
+        this.error("Mapping compute_slot must have a key");
+      } else {
+        this.validateValue(inst.key);
+      }
+      if (!inst.keyType) {
+        this.error("Mapping compute_slot must have a keyType");
+      } else {
+        this.validateType(inst.keyType);
+      }
+    } else if (Ir.Instruction.ComputeSlot.isArray(inst)) {
+      if (!inst.index) {
+        this.error("Array compute_slot must have an index");
+      } else {
+        this.validateValue(inst.index);
+      }
+    } else if (Ir.Instruction.ComputeSlot.isField(inst)) {
+      if (inst.fieldOffset === undefined) {
+        this.error("Field compute_slot must have a fieldOffset");
+      }
+    } else {
+      // This should never be reached due to exhaustive type checking
+      const _exhaustive: never = inst;
+      void _exhaustive;
+      this.error(`Unknown compute_slot kind`);
     }
   }
 

@@ -7,7 +7,7 @@
 
 import { BugError } from "#errors";
 import type { SourceLocation } from "#ast";
-import type * as Ir from "#ir";
+import * as Ir from "#ir";
 import { Result, Severity } from "#result";
 
 import type * as Liveness from "./liveness.js";
@@ -225,7 +225,10 @@ function simulateInstruction(stack: string[], inst: Ir.Instruction): string[] {
     case "compute_slot":
       // Depends on kind
       newStack.pop(); // base
-      if (inst.kind === "compute_slot" && inst.key) {
+      if (
+        inst.kind === "compute_slot" &&
+        Ir.Instruction.ComputeSlot.isMapping(inst)
+      ) {
         newStack.pop(); // key for mappings
       }
       break;
@@ -311,7 +314,9 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
       break;
     case "compute_slot":
       addValue(inst.base);
-      if (inst.key) addValue(inst.key);
+      if (Ir.Instruction.ComputeSlot.isMapping(inst)) {
+        addValue(inst.key);
+      }
       break;
     case "slice":
       addValue(inst.object);

@@ -152,9 +152,15 @@ export class Formatter {
       case "compute_slot": {
         const parts: string[] = [`compute_slot kind="${inst.slotKind}"`];
         parts.push(`base=${this.formatValue(inst.base)}`);
-        if (inst.key) parts.push(`key=${this.formatValue(inst.key)}`);
-        if (inst.fieldOffset !== undefined)
+
+        if (Ir.Instruction.ComputeSlot.isMapping(inst)) {
+          parts.push(`key=${this.formatValue(inst.key)}`);
+        } else if (Ir.Instruction.ComputeSlot.isArray(inst)) {
+          parts.push(`index=${this.formatValue(inst.index)}`);
+        } else if (Ir.Instruction.ComputeSlot.isField(inst)) {
           parts.push(`offset=${inst.fieldOffset}`);
+        }
+
         return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = ${parts.join(", ")}`;
       }
 

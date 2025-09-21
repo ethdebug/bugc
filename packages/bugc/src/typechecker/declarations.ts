@@ -2,6 +2,7 @@ import * as Ast from "#ast";
 import { Type } from "#types";
 import { Result } from "#result";
 import { Error as TypeError, ErrorCode, ErrorMessages } from "./errors.js";
+import { computeStructLayout } from "./layout.js";
 
 export interface Declarations {
   readonly structs: Map<string, Type.Struct>;
@@ -69,7 +70,10 @@ function buildStructType(
     }
   }
 
-  return Type.struct(decl.name, fields);
+  // Compute storage layout for the struct
+  const layout = computeStructLayout(fields);
+
+  return Type.struct(decl.name, fields, layout);
 }
 
 /**

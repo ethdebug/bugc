@@ -103,7 +103,11 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
         break;
       case "compute_slot":
         result.base = propagateValue(result.base);
-        if (result.key) result.key = propagateValue(result.key);
+        if (Ir.Instruction.ComputeSlot.isMapping(result)) {
+          result.key = propagateValue(result.key);
+        } else if (Ir.Instruction.ComputeSlot.isArray(result)) {
+          result.index = propagateValue(result.index);
+        }
         break;
       case "hash":
         result.value = propagateValue(result.value);

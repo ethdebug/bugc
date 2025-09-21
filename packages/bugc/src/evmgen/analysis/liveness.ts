@@ -5,7 +5,7 @@
  * essential for memory allocation and stack management.
  */
 
-import type * as Ir from "#ir";
+import * as Ir from "#ir";
 
 export namespace Function {
   export interface Info {
@@ -244,7 +244,9 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
       break;
     case "compute_slot":
       addValue(inst.base);
-      if (inst.key) addValue(inst.key);
+      if (Ir.Instruction.ComputeSlot.isMapping(inst)) {
+        addValue(inst.key);
+      }
       break;
     case "slice":
       addValue(inst.object);

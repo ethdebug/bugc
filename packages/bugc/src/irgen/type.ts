@@ -32,14 +32,21 @@ export function fromBugType(type: BugType): Ir.Type {
 
   if (BugType.isStruct(type)) {
     const fields: Ir.Type.StructField[] = [];
-    let offset = 0;
     for (const [name, fieldType] of type.fields) {
+      const layout = type.layout.get(name);
+      if (!layout) {
+        throw new IrgenError(
+          `Missing layout for field ${name} in struct ${type.name}`,
+          undefined,
+          Severity.Error,
+          ErrorCode.UNKNOWN_TYPE,
+        );
+      }
       fields.push({
         name,
         type: fromBugType(fieldType),
-        offset,
+        offset: layout.byteOffset,
       });
-      offset += 32; // Simple layout: 32 bytes per field
     }
     return {
       kind: "struct",

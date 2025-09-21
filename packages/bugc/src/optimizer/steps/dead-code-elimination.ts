@@ -120,7 +120,11 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
         break;
       case "compute_slot":
         this.collectValueUse(inst.base, used);
-        if (inst.key) this.collectValueUse(inst.key, used);
+        if (Ir.Instruction.ComputeSlot.isMapping(inst)) {
+          this.collectValueUse(inst.key, used);
+        } else if (Ir.Instruction.ComputeSlot.isArray(inst)) {
+          this.collectValueUse(inst.index, used);
+        }
         break;
       case "hash":
         this.collectValueUse(inst.value, used);

@@ -316,10 +316,16 @@ export namespace Type {
       `mapping<${Type.format(type.key)}, ${Type.format(type.value)}>`;
   }
 
+  export interface FieldLayout {
+    byteOffset: number; // Byte offset from struct start
+    size: number; // Size in bytes
+  }
+
   export interface Struct {
     kind: "struct";
     name: string;
     fields: Map<string, Type>;
+    layout: Map<string, FieldLayout>;
   }
 
   export const isStruct = (type: Type.Base): type is Type.Struct =>
@@ -333,10 +339,12 @@ export namespace Type {
   export const struct = (
     name: string,
     fields: Map<string, Type>,
+    layout: Map<string, FieldLayout>,
   ): Type.Struct => ({
     kind: "struct",
     name,
     fields,
+    layout,
   });
 
   export namespace Struct {

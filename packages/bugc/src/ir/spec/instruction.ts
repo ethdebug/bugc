@@ -97,20 +97,91 @@ export namespace Instruction {
     loc?: Ast.SourceLocation;
   }
 
-  export type ComputeSlotKind = "mapping" | "array" | "field";
+  export namespace ComputeSlot {
+    export interface Base {
+      kind: "compute_slot";
+      slotKind: "mapping" | "array" | "field";
+      base: Value;
+      dest: string;
+      loc?: Ast.SourceLocation;
+    }
 
-  export interface ComputeSlot {
-    kind: "compute_slot";
-    slotKind: ComputeSlotKind;
-    base: Value; // Base storage slot
-    // For mapping kind
-    key?: Value; // Mapping key
-    keyType?: Type; // Type of the key for proper encoding
-    // For field kind
-    fieldOffset?: number; // Byte offset from struct base
-    dest: string;
-    loc?: Ast.SourceLocation;
+    export interface Mapping extends Base {
+      slotKind: "mapping";
+      key: Value;
+      keyType: Type;
+    }
+
+    export interface Array extends Base {
+      slotKind: "array";
+      index: Value;
+    }
+
+    export interface Field extends Base {
+      slotKind: "field";
+      fieldOffset: number; // Byte offset from struct base
+    }
+
+    // Type guards
+    export const isMapping = (inst: ComputeSlot): inst is ComputeSlot.Mapping =>
+      inst.slotKind === "mapping";
+
+    export const isArray = (inst: ComputeSlot): inst is ComputeSlot.Array =>
+      inst.slotKind === "array";
+
+    export const isField = (inst: ComputeSlot): inst is ComputeSlot.Field =>
+      inst.slotKind === "field";
+
+    // Constructor functions
+    export const mapping = (
+      base: Value,
+      key: Value,
+      keyType: Type,
+      dest: string,
+      loc?: Ast.SourceLocation,
+    ): ComputeSlot.Mapping => ({
+      kind: "compute_slot",
+      slotKind: "mapping",
+      base,
+      key,
+      keyType,
+      dest,
+      loc,
+    });
+
+    export const array = (
+      base: Value,
+      index: Value,
+      dest: string,
+      loc?: Ast.SourceLocation,
+    ): ComputeSlot.Array => ({
+      kind: "compute_slot",
+      slotKind: "array",
+      base,
+      index,
+      dest,
+      loc,
+    });
+
+    export const field = (
+      base: Value,
+      fieldOffset: number,
+      dest: string,
+      loc?: Ast.SourceLocation,
+    ): ComputeSlot.Field => ({
+      kind: "compute_slot",
+      slotKind: "field",
+      base,
+      fieldOffset,
+      dest,
+      loc,
+    });
   }
+
+  export type ComputeSlot =
+    | ComputeSlot.Mapping
+    | ComputeSlot.Array
+    | ComputeSlot.Field;
 
   export interface Slice {
     kind: "slice";

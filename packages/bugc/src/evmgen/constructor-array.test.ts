@@ -47,15 +47,15 @@ code {}
     const module = irResult.value;
     expect(module.create).toBeDefined();
 
-    // Check IR - should have direct slot additions
+    // Check IR - should have compute_slot for array access
     const createFunc = module.create!;
     const entry = createFunc.blocks.get("entry")!;
 
-    // Check that we're adding indices to base slot 0
-    const addInstructions = entry.instructions.filter(
-      (i) => i.kind === "binary" && i.op === "add",
+    // Check that we have compute_slot instructions for array access
+    const computeSlotInstructions = entry.instructions.filter(
+      (i) => i.kind === "compute_slot" && i.slotKind === "array",
     );
-    expect(addInstructions.length).toBe(3);
+    expect(computeSlotInstructions.length).toBe(3);
 
     // Instructions are verified by checking write instructions below
 

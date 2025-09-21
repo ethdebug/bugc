@@ -322,13 +322,19 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
         return `${inst.dest} = cast ${formatValue(inst.value)} to ${inst.targetType.kind}`;
       case "compute_slot":
         if (inst.slotKind === "mapping") {
-          return `${inst.dest} = compute_slot[mapping](${formatValue(inst.base)}, ${formatValue(inst.key)})`;
+          const mappingInst = inst as Ir.Instruction.ComputeSlot.Mapping;
+          return `${mappingInst.dest} = compute_slot[mapping](${formatValue(mappingInst.base)}, ${formatValue(mappingInst.key)})`;
         } else if (inst.slotKind === "array") {
-          return `${inst.dest} = compute_slot[array](${formatValue(inst.base)})`;
+          const arrayInst = inst as Ir.Instruction.ComputeSlot.Array;
+          return `${arrayInst.dest} = compute_slot[array](${formatValue(arrayInst.base)})`;
         } else if (inst.slotKind === "field") {
-          return `${inst.dest} = compute_slot[field](${formatValue(inst.base)}, offset_${inst.fieldOffset})`;
+          const fieldInst = inst as Ir.Instruction.ComputeSlot.Field;
+          return `${fieldInst.dest} = compute_slot[field](${formatValue(fieldInst.base)}, offset_${fieldInst.fieldOffset})`;
         }
-        return `${inst.dest} = compute_slot[${inst.slotKind}](${formatValue(inst.base)})`;
+        // This should never be reached due to exhaustive checking
+        const _exhaustive: never = inst;
+        void _exhaustive;
+        return `unknown compute_slot`;
       // Call instruction removed - calls are now block terminators
       default: {
         const unknownInst = inst as { dest?: string; kind?: string };

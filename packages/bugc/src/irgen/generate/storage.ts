@@ -128,36 +128,26 @@ export function* emitStorageChainLoad(
 
       if (currentType.kind === "mapping") {
         // Mapping access
-        yield* Process.Instructions.emit({
-          kind: "compute_slot",
-          slotKind: "mapping",
-          base: currentSlot,
-          key: access.key,
-          keyType: currentType.key || { kind: "address" },
-          dest: tempId,
-          loc,
-        } as Ir.Instruction.ComputeSlot);
+        yield* Process.Instructions.emit(
+          Ir.Instruction.ComputeSlot.mapping(
+            currentSlot,
+            access.key,
+            currentType.key || { kind: "address" },
+            tempId,
+            loc,
+          ),
+        );
         currentType = currentType.value || { kind: "uint", bits: 256 };
       } else if (currentType.kind === "array") {
-        // Array access - first compute array base
-        const baseSlotTemp = yield* Process.Variables.newTemp();
-        yield* Process.Instructions.emit({
-          kind: "compute_slot",
-          slotKind: "array",
-          base: currentSlot,
-          dest: baseSlotTemp,
-          loc,
-        } as Ir.Instruction.ComputeSlot);
-
-        // Then add the index
-        yield* Process.Instructions.emit({
-          kind: "binary",
-          op: "add",
-          left: Ir.Value.temp(baseSlotTemp, { kind: "uint", bits: 256 }),
-          right: access.key,
-          dest: tempId,
-          loc,
-        } as Ir.Instruction.BinaryOp);
+        // Array access - compute array slot with index
+        yield* Process.Instructions.emit(
+          Ir.Instruction.ComputeSlot.array(
+            currentSlot,
+            access.key,
+            tempId,
+            loc,
+          ),
+        );
         currentType = currentType.element || { kind: "uint", bits: 256 };
       }
 
@@ -165,31 +155,37 @@ export function* emitStorageChainLoad(
     } else if (access.kind === "member" && access.fieldName) {
       // For struct field access
       if (currentType.kind === "struct") {
-        const fieldIndex =
-          currentType.fields.findIndex(
-            ({ name }) => name === access.fieldName,
-          ) ?? 0;
+        // currentType is an IR.Type with struct fields as an array
+        const structType = currentType as {
+          kind: "struct";
+          name: string;
+          fields: Ir.Type.StructField[];
+        };
+        const field = structType.fields.find(
+          (f) => f.name === access.fieldName,
+        );
 
-        // For now, use simple layout where each field gets its own slot
-        // This maintains compatibility with existing code
-        // fieldOffset is in bytes, so multiply by 32 (bytes per slot)
-        const fieldOffset = fieldIndex * 32;
+        if (!field) {
+          throw new Error(
+            `Field ${access.fieldName} not found in struct ${structType.name}`,
+          );
+        }
+
+        // Use the byte offset from the IR struct field
+        const fieldOffset = field.offset;
 
         const tempId = yield* Process.Variables.newTemp();
-        yield* Process.Instructions.emit({
-          kind: "compute_slot",
-          slotKind: "field",
-          base: currentSlot,
-          fieldOffset,
-          dest: tempId,
-          loc,
-        } as Ir.Instruction.ComputeSlot);
+        yield* Process.Instructions.emit(
+          Ir.Instruction.ComputeSlot.field(
+            currentSlot,
+            fieldOffset,
+            tempId,
+            loc,
+          ),
+        );
 
         currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
-        currentType = currentType.fields[fieldIndex]?.type || {
-          kind: "uint",
-          bits: 256,
-        };
+        currentType = field.type;
       }
     }
   }
@@ -261,28 +257,18 @@ export function* emitStorageChainAssignment(
         currentType = (currentType as { kind: "mapping"; value: Ir.Type })
           .value;
       } else if (currentType.kind === "array") {
-        // Array access
-        const baseSlotTemp = yield* Process.Variables.newTemp();
-        yield* Process.Instructions.emit({
-          kind: "compute_slot",
-          slotKind: "array",
-          base: currentSlot,
-          dest: baseSlotTemp,
-          loc,
-        } as Ir.Instruction.ComputeSlot);
+        // Array access - compute array slot with index
+        const slotTemp = yield* Process.Variables.newTemp();
+        yield* Process.Instructions.emit(
+          Ir.Instruction.ComputeSlot.array(
+            currentSlot,
+            access.key,
+            slotTemp,
+            loc,
+          ),
+        );
 
-        // Add the index to get the final slot
-        const finalSlotTemp = yield* Process.Variables.newTemp();
-        yield* Process.Instructions.emit({
-          kind: "binary",
-          op: "add",
-          left: Ir.Value.temp(baseSlotTemp, { kind: "uint", bits: 256 }),
-          right: access.key,
-          dest: finalSlotTemp,
-          loc,
-        } as Ir.Instruction.BinaryOp);
-
-        currentSlot = Ir.Value.temp(finalSlotTemp, {
+        currentSlot = Ir.Value.temp(slotTemp, {
           kind: "uint",
           bits: 256,
         });
@@ -297,29 +283,28 @@ export function* emitStorageChainAssignment(
           name: string;
           fields: Ir.Type.StructField[];
         };
-        const fieldIndex = structType.fields.findIndex(
+        const field = structType.fields.find(
           (f) => f.name === access.fieldName,
         );
 
-        if (fieldIndex >= 0) {
-          // For now, use simple layout where each field gets its own slot
-          // fieldOffset is in bytes, so multiply by 32 (bytes per slot)
-          const fieldOffset = fieldIndex * 32;
+        if (field) {
+          // Use the precomputed byte offset from the struct layout
+          const fieldOffset = field.offset;
 
           const offsetTemp = yield* Process.Variables.newTemp();
-          yield* Process.Instructions.emit({
-            kind: "compute_slot",
-            slotKind: "field",
-            base: currentSlot,
-            fieldOffset,
-            dest: offsetTemp,
-            loc,
-          } as Ir.Instruction.ComputeSlot);
+          yield* Process.Instructions.emit(
+            Ir.Instruction.ComputeSlot.field(
+              currentSlot,
+              fieldOffset,
+              offsetTemp,
+              loc,
+            ),
+          );
           currentSlot = Ir.Value.temp(offsetTemp, {
             kind: "uint",
             bits: 256,
           });
-          currentType = structType.fields[fieldIndex].type;
+          currentType = field.type;
         } else {
           yield* Process.Errors.report(
             new IrgenError(
