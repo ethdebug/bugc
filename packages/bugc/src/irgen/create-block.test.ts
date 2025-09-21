@@ -175,17 +175,22 @@ describe("IR generation for create blocks", () => {
 
     // Create function should have assignments for x and y
     const createEntry = module.create!.blocks.get("entry")!;
-    const createAssignments = createEntry.instructions.filter(
-      (inst) => inst.kind === "binary" && inst.op === "add",
+    const createConsts = createEntry.instructions.filter(
+      (inst) => inst.kind === "const",
     );
-    // Variables are now tracked as temps with SSA
-    expect(createAssignments.length).toBeGreaterThan(0);
+    // Variables are now tracked as temps with SSA - should have const 100 and const 200
+    expect(createConsts.length).toBe(2);
+    expect(createConsts[0]).toMatchObject({ kind: "const", value: 100n });
+    expect(createConsts[1]).toMatchObject({ kind: "const", value: 200n });
 
     // Main function should have assignments for x and z
     const mainEntry = module.main.blocks.get("entry")!;
-    const mainAssignments = mainEntry.instructions.filter(
-      (inst) => inst.kind === "binary" && inst.op === "add",
+    const mainConsts = mainEntry.instructions.filter(
+      (inst) => inst.kind === "const",
     );
-    expect(mainAssignments.length).toBeGreaterThan(0);
+    // Should have const 300 and const 400
+    expect(mainConsts.length).toBe(2);
+    expect(mainConsts[0]).toMatchObject({ kind: "const", value: 300n });
+    expect(mainConsts[1]).toMatchObject({ kind: "const", value: 400n });
   });
 });

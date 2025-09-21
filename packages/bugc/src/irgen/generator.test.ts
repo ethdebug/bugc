@@ -91,8 +91,8 @@ describe("generateModule", () => {
       const ir = buildIR(source);
       const entry = ir.main.blocks.get("entry")!;
 
-      // Should have: const 3, const 2, mul, const 5, add, store_local
-      expect(entry.instructions).toHaveLength(6);
+      // Should have: const 5, const 3, const 2, mul, add (no more "add 0" for assignment)
+      expect(entry.instructions).toHaveLength(5);
 
       // Check constants (5 is loaded first as left operand of +)
       expect(entry.instructions[0]).toMatchObject({
@@ -120,12 +120,7 @@ describe("generateModule", () => {
         op: "add",
       });
 
-      // In SSA form, the result is assigned to a temp via an add instruction
-      // The assignment pattern is: value + 0 -> temp
-      expect(entry.instructions[5]).toMatchObject({
-        kind: "binary",
-        op: "add",
-      });
+      // We no longer generate "add 0" for assignments - the result is directly used
     });
 
     it("should generate IR for comparison expressions", () => {
@@ -718,7 +713,8 @@ describe("generateModule", () => {
       expect(hasMappingSlot).toBe(true);
       // Both fixed and dynamic arrays now use compute_slot with kind="array" for proper storage layout
       expect(hasArraySlot).toBe(true);
-      expect(hasBinaryAdd).toBe(true); // For adding index to computed base slot
+      // We no longer generate unnecessary "add" instructions
+      expect(hasBinaryAdd).toBe(false);
       expect(hasStorageDynamic).toBe(true);
     });
   });

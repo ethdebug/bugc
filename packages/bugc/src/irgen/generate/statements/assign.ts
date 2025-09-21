@@ -87,24 +87,30 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
     // Check if it's a variable
     const ssaVar = yield* Process.Variables.lookup(name);
     if (ssaVar) {
-      // Create new SSA version for assignment
-      const newSsaVar = yield* Process.Variables.assignSsa(name, ssaVar.type);
+      // Instead of creating a new SSA version with a new temp,
+      // we can just update the SSA variable to point to the value's temp
+      if (value.kind === "temp") {
+        // If the value is already a temp, we can just update the SSA variable
+        // to point to it directly
+        yield* Process.Variables.updateSsaToExistingTemp(
+          name,
+          value.id,
+          ssaVar.type,
+        );
+      } else {
+        // For non-temp values (constants, etc.), we still need to create a new temp
+        const newSsaVar = yield* Process.Variables.assignSsa(name, ssaVar.type);
 
-      // Generate assignment to new SSA temp
-      if (value.kind === "temp" && value.id === newSsaVar.currentTempId) {
-        // Already assigned to correct temp, no need to copy
-        return;
+        // Copy the non-temp value to the new SSA temp
+        yield* Process.Instructions.emit({
+          kind: "binary",
+          op: "add",
+          left: value,
+          right: Ir.Value.constant(0n, ssaVar.type),
+          dest: newSsaVar.currentTempId,
+          loc: node.loc ?? undefined,
+        } as Ir.Instruction);
       }
-
-      // Copy the value to the new SSA temp
-      yield* Process.Instructions.emit({
-        kind: "binary",
-        op: "add",
-        left: value,
-        right: Ir.Value.constant(0n, ssaVar.type),
-        dest: newSsaVar.currentTempId,
-        loc: node.loc ?? undefined,
-      } as Ir.Instruction);
       return;
     }
 

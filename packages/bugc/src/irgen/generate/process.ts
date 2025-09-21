@@ -248,6 +248,44 @@ export namespace Process {
     }
 
     /**
+     * Declare a new SSA variable with an existing temp ID
+     */
+    export function* declareWithExistingTemp(
+      name: string,
+      type: Ir.Type,
+      tempId: string,
+    ): Process<State.SsaVariable> {
+      const scope = yield* lift(State.Scopes.current)();
+
+      const version = (scope.ssaVars.get(name)?.version ?? -1) + 1;
+      const ssaVar: State.SsaVariable = {
+        name,
+        currentTempId: tempId,
+        type,
+        version,
+      };
+
+      // Update scope with new SSA variable
+      const newScope = {
+        ...scope,
+        ssaVars: new Map([...scope.ssaVars, [name, ssaVar]]),
+        usedNames: new Map([...scope.usedNames, [name, version + 1]]),
+      };
+
+      // Update scopes
+      yield* lift(State.Scopes.setCurrent)(newScope);
+
+      // Track SSA metadata for the existing temp
+      const scopeIndex = yield* lift(State.Scopes.extract)(
+        (s) => s.stack.length - 1,
+      );
+      const scopeId = `scope_${scopeIndex}_${name}`;
+      yield* addSsaMetadata(tempId, name, scopeId, type, version);
+
+      return ssaVar;
+    }
+
+    /**
      * Create a new SSA version for a variable (for assignments)
      */
     export function* assignSsa(
@@ -507,6 +545,84 @@ export namespace Process {
 
       yield* lift(State.Scopes.update)(() => ({ stack: newStack }));
     };
+
+    /**
+     * Update an SSA variable to point to an existing temp without creating a new one
+     */
+    export function* updateSsaToExistingTemp(
+      name: string,
+      existingTempId: string,
+      type: Ir.Type,
+    ): Process<void> {
+      const scopes = yield* lift(State.Scopes.extract)((s) => s.stack);
+      let scopeIndex = -1;
+
+      // Find which scope has this variable
+      for (let i = scopes.length - 1; i >= 0; i--) {
+        if (scopes[i].ssaVars.has(name)) {
+          scopeIndex = i;
+          break;
+        }
+      }
+
+      if (scopeIndex === -1) {
+        // Variable doesn't exist, create it in current scope
+        // But use the existing temp instead of creating a new one
+        const scope = yield* lift(State.Scopes.current)();
+        const version = (scope.ssaVars.get(name)?.version ?? -1) + 1;
+
+        const ssaVar: State.SsaVariable = {
+          name,
+          currentTempId: existingTempId,
+          type,
+          version,
+        };
+
+        // Update scope with new SSA variable
+        const newScope = {
+          ...scope,
+          ssaVars: new Map([...scope.ssaVars, [name, ssaVar]]),
+          usedNames: new Map([...scope.usedNames, [name, version + 1]]),
+        };
+
+        yield* lift(State.Scopes.setCurrent)(newScope);
+
+        // Track SSA metadata for the existing temp
+        const scopeId = `scope_${scopeIndex === -1 ? 0 : scopeIndex}_${name}`;
+        yield* addSsaMetadata(existingTempId, name, scopeId, type, version);
+        return;
+      }
+
+      const targetScope = scopes[scopeIndex];
+      const currentVar = targetScope.ssaVars.get(name)!;
+      const newVersion = currentVar.version + 1;
+
+      // Update with the existing temp instead of creating a new one
+      const updatedVar: State.SsaVariable = {
+        name,
+        currentTempId: existingTempId,
+        type,
+        version: newVersion,
+      };
+
+      const updatedScope = {
+        ...targetScope,
+        ssaVars: new Map([...targetScope.ssaVars, [name, updatedVar]]),
+      };
+
+      // Rebuild the scope stack
+      const newStack = [
+        ...scopes.slice(0, scopeIndex),
+        updatedScope,
+        ...scopes.slice(scopeIndex + 1),
+      ];
+
+      yield* lift(State.Scopes.update)(() => ({ stack: newStack }));
+
+      // Track SSA metadata for the existing temp
+      const scopeId = `scope_${scopeIndex}_${name}`;
+      yield* addSsaMetadata(existingTempId, name, scopeId, type, newVersion);
+    }
 
     /**
      * Generate a new temporary variable ID

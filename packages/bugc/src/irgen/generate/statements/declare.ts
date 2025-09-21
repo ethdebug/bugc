@@ -61,7 +61,6 @@ function* buildVariableDeclaration(
 
   if (needsMemoryAllocation) {
     // For types that need memory allocation
-    const ssaVar = yield* Process.Variables.declare(decl.name, irType);
 
     // Calculate size needed
     let sizeValue: Ir.Value;
@@ -115,15 +114,12 @@ function* buildVariableDeclaration(
       loc: decl.loc ?? undefined,
     } as Ir.Instruction);
 
-    // Store the memory pointer in the SSA variable
-    yield* Process.Instructions.emit({
-      kind: "binary",
-      op: "add",
-      left: Ir.Value.temp(allocTemp, { kind: "uint", bits: 256 }),
-      right: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-      dest: ssaVar.currentTempId,
-      loc: decl.loc ?? undefined,
-    } as Ir.Instruction.BinaryOp);
+    // Declare the SSA variable and directly use the allocTemp as its value
+    yield* Process.Variables.declareWithExistingTemp(
+      decl.name,
+      irType,
+      allocTemp,
+    );
 
     // If there's an initializer, store the value in memory
     if (decl.initializer) {
@@ -145,7 +141,7 @@ function* buildVariableDeclaration(
             yield* Process.Instructions.emit({
               kind: "write",
               location: "memory",
-              offset: Ir.Value.temp(ssaVar.currentTempId, {
+              offset: Ir.Value.temp(allocTemp, {
                 kind: "uint",
                 bits: 256,
               }),
@@ -162,7 +158,7 @@ function* buildVariableDeclaration(
             yield* Process.Instructions.emit({
               kind: "binary",
               op: "add",
-              left: Ir.Value.temp(ssaVar.currentTempId, {
+              left: Ir.Value.temp(allocTemp, {
                 kind: "uint",
                 bits: 256,
               }),
@@ -193,15 +189,24 @@ function* buildVariableDeclaration(
           // This is a simplified version - a full implementation would need to
           // handle different cases more carefully
 
-          // Store the slice result as the memory pointer
-          yield* Process.Instructions.emit({
-            kind: "binary",
-            op: "add",
-            left: value,
-            right: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-            dest: ssaVar.currentTempId,
-            loc: decl.loc ?? undefined,
-          } as Ir.Instruction.BinaryOp);
+          // If the value is a temp, update the SSA variable to point to it
+          if (value.kind === "temp") {
+            yield* Process.Variables.updateSsaToExistingTemp(
+              decl.name,
+              value.id,
+              irType,
+            );
+          } else {
+            // For non-temp values, we need to copy it
+            yield* Process.Instructions.emit({
+              kind: "binary",
+              op: "add",
+              left: value,
+              right: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
+              dest: allocTemp,
+              loc: decl.loc ?? undefined,
+            } as Ir.Instruction.BinaryOp);
+          }
         }
       }
     }
@@ -214,16 +219,15 @@ function* buildVariableDeclaration(
       const ssaVar = yield* Process.Variables.declare(decl.name, irType);
 
       // Generate assignment to the new SSA temp
-      if (value.kind === "temp" && value.id !== ssaVar.currentTempId) {
-        // Copy from existing temp
-        yield* Process.Instructions.emit({
-          kind: "binary",
-          op: "add",
-          left: value,
-          right: Ir.Value.constant(0n, irType),
-          dest: ssaVar.currentTempId,
-          loc: decl.loc ?? undefined,
-        } as Ir.Instruction.BinaryOp);
+      if (value.kind === "temp") {
+        // If value is already a temp, just update SSA to use it
+        if (value.id !== ssaVar.currentTempId) {
+          yield* Process.Variables.updateSsaToExistingTemp(
+            decl.name,
+            value.id,
+            irType,
+          );
+        }
       } else if (value.kind === "const") {
         // Create const instruction for constants
         yield* Process.Instructions.emit({
