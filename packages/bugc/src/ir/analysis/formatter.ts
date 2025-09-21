@@ -199,13 +199,17 @@ export class Formatter {
       case "compute_offset": {
         const parts: string[] = [`compute_offset.${inst.location}`];
         parts.push(`base=${this.formatValue(inst.base)}`);
-        if (inst.index) parts.push(`index=${this.formatValue(inst.index)}`);
-        if (inst.stride !== undefined) parts.push(`stride=${inst.stride}`);
-        if (inst.field) parts.push(`field="${inst.field}"`);
-        if (inst.fieldOffset !== undefined)
+
+        if (Ir.Instruction.ComputeOffset.isArray(inst)) {
+          parts.push(`index=${this.formatValue(inst.index)}`);
+          parts.push(`stride=${inst.stride}`);
+        } else if (Ir.Instruction.ComputeOffset.isField(inst)) {
+          parts.push(`field="${inst.field}"`);
           parts.push(`fieldOffset=${inst.fieldOffset}`);
-        if (inst.byteOffset)
-          parts.push(`byteOffset=${this.formatValue(inst.byteOffset)}`);
+        } else if (Ir.Instruction.ComputeOffset.isByte(inst)) {
+          parts.push(`offset=${this.formatValue(inst.offset)}`);
+        }
+
         return `${inst.dest} = ${parts.join(", ")}`;
       }
 

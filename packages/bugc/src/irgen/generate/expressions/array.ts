@@ -130,15 +130,16 @@ export function* buildArray(
           });
 
           const offsetTemp = yield* Process.Variables.newTemp();
-          yield* Process.Instructions.emit({
-            kind: "compute_offset",
-            location: "memory",
-            base: Ir.Value.temp(elementsBaseTemp, { kind: "uint", bits: 256 }),
-            index: Ir.Value.constant(BigInt(i), { kind: "uint", bits: 256 }),
-            stride: 32,
-            dest: offsetTemp,
-            loc: expr.loc ?? undefined,
-          } as Ir.Instruction.ComputeOffset);
+          yield* Process.Instructions.emit(
+            Ir.Instruction.ComputeOffset.array(
+              "memory",
+              Ir.Value.temp(elementsBaseTemp, { kind: "uint", bits: 256 }),
+              Ir.Value.constant(BigInt(i), { kind: "uint", bits: 256 }),
+              32,
+              offsetTemp,
+              expr.loc ?? undefined,
+            ),
+          );
 
           yield* Process.Instructions.emit({
             kind: "write",
@@ -194,15 +195,16 @@ export function* buildArray(
         });
 
         const offsetTemp = yield* Process.Variables.newTemp();
-        yield* Process.Instructions.emit({
-          kind: "compute_offset",
-          location: "memory",
-          base: Ir.Value.temp(elementsBaseTemp, { kind: "uint", bits: 256 }),
-          index: Ir.Value.constant(BigInt(i), { kind: "uint", bits: 256 }),
-          stride: 32,
-          dest: offsetTemp,
-          loc: expr.loc ?? undefined,
-        } as Ir.Instruction.ComputeOffset);
+        yield* Process.Instructions.emit(
+          Ir.Instruction.ComputeOffset.array(
+            "memory",
+            Ir.Value.temp(elementsBaseTemp, { kind: "uint", bits: 256 }),
+            Ir.Value.constant(BigInt(i), { kind: "uint", bits: 256 }),
+            32,
+            offsetTemp,
+            expr.loc ?? undefined,
+          ),
+        );
 
         yield* Process.Instructions.emit({
           kind: "write",

@@ -122,9 +122,12 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
         break;
       case "compute_offset":
         result.base = propagateValue(result.base);
-        if (result.index) result.index = propagateValue(result.index);
-        if (result.byteOffset)
-          result.byteOffset = propagateValue(result.byteOffset);
+        if (Ir.Instruction.ComputeOffset.isArray(result)) {
+          result.index = propagateValue(result.index);
+        } else if (Ir.Instruction.ComputeOffset.isByte(result)) {
+          result.offset = propagateValue(result.offset);
+        }
+        // Field type doesn't have any Values to propagate (fieldOffset is a number)
         break;
       case "allocate":
         result.size = propagateValue(result.size);

@@ -258,8 +258,12 @@ function simulateInstruction(stack: string[], inst: Ir.Instruction): string[] {
     // NEW: compute offset
     case "compute_offset":
       newStack.pop(); // base
-      if (inst.index) newStack.pop();
-      if (inst.byteOffset) newStack.pop();
+      if (Ir.Instruction.ComputeOffset.isArray(inst)) {
+        newStack.pop(); // index
+      } else if (Ir.Instruction.ComputeOffset.isByte(inst)) {
+        newStack.pop(); // offset
+      }
+      // Field type doesn't pop any additional values (fieldOffset is a number)
       break;
     // Call instruction removed - calls are now block terminators
     // These don't pop anything

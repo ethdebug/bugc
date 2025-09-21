@@ -4,6 +4,7 @@
 
 import * as Ir from "#ir";
 import type { Stack } from "#evm";
+import { assertExhausted } from "#evmgen/errors";
 
 import { type Transition, pipe, rebrand, operations } from "#evmgen/operations";
 import { loadValue, storeValueIfNeeded } from "../values/index.js";
@@ -21,16 +22,16 @@ export function generateComputeOffset<S extends Stack>(
   // The location property may matter for future optimizations or bounds checking
 
   // Handle index-based offset (for arrays)
-  if (inst.index !== undefined) {
+  if (Ir.Instruction.ComputeOffset.isArray(inst)) {
     return (
       pipe<S>()
         // Load base address
         .then(loadValue(inst.base), { as: "base" })
         .then(loadValue(inst.index), { as: "index" })
-        // Load stride if we have an index
+        // Load stride
         .then(
           loadValue(
-            Ir.Value.constant(BigInt(inst.stride ?? 32), {
+            Ir.Value.constant(BigInt(inst.stride), {
               kind: "uint",
               bits: 256,
             }),
@@ -50,7 +51,14 @@ export function generateComputeOffset<S extends Stack>(
   }
 
   // Handle field offset (for structs)
-  if (inst.fieldOffset !== undefined && inst.fieldOffset !== 0) {
+  if (Ir.Instruction.ComputeOffset.isField(inst)) {
+    if (inst.fieldOffset === 0) {
+      // No offset needed, just load the base
+      return pipe<S>()
+        .then(loadValue(inst.base), { as: "value" })
+        .then(storeValueIfNeeded(inst.dest))
+        .done();
+    }
     return (
       pipe<S>()
         // Load base address
@@ -73,12 +81,12 @@ export function generateComputeOffset<S extends Stack>(
   }
 
   // Handle byte offset
-  if (inst.byteOffset !== undefined) {
+  if (Ir.Instruction.ComputeOffset.isByte(inst)) {
     return (
       pipe<S>()
         // Load base address
         .then(loadValue(inst.base), { as: "base" })
-        .then(loadValue(inst.byteOffset), { as: "byte_offset" })
+        .then(loadValue(inst.offset), { as: "byte_offset" })
         .then(rebrand<"byte_offset", "a", "base", "b">({ 1: "a", 2: "b" }))
         .then(ADD(), { as: "value" })
         // Store the result
@@ -87,13 +95,6 @@ export function generateComputeOffset<S extends Stack>(
     );
   }
 
-  // default case TODO investigate whether this is wrong
-  return (
-    pipe<S>()
-      // Load base address
-      .then(loadValue(inst.base), { as: "value" })
-      // Store the result
-      .then(storeValueIfNeeded(inst.dest))
-      .done()
-  );
+  assertExhausted(inst);
+  throw new Error(`Unknown compute_offset type`);
 }

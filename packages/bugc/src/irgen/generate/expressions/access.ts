@@ -126,15 +126,16 @@ const makeBuildMemberAccess = (
         const offsetTemp = yield* Process.Variables.newTemp();
         // Calculate field offset - assuming 32 bytes per field for now
         const fieldOffset = fieldIndex * 32;
-        yield* Process.Instructions.emit({
-          kind: "compute_offset",
-          location: "memory",
-          base: object,
-          field: expr.property,
-          fieldOffset,
-          dest: offsetTemp,
-          loc: expr.loc ?? undefined,
-        } as Ir.Instruction.ComputeOffset);
+        yield* Process.Instructions.emit(
+          Ir.Instruction.ComputeOffset.field(
+            "memory",
+            object,
+            expr.property,
+            fieldOffset,
+            offsetTemp,
+            expr.loc ?? undefined,
+          ),
+        );
 
         // Then read from that offset
         const tempId = yield* Process.Variables.newTemp();
@@ -233,15 +234,16 @@ const makeBuildIndexAccess = (
 
       // Compute offset for the byte at the index
       const offsetTemp = yield* Process.Variables.newTemp();
-      yield* Process.Instructions.emit({
-        kind: "compute_offset",
-        location: "memory",
-        base: object,
-        index,
-        stride: 1, // bytes are 1 byte each
-        dest: offsetTemp,
-        loc: expr.loc ?? undefined,
-      } as Ir.Instruction.ComputeOffset);
+      yield* Process.Instructions.emit(
+        Ir.Instruction.ComputeOffset.array(
+          "memory",
+          object,
+          index,
+          1, // bytes are 1 byte each
+          offsetTemp,
+          expr.loc ?? undefined,
+        ),
+      );
 
       // Read the byte at that offset
       const tempId = yield* Process.Variables.newTemp();
@@ -285,15 +287,16 @@ const makeBuildIndexAccess = (
 
           // Compute offset for array element
           const offsetTemp = yield* Process.Variables.newTemp();
-          yield* Process.Instructions.emit({
-            kind: "compute_offset",
-            location: "memory",
-            base: Ir.Value.temp(elementsBaseTemp, { kind: "uint", bits: 256 }),
-            index,
-            stride: 32, // array elements are 32 bytes each
-            dest: offsetTemp,
-            loc: expr.loc ?? undefined,
-          } as Ir.Instruction.ComputeOffset);
+          yield* Process.Instructions.emit(
+            Ir.Instruction.ComputeOffset.array(
+              "memory",
+              Ir.Value.temp(elementsBaseTemp, { kind: "uint", bits: 256 }),
+              index,
+              32, // array elements are 32 bytes each
+              offsetTemp,
+              expr.loc ?? undefined,
+            ),
+          );
 
           // Read the element at that offset
           const tempId = yield* Process.Variables.newTemp();
@@ -334,15 +337,16 @@ const makeBuildIndexAccess = (
       // Compute offset for array element (no need to add 32 here as the object
       // should already point to the elements section)
       const offsetTemp = yield* Process.Variables.newTemp();
-      yield* Process.Instructions.emit({
-        kind: "compute_offset",
-        location: "memory",
-        base: object,
-        index,
-        stride: 32, // array elements are 32 bytes each
-        dest: offsetTemp,
-        loc: expr.loc ?? undefined,
-      } as Ir.Instruction.ComputeOffset);
+      yield* Process.Instructions.emit(
+        Ir.Instruction.ComputeOffset.array(
+          "memory",
+          object,
+          index,
+          32, // array elements are 32 bytes each
+          offsetTemp,
+          expr.loc ?? undefined,
+        ),
+      );
 
       // Read the element at that offset
       const tempId = yield* Process.Variables.newTemp();

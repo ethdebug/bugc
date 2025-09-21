@@ -143,8 +143,12 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
         break;
       case "compute_offset":
         this.collectValueUse(inst.base, used);
-        if (inst.index) this.collectValueUse(inst.index, used);
-        if (inst.byteOffset) this.collectValueUse(inst.byteOffset, used);
+        if (Ir.Instruction.ComputeOffset.isArray(inst)) {
+          this.collectValueUse(inst.index, used);
+        } else if (Ir.Instruction.ComputeOffset.isByte(inst)) {
+          this.collectValueUse(inst.offset, used);
+        }
+        // Field type doesn't have any Values to collect (fieldOffset is a number)
         break;
       case "allocate":
         this.collectValueUse(inst.size, used);

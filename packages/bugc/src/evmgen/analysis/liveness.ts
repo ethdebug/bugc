@@ -282,8 +282,12 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
     // NEW: unified compute offset
     case "compute_offset":
       addValue(inst.base);
-      addValue(inst.index);
-      addValue(inst.byteOffset);
+      if (Ir.Instruction.ComputeOffset.isArray(inst)) {
+        addValue(inst.index);
+      } else if (Ir.Instruction.ComputeOffset.isByte(inst)) {
+        addValue(inst.offset);
+      }
+      // Field type doesn't have any Values to add (fieldOffset is a number)
       break;
     // These instructions don't use any values
     case "const":

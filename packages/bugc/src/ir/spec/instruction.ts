@@ -75,20 +75,98 @@ export namespace Instruction {
   }
 
   // NEW: Unified compute offset instruction
-  export interface ComputeOffset {
-    kind: "compute_offset";
-    location: "memory" | "calldata" | "returndata" | "code";
-    base: Value;
-    // For array access
-    index?: Value;
-    stride?: number;
-    // For struct field access
-    field?: string;
-    fieldOffset?: number;
-    // For raw byte offset
-    byteOffset?: Value;
-    dest: string;
-    loc?: Ast.SourceLocation;
+  export type ComputeOffset =
+    | ComputeOffset.Array
+    | ComputeOffset.Field
+    | ComputeOffset.Byte;
+
+  export namespace ComputeOffset {
+    export interface Base {
+      kind: "compute_offset";
+      offsetKind: "array" | "field" | "byte";
+      location: "memory" | "calldata" | "returndata" | "code";
+      base: Value;
+      dest: string;
+      loc?: Ast.SourceLocation;
+    }
+
+    export interface Array extends Base {
+      offsetKind: "array";
+      index: Value;
+      stride: number;
+    }
+
+    export const isArray = (inst: ComputeOffset): inst is ComputeOffset.Array =>
+      inst.offsetKind === "array";
+
+    export const array = (
+      location: "memory" | "calldata" | "returndata" | "code",
+      base: Value,
+      index: Value,
+      stride: number,
+      dest: string,
+      loc?: Ast.SourceLocation,
+    ): ComputeOffset.Array => ({
+      kind: "compute_offset",
+      offsetKind: "array",
+      location,
+      base,
+      index,
+      stride,
+      dest,
+      loc,
+    });
+
+    export interface Field extends Base {
+      offsetKind: "field";
+      field: string;
+      fieldOffset: number;
+    }
+
+    export const isField = (inst: ComputeOffset): inst is ComputeOffset.Field =>
+      inst.offsetKind === "field";
+
+    export const field = (
+      location: "memory" | "calldata" | "returndata" | "code",
+      base: Value,
+      field: string,
+      fieldOffset: number,
+      dest: string,
+      loc?: Ast.SourceLocation,
+    ): ComputeOffset.Field => ({
+      kind: "compute_offset",
+      offsetKind: "field",
+      location,
+      base,
+      field,
+      fieldOffset,
+      dest,
+      loc,
+    });
+
+    export interface Byte extends Base {
+      offsetKind: "byte";
+      offset: Value;
+    }
+
+    export const isByte = (inst: ComputeOffset): inst is ComputeOffset.Byte =>
+      inst.offsetKind === "byte";
+
+    export const byte = (
+      location: "memory" | "calldata" | "returndata" | "code",
+      base: Value,
+      offset: Value,
+      dest: string,
+      loc?: Ast.SourceLocation,
+    ): ComputeOffset.Byte => ({
+      kind: "compute_offset",
+      offsetKind: "byte",
+      location,
+      base,
+      offset,
+      dest,
+      loc,
+    });
   }
 
   export interface Const {
@@ -108,6 +186,11 @@ export namespace Instruction {
     loc?: Ast.SourceLocation;
   }
 
+  export type ComputeSlot =
+    | ComputeSlot.Mapping
+    | ComputeSlot.Array
+    | ComputeSlot.Field;
+
   export namespace ComputeSlot {
     export interface Base {
       kind: "compute_slot";
@@ -123,27 +206,9 @@ export namespace Instruction {
       keyType: Type;
     }
 
-    export interface Array extends Base {
-      slotKind: "array";
-      index: Value;
-    }
-
-    export interface Field extends Base {
-      slotKind: "field";
-      fieldOffset: number; // Byte offset from struct base
-    }
-
-    // Type guards
     export const isMapping = (inst: ComputeSlot): inst is ComputeSlot.Mapping =>
       inst.slotKind === "mapping";
 
-    export const isArray = (inst: ComputeSlot): inst is ComputeSlot.Array =>
-      inst.slotKind === "array";
-
-    export const isField = (inst: ComputeSlot): inst is ComputeSlot.Field =>
-      inst.slotKind === "field";
-
-    // Constructor functions
     export const mapping = (
       base: Value,
       key: Value,
@@ -160,6 +225,14 @@ export namespace Instruction {
       loc,
     });
 
+    export interface Array extends Base {
+      slotKind: "array";
+      index: Value;
+    }
+
+    export const isArray = (inst: ComputeSlot): inst is ComputeSlot.Array =>
+      inst.slotKind === "array";
+
     export const array = (
       base: Value,
       index: Value,
@@ -173,6 +246,14 @@ export namespace Instruction {
       dest,
       loc,
     });
+
+    export interface Field extends Base {
+      slotKind: "field";
+      fieldOffset: number; // Byte offset from struct base
+    }
+
+    export const isField = (inst: ComputeSlot): inst is ComputeSlot.Field =>
+      inst.slotKind === "field";
 
     export const field = (
       base: Value,
@@ -188,11 +269,6 @@ export namespace Instruction {
       loc,
     });
   }
-
-  export type ComputeSlot =
-    | ComputeSlot.Mapping
-    | ComputeSlot.Array
-    | ComputeSlot.Field;
 
   export interface Slice {
     kind: "slice";
