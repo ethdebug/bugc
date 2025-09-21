@@ -5,6 +5,7 @@ import { Error as IrgenError } from "#irgen/errors";
 import { Severity } from "#result";
 import { buildExpression } from "../expressions/index.js";
 import { Process } from "../process.js";
+import type { Context } from "../expressions/context.js";
 
 import {
   makeFindStorageAccessChain,
@@ -31,91 +32,49 @@ function* buildLValue(
   target: Ast.Expression,
   valueExpr: Ast.Expression,
 ): Process<void> {
-  // Special case: array expression assignment to storage array
-  if (
-    valueExpr.type === "ArrayExpression" &&
-    target.type === "IdentifierExpression"
-  ) {
-    const targetName = (target as Ast.Expression.Identifier).name;
-    const storageSlot = yield* Process.Storage.findSlot(targetName);
+  // Determine the evaluation context based on the target
+  let context: Context = { kind: "rvalue" };
 
-    if (storageSlot && storageSlot.type.kind === "array") {
-      yield* expandArrayToStorage(
-        valueExpr as Ast.Expression.Array,
-        storageSlot,
-        target.loc ?? undefined,
-      );
-      return;
+  if (target.type === "IdentifierExpression") {
+    const targetName = (target as Ast.Expression.Identifier).name;
+
+    // Check if it's storage
+    const storageSlot = yield* Process.Storage.findSlot(targetName);
+    if (storageSlot) {
+      const targetType = yield* Process.Types.nodeType(target);
+      if (targetType) {
+        context = {
+          kind: "lvalue-storage",
+          slot: storageSlot.slot,
+          type: targetType,
+        };
+      }
+    } else {
+      // Check if it's a local variable
+      const variable = yield* Process.Variables.lookup(targetName);
+      if (variable) {
+        const targetType = yield* Process.Types.nodeType(target);
+        if (targetType) {
+          context = { kind: "lvalue-memory", type: targetType };
+        }
+      }
     }
   }
 
-  // Regular assignment - evaluate the value expression
-  const value = yield* buildExpression(valueExpr);
-  yield* assignToTarget(target, value);
-}
+  // Evaluate the value expression with the appropriate context
+  const value = yield* buildExpression(valueExpr, context);
 
-/**
- * Expand an array expression to individual storage writes
- */
-function* expandArrayToStorage(
-  arrayExpr: Ast.Expression.Array,
-  storageSlot: { slot: number; type: Ir.Type },
-  loc: Ast.SourceLocation | undefined,
-): Process<void> {
-  // First, store the array length at the base slot
-  const lengthValue = Ir.Value.constant(BigInt(arrayExpr.elements.length), {
-    kind: "uint",
-    bits: 256,
-  });
-  yield* Process.Instructions.emit({
-    kind: "write",
-    location: "storage",
-    slot: Ir.Value.constant(BigInt(storageSlot.slot), {
-      kind: "uint",
-      bits: 256,
-    }),
-    offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-    length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
-    value: lengthValue,
-    loc,
-  } as Ir.Instruction.Write);
-
-  // Then write each element
-  for (let i = 0; i < arrayExpr.elements.length; i++) {
-    // Generate the value for this element
-    const elementValue = yield* buildExpression(arrayExpr.elements[i]);
-
-    // Generate the index value
-    const indexValue = Ir.Value.constant(BigInt(i), {
-      kind: "uint",
-      bits: 256,
-    });
-
-    // Compute slot for array[i]
-    const slotTemp = yield* Process.Variables.newTemp();
-    yield* Process.Instructions.emit(
-      Ir.Instruction.ComputeSlot.array(
-        Ir.Value.constant(BigInt(storageSlot.slot), {
-          kind: "uint",
-          bits: 256,
-        }),
-        indexValue,
-        slotTemp,
-        loc,
-      ),
-    );
-
-    // Write to storage
-    yield* Process.Instructions.emit({
-      kind: "write",
-      location: "storage",
-      slot: Ir.Value.temp(slotTemp, { kind: "uint", bits: 256 }),
-      offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-      length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
-      value: elementValue,
-      loc,
-    } as Ir.Instruction.Write);
+  // For storage array assignments, the array expression will have already
+  // expanded to storage writes, so we don't need to do anything else
+  if (
+    context.kind === "lvalue-storage" &&
+    valueExpr.type === "ArrayExpression"
+  ) {
+    return;
   }
+
+  // Otherwise assign the computed value to the target
+  yield* assignToTarget(target, value);
 }
 
 /**
@@ -189,7 +148,9 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
       }
 
       // Otherwise, handle regular struct field assignment
-      const object = yield* buildExpression(accessNode.object);
+      const object = yield* buildExpression(accessNode.object, {
+        kind: "rvalue",
+      });
       const objectType = yield* Process.Types.nodeType(accessNode.object);
 
       if (objectType && Type.isStruct(objectType)) {
@@ -239,8 +200,12 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
         Type.Elementary.isBytes(objectType)
       ) {
         // Handle bytes indexing directly
-        const object = yield* buildExpression(accessNode.object);
-        const index = yield* buildExpression(accessNode.index);
+        const object = yield* buildExpression(accessNode.object, {
+          kind: "rvalue",
+        });
+        const index = yield* buildExpression(accessNode.index, {
+          kind: "rvalue",
+        });
 
         // Compute offset for the byte at the index
         const offsetTemp = yield* Process.Variables.newTemp();
@@ -274,8 +239,12 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
       }
 
       // If no storage chain, handle regular array/mapping access
-      const object = yield* buildExpression(accessNode.object);
-      const index = yield* buildExpression(accessNode.index);
+      const object = yield* buildExpression(accessNode.object, {
+        kind: "rvalue",
+      });
+      const index = yield* buildExpression(accessNode.index, {
+        kind: "rvalue",
+      });
 
       if (objectType && Type.isArray(objectType)) {
         // Compute offset for array element

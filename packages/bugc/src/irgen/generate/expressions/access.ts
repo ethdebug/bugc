@@ -6,6 +6,7 @@ import { Type } from "#types";
 import { Error as IrgenError, assertExhausted } from "#irgen/errors";
 
 import { Process } from "../process.js";
+import type { Context } from "./context.js";
 import { fromBugType } from "#irgen/type";
 import {
   type StorageAccessChain,
@@ -17,7 +18,10 @@ import {
  * Build an access expression (array/member access)
  */
 export const makeBuildAccess = (
-  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
+  buildExpression: (
+    node: Ast.Expression,
+    context: Context,
+  ) => Process<Ir.Value>,
 ) => {
   const findStorageAccessChain = makeFindStorageAccessChain(buildExpression);
   const buildIndexAccess = makeBuildIndexAccess(
@@ -30,16 +34,19 @@ export const makeBuildAccess = (
   );
   const buildSliceAccess = makeBuildSliceAccess(buildExpression);
 
-  return function* buildAccess(expr: Ast.Expression.Access): Process<Ir.Value> {
+  return function* buildAccess(
+    expr: Ast.Expression.Access,
+    context: Context,
+  ): Process<Ir.Value> {
     switch (expr.kind) {
       case "member":
-        return yield* buildMemberAccess(expr);
+        return yield* buildMemberAccess(expr, context);
 
       case "slice":
-        return yield* buildSliceAccess(expr);
+        return yield* buildSliceAccess(expr, context);
 
       case "index":
-        return yield* buildIndexAccess(expr);
+        return yield* buildIndexAccess(expr, context);
 
       default:
         assertExhausted(expr);
@@ -48,13 +55,17 @@ export const makeBuildAccess = (
 };
 
 const makeBuildMemberAccess = (
-  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
+  buildExpression: (
+    node: Ast.Expression,
+    context: Context,
+  ) => Process<Ir.Value>,
   findStorageAccessChain: (
     node: Ast.Expression,
   ) => Process<StorageAccessChain | undefined>,
 ) =>
   function* buildMemberAccess(
     expr: Ast.Expression.Access.Member,
+    _context: Context,
   ): Process<Ir.Value> {
     // Check if this is a .length property access
     if (expr.property === "length") {
@@ -68,7 +79,7 @@ const makeBuildMemberAccess = (
             (Type.Elementary.isBytes(objectType) ||
               Type.Elementary.isString(objectType))))
       ) {
-        const object = yield* buildExpression(expr.object);
+        const object = yield* buildExpression(expr.object, { kind: "rvalue" });
         const resultType: Ir.Type = { kind: "uint", bits: 256 };
         const tempId = yield* Process.Variables.newTemp();
 
@@ -100,7 +111,7 @@ const makeBuildMemberAccess = (
     // Reading through local variables is allowed, no diagnostic needed
 
     // Otherwise, handle regular struct field access
-    const object = yield* buildExpression(expr.object);
+    const object = yield* buildExpression(expr.object, { kind: "rvalue" });
     const objectType = yield* Process.Types.nodeType(expr.object);
 
     if (objectType && Type.isStruct(objectType)) {
@@ -149,10 +160,14 @@ const makeBuildMemberAccess = (
   };
 
 const makeBuildSliceAccess = (
-  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
+  buildExpression: (
+    node: Ast.Expression,
+    context: Context,
+  ) => Process<Ir.Value>,
 ) =>
   function* buildSliceAccess(
     expr: Ast.Expression.Access.Slice,
+    _context: Context,
   ): Process<Ir.Value> {
     // Slice access - start:end
     const objectType = yield* Process.Types.nodeType(expr.object);
@@ -161,9 +176,9 @@ const makeBuildSliceAccess = (
       Type.isElementary(objectType) &&
       Type.Elementary.isBytes(objectType)
     ) {
-      const object = yield* buildExpression(expr.object);
-      const start = yield* buildExpression(expr.start);
-      const end = yield* buildExpression(expr.end);
+      const object = yield* buildExpression(expr.object, { kind: "rvalue" });
+      const start = yield* buildExpression(expr.start, { kind: "rvalue" });
+      const end = yield* buildExpression(expr.end, { kind: "rvalue" });
 
       // Slicing bytes returns dynamic bytes
       const resultType: Ir.Type = { kind: "bytes" };
@@ -189,13 +204,17 @@ const makeBuildSliceAccess = (
   };
 
 const makeBuildIndexAccess = (
-  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
+  buildExpression: (
+    node: Ast.Expression,
+    context: Context,
+  ) => Process<Ir.Value>,
   findStorageAccessChain: (
     node: Ast.Expression,
   ) => Process<StorageAccessChain | undefined>,
 ) =>
   function* buildIndexAccess(
     expr: Ast.Expression.Access.Index,
+    _context: Context,
   ): Process<Ir.Value> {
     // Array/mapping/bytes index access
     // First check if we're indexing into bytes (not part of storage chain)
@@ -207,8 +226,8 @@ const makeBuildIndexAccess = (
       Type.Elementary.isBytes(objectType)
     ) {
       // Handle bytes indexing directly, not as storage chain
-      const object = yield* buildExpression(expr.object);
-      const index = yield* buildExpression(expr.index);
+      const object = yield* buildExpression(expr.object, { kind: "rvalue" });
+      const index = yield* buildExpression(expr.index, { kind: "rvalue" });
       // Bytes indexing returns uint8
       const elementType: Ir.Type = { kind: "uint", bits: 8 };
 
@@ -239,7 +258,61 @@ const makeBuildIndexAccess = (
       return Ir.Value.temp(tempId, elementType);
     }
 
-    // For non-bytes types, try to find a complete storage access chain
+    // Check if it's a memory array first (to avoid storage chain check for local arrays)
+    if (objectType && Type.isArray(objectType)) {
+      // Check if it's a local (memory) array
+      if (Ast.Expression.isIdentifier(expr.object)) {
+        const varName = expr.object.name;
+        const localVar = yield* Process.Variables.lookup(varName);
+        if (localVar) {
+          // It's a local memory array - handle it directly
+          const object = yield* buildExpression(expr.object, {
+            kind: "rvalue",
+          });
+          const index = yield* buildExpression(expr.index, { kind: "rvalue" });
+          const elementType = fromBugType(objectType.element);
+
+          // Calculate base + 32 to skip length field
+          const elementsBaseTemp = yield* Process.Variables.newTemp();
+          yield* Process.Instructions.emit({
+            kind: "binary",
+            op: "add",
+            left: object,
+            right: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+            dest: elementsBaseTemp,
+            loc: expr.loc ?? undefined,
+          } as Ir.Instruction);
+
+          // Compute offset for array element
+          const offsetTemp = yield* Process.Variables.newTemp();
+          yield* Process.Instructions.emit({
+            kind: "compute_offset",
+            location: "memory",
+            base: Ir.Value.temp(elementsBaseTemp, { kind: "uint", bits: 256 }),
+            index,
+            stride: 32, // array elements are 32 bytes each
+            dest: offsetTemp,
+            loc: expr.loc ?? undefined,
+          } as Ir.Instruction.ComputeOffset);
+
+          // Read the element at that offset
+          const tempId = yield* Process.Variables.newTemp();
+          yield* Process.Instructions.emit({
+            kind: "read",
+            location: "memory",
+            offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
+            length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+            type: elementType,
+            dest: tempId,
+            loc: expr.loc ?? undefined,
+          } as Ir.Instruction.Read);
+
+          return Ir.Value.temp(tempId, elementType);
+        }
+      }
+    }
+
+    // For non-bytes, non-memory-array types, try to find a complete storage access chain
     const chain = yield* findStorageAccessChain(expr);
     if (chain && nodeType) {
       const valueType = fromBugType(nodeType);
@@ -250,14 +323,16 @@ const makeBuildIndexAccess = (
       );
     }
 
-    // If no storage chain, handle regular array/mapping access
-    const object = yield* buildExpression(expr.object);
-    const index = yield* buildExpression(expr.index);
+    // If no storage chain, handle remaining cases
+    const object = yield* buildExpression(expr.object, { kind: "rvalue" });
+    const index = yield* buildExpression(expr.index, { kind: "rvalue" });
 
     if (objectType && Type.isArray(objectType)) {
+      // This would be for complex array access (e.g., returned from function)
       const elementType = fromBugType(objectType.element);
 
-      // Compute offset for array element
+      // Compute offset for array element (no need to add 32 here as the object
+      // should already point to the elements section)
       const offsetTemp = yield* Process.Variables.newTemp();
       yield* Process.Instructions.emit({
         kind: "compute_offset",

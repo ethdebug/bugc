@@ -5,15 +5,22 @@ import { Type } from "#types";
 
 import { Error as IrgenError } from "#irgen/errors";
 import { Process } from "../process.js";
+import type { Context } from "./context.js";
 import { fromBugType } from "#irgen/type";
 
 /**
  * Build a call expression
  */
 export const makeBuildCall = (
-  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
+  buildExpression: (
+    node: Ast.Expression,
+    context: Context,
+  ) => Process<Ir.Value>,
 ) =>
-  function* buildCall(expr: Ast.Expression.Call): Process<Ir.Value> {
+  function* buildCall(
+    expr: Ast.Expression.Call,
+    _context: Context,
+  ): Process<Ir.Value> {
     // Check if this is a built-in function call
     if (
       expr.callee.type === "IdentifierExpression" &&
@@ -32,7 +39,9 @@ export const makeBuildCall = (
       }
 
       // Evaluate the argument
-      const argValue = yield* buildExpression(expr.arguments[0]);
+      const argValue = yield* buildExpression(expr.arguments[0], {
+        kind: "rvalue",
+      });
 
       // Generate hash instruction
       const resultType: Ir.Type = { kind: "bytes", size: 32 }; // bytes32
@@ -69,7 +78,7 @@ export const makeBuildCall = (
       // Evaluate arguments
       const argValues: Ir.Value[] = [];
       for (const arg of expr.arguments) {
-        argValues.push(yield* buildExpression(arg));
+        argValues.push(yield* buildExpression(arg, { kind: "rvalue" }));
       }
 
       // Generate call terminator and split block

@@ -6,18 +6,23 @@ import { Error as IrgenError, assertExhausted } from "#irgen/errors";
 import { fromBugType } from "#irgen/type";
 
 import { Process } from "../process.js";
+import type { Context } from "./context.js";
 
 /**
  * Build an operator expression (unary or binary)
  */
 export const makeBuildOperator = (
-  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
+  buildExpression: (
+    node: Ast.Expression,
+    context: Context,
+  ) => Process<Ir.Value>,
 ) => {
   const buildUnaryOperator = makeBuildUnaryOperator(buildExpression);
   const buildBinaryOperator = makeBuildBinaryOperator(buildExpression);
 
   return function* buildOperator(
     expr: Ast.Expression.Operator,
+    context: Context,
   ): Process<Ir.Value> {
     // Get the type from the context
     const nodeType = yield* Process.Types.nodeType(expr);
@@ -35,10 +40,11 @@ export const makeBuildOperator = (
 
     switch (expr.operands.length) {
       case 1:
-        return yield* buildUnaryOperator(expr);
+        return yield* buildUnaryOperator(expr, context);
       case 2:
         return yield* buildBinaryOperator(
           expr as typeof expr & { operands: { length: 2 } },
+          context,
         );
       default:
         assertExhausted(expr.operands);
@@ -49,10 +55,14 @@ export const makeBuildOperator = (
  * Build a unary operator expression
  */
 const makeBuildUnaryOperator = (
-  buildExpression: (expr: Ast.Expression) => Process<Ir.Value>,
+  buildExpression: (
+    expr: Ast.Expression,
+    context: Context,
+  ) => Process<Ir.Value>,
 ) =>
   function* buildUnaryOperator(
     expr: Ast.Expression.Operator,
+    _context: Context,
   ): Process<Ir.Value> {
     // Get the result type from the context
     const nodeType = yield* Process.Types.nodeType(expr);
@@ -71,7 +81,9 @@ const makeBuildUnaryOperator = (
     const resultType = fromBugType(nodeType);
 
     // Evaluate operand
-    const operandVal = yield* buildExpression(expr.operands[0]);
+    const operandVal = yield* buildExpression(expr.operands[0], {
+      kind: "rvalue",
+    });
 
     // Generate temp for result
     const tempId = yield* Process.Variables.newTemp();
@@ -95,10 +107,14 @@ const makeBuildUnaryOperator = (
  * Build a binary operator expression
  */
 const makeBuildBinaryOperator = (
-  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
+  buildExpression: (
+    node: Ast.Expression,
+    context: Context,
+  ) => Process<Ir.Value>,
 ) =>
   function* buildBinaryOperator(
     expr: Ast.Expression.Operator & { operands: { length: 2 } },
+    _context: Context,
   ): Process<Ir.Value> {
     // Get the result type from the context
     const nodeType = yield* Process.Types.nodeType(expr);
@@ -117,8 +133,12 @@ const makeBuildBinaryOperator = (
     const resultType = fromBugType(nodeType);
 
     // Evaluate operands
-    const leftVal = yield* buildExpression(expr.operands[0]);
-    const rightVal = yield* buildExpression(expr.operands[1]);
+    const leftVal = yield* buildExpression(expr.operands[0], {
+      kind: "rvalue",
+    });
+    const rightVal = yield* buildExpression(expr.operands[1], {
+      kind: "rvalue",
+    });
 
     // Generate temp for result
     const tempId = yield* Process.Variables.newTemp();

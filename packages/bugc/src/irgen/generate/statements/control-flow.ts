@@ -66,7 +66,7 @@ export const makeBuildIfStatement = (
       : elseBlock; // For no-else case, elseBlock IS the merge block
 
     // Evaluate condition
-    const condVal = yield* buildExpression(stmt.condition!);
+    const condVal = yield* buildExpression(stmt.condition!, { kind: "rvalue" });
 
     // Branch to then or else/merge
     yield* Process.Blocks.terminate({
@@ -157,7 +157,7 @@ const makeBuildLoop = (
     const loopPhis = Process.Variables.createLoopPhis(preLoopVars, headerBlock);
 
     const condVal = config.condition
-      ? yield* buildExpression(config.condition)
+      ? yield* buildExpression(config.condition, { kind: "rvalue" })
       : Ir.Value.constant(1n, { kind: "bool" }); // infinite loop if no condition
 
     yield* Process.Blocks.terminate({
@@ -266,7 +266,9 @@ export const makeBuildForStatement = (
  * Build a return statement
  */
 function* buildReturnStatement(stmt: Ast.Statement.ControlFlow): Process<void> {
-  const value = stmt.value ? yield* buildExpression(stmt.value) : undefined;
+  const value = stmt.value
+    ? yield* buildExpression(stmt.value, { kind: "rvalue" })
+    : undefined;
 
   yield* Process.Blocks.terminate({
     kind: "return",

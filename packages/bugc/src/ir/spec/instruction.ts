@@ -6,6 +6,8 @@ import { Value } from "./value.js";
 export type Instruction =
   // Constants
   | Instruction.Const
+  // Memory management
+  | Instruction.Allocate
   // Unified read/write operations
   | Instruction.Read
   | Instruction.Write
@@ -94,6 +96,15 @@ export namespace Instruction {
     value: bigint | string | boolean;
     type: Type;
     dest: string;
+    loc?: Ast.SourceLocation;
+  }
+
+  // Memory allocation instruction
+  export interface Allocate {
+    kind: "allocate";
+    location: "memory"; // For now, only memory allocation
+    size: Value; // Size in bytes to allocate
+    dest: string; // Destination temp for the allocated pointer
     loc?: Ast.SourceLocation;
   }
 

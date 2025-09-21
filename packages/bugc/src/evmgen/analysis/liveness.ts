@@ -263,6 +263,9 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
     case "length":
       addValue(inst.object);
       break;
+    case "allocate":
+      addValue(inst.size);
+      break;
     // NEW: unified read instruction
     case "read":
       addValue(inst.slot); // For storage/transient
@@ -307,6 +310,7 @@ function getDefinedValue(inst: Ir.Instruction): string | undefined {
     case "hash":
     case "cast":
     case "length":
+    case "allocate":
       return inst.dest;
     // These instructions don't define values
     case "write": // NEW: unified write

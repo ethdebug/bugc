@@ -4,9 +4,7 @@
 
 import type * as Ir from "#ir";
 import type { Stack } from "#evm";
-import { Severity } from "#result";
 
-import { Error, ErrorCode } from "#evmgen/errors";
 import type { Transition } from "#evmgen/operations";
 
 import {
@@ -21,6 +19,8 @@ import {
   generateComputeSlot,
   generateRead,
   generateWrite,
+  generateAllocate,
+  generateComputeOffset,
 } from "./instructions/index.js";
 
 /**
@@ -52,22 +52,15 @@ export function generate<S extends Stack>(
       return generateCast(inst);
     case "slice":
       return generateSlice(inst);
-    // Call instruction removed - calls are now block terminators
+    case "allocate":
+      return generateAllocate(inst);
     case "compute_offset":
+      return generateComputeOffset(inst);
+    // Call instruction removed - calls are now block terminators
     default: {
-      return (state) => {
-        // Add warning for unsupported instructions
-        const warning = new Error(
-          ErrorCode.UNSUPPORTED_INSTRUCTION,
-          inst.kind,
-          inst.loc,
-          Severity.Warning,
-        );
-        return {
-          ...state,
-          warnings: [...state.warnings, warning],
-        };
-      };
+      // This should be unreachable if all instruction types are handled
+      const _: never = inst;
+      return _ as never;
     }
   }
 }

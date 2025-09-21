@@ -5,6 +5,7 @@ import { Type } from "#types";
 
 import { Error as IrgenError, ErrorMessages } from "#irgen/errors";
 import { Process } from "./process.js";
+import type { Context } from "./expressions/context.js";
 
 export interface StorageAccessChain {
   slot: Ir.Module.StorageSlot;
@@ -20,7 +21,10 @@ export interface StorageAccessChain {
  * Find a storage access chain starting from an expression (matching generator.ts)
  */
 export const makeFindStorageAccessChain = (
-  buildExpression: (node: Ast.Expression) => Process<Ir.Value>,
+  buildExpression: (
+    node: Ast.Expression,
+    context: Context,
+  ) => Process<Ir.Value>,
 ) =>
   function* findStorageAccessChain(
     expr: Ast.Expression,
@@ -34,7 +38,9 @@ export const makeFindStorageAccessChain = (
 
       if (accessNode.kind === "index") {
         // For index access, we need to evaluate the key expression
-        const key = yield* buildExpression(accessNode.index);
+        const key = yield* buildExpression(accessNode.index, {
+          kind: "rvalue",
+        });
         accesses.unshift({ kind: "index", key });
       } else if (accessNode.kind === "member") {
         // For member access on structs

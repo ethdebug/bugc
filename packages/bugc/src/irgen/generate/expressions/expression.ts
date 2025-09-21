@@ -3,6 +3,7 @@ import * as Ir from "#ir";
 
 import { assertExhausted } from "#irgen/errors";
 import { type Process } from "../process.js";
+import type { Context } from "./context.js";
 
 import { buildIdentifier } from "./identifier.js";
 import { buildLiteral } from "./literal.js";
@@ -21,24 +22,27 @@ const buildCast = makeBuildCast(buildExpression);
 /**
  * Build an expression and return the resulting IR value
  */
-export function* buildExpression(expr: Ast.Expression): Process<Ir.Value> {
+export function* buildExpression(
+  expr: Ast.Expression,
+  context: Context,
+): Process<Ir.Value> {
   switch (expr.type) {
     case "IdentifierExpression":
       return yield* buildIdentifier(expr as Ast.Expression.Identifier);
     case "LiteralExpression":
       return yield* buildLiteral(expr as Ast.Expression.Literal);
     case "OperatorExpression":
-      return yield* buildOperator(expr as Ast.Expression.Operator);
+      return yield* buildOperator(expr as Ast.Expression.Operator, context);
     case "AccessExpression":
-      return yield* buildAccess(expr as Ast.Expression.Access);
+      return yield* buildAccess(expr as Ast.Expression.Access, context);
     case "CallExpression":
-      return yield* buildCall(expr as Ast.Expression.Call);
+      return yield* buildCall(expr as Ast.Expression.Call, context);
     case "CastExpression":
-      return yield* buildCast(expr as Ast.Expression.Cast);
+      return yield* buildCast(expr as Ast.Expression.Cast, context);
     case "SpecialExpression":
       return yield* buildSpecial(expr as Ast.Expression.Special);
     case "ArrayExpression":
-      return yield* buildArray(expr as Ast.Expression.Array);
+      return yield* buildArray(expr as Ast.Expression.Array, context);
     case "StructExpression":
       // TODO: Implement struct expression generation
       throw new Error(

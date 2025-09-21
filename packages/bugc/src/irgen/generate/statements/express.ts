@@ -8,5 +8,5 @@ import { buildExpression } from "../expressions/index.js";
 export function* buildExpressionStatement(
   stmt: Ast.Statement.Express,
 ): Process<void> {
-  yield* buildExpression(stmt.expression);
+  yield* buildExpression(stmt.expression, { kind: "rvalue" });
 }

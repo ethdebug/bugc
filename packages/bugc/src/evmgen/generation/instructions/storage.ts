@@ -5,7 +5,7 @@ import { type Transition, pipe, operations } from "#evmgen/operations";
 
 import { loadValue, storeValueIfNeeded } from "../values/index.js";
 
-const { PUSHn, SLOAD, SSTORE } = operations;
+const { PUSHn, SLOAD, SSTORE, MLOAD } = operations;
 
 /**
  * Generate code for the new unified read instruction
@@ -13,7 +13,7 @@ const { PUSHn, SLOAD, SSTORE } = operations;
 export function generateRead<S extends Stack>(
   inst: Ir.Instruction.Read,
 ): Transition<S, readonly ["value", ...S]> {
-  // For now, only handle storage reads
+  // Handle storage reads
   if (inst.location === "storage" && inst.slot) {
     return pipe<S>()
       .then(loadValue(inst.slot), { as: "key" })
@@ -22,7 +22,16 @@ export function generateRead<S extends Stack>(
       .done();
   }
 
-  // TODO: Handle other locations (memory, calldata, returndata)
+  // Handle memory reads
+  if (inst.location === "memory" && inst.offset) {
+    return pipe<S>()
+      .then(loadValue(inst.offset), { as: "offset" })
+      .then(MLOAD(), { as: "value" })
+      .then(storeValueIfNeeded(inst.dest))
+      .done();
+  }
+
+  // TODO: Handle other locations (calldata, returndata)
   // For unsupported locations, push a dummy value to maintain stack typing
   return pipe<S>().then(PUSHn(0n), { as: "value" }).done();
 }

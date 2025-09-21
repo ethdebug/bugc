@@ -53,7 +53,7 @@ function* buildVariableDeclaration(
 
   // If there's an initializer, evaluate it and create SSA variable
   if (decl.initializer) {
-    const value = yield* buildExpression(decl.initializer);
+    const value = yield* buildExpression(decl.initializer, { kind: "rvalue" });
     const ssaVar = yield* Process.Variables.declare(decl.name, irType);
 
     // Generate assignment to the new SSA temp
