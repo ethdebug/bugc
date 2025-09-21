@@ -316,8 +316,6 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
       }
       case "hash":
         return `${inst.dest} = keccak256(${formatValue(inst.value)})`;
-      case "slice":
-        return `${inst.dest} = ${formatValue(inst.object)}[${formatValue(inst.start)}:${formatValue(inst.end)}]`;
       case "cast":
         return `${inst.dest} = cast ${formatValue(inst.value)} to ${inst.targetType.kind}`;
       case "compute_slot":

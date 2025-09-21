@@ -248,11 +248,6 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
         addValue(inst.key);
       }
       break;
-    case "slice":
-      addValue(inst.object);
-      addValue(inst.start);
-      addValue(inst.end);
-      break;
     case "hash":
       addValue(inst.value);
       break;
@@ -309,7 +304,6 @@ function getDefinedValue(inst: Ir.Instruction): string | undefined {
     case "read": // NEW: unified read
     case "compute_slot":
     case "compute_offset": // NEW: unified compute offset
-    case "slice":
     case "env":
     case "hash":
     case "cast":

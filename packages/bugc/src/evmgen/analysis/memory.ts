@@ -237,11 +237,6 @@ function simulateInstruction(stack: string[], inst: Ir.Instruction): string[] {
     case "length":
       newStack.pop(); // One operand
       break;
-    case "slice":
-      newStack.pop(); // Three operands
-      newStack.pop();
-      newStack.pop();
-      break;
     // NEW: unified read - pops slot/offset/length as needed
     case "read":
       if (inst.slot) newStack.pop();
@@ -321,11 +316,6 @@ function getUsedValues(inst: Ir.Instruction): Set<string> {
       if (Ir.Instruction.ComputeSlot.isMapping(inst)) {
         addValue(inst.key);
       }
-      break;
-    case "slice":
-      addValue(inst.object);
-      addValue(inst.start);
-      addValue(inst.end);
       break;
     case "cast":
       addValue(inst.value);

@@ -183,18 +183,104 @@ const makeBuildSliceAccess = (
 
       // Slicing bytes returns dynamic bytes
       const resultType: Ir.Type = { kind: "bytes" };
-      const tempId = yield* Process.Variables.newTemp();
 
+      // Calculate the length of the slice
+      const lengthTemp = yield* Process.Variables.newTemp();
       yield* Process.Instructions.emit({
-        kind: "slice",
-        object,
-        start,
-        end,
-        dest: tempId,
+        kind: "binary",
+        op: "sub",
+        left: end,
+        right: start,
+        dest: lengthTemp,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction);
+      const length = Ir.Value.temp(lengthTemp, { kind: "uint", bits: 256 });
+
+      // Allocate memory for the slice result (length + 32 for length prefix)
+      const allocSizeTemp = yield* Process.Variables.newTemp();
+      yield* Process.Instructions.emit({
+        kind: "binary",
+        op: "add",
+        left: length,
+        right: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        dest: allocSizeTemp,
         loc: expr.loc ?? undefined,
       } as Ir.Instruction);
 
-      return Ir.Value.temp(tempId, resultType);
+      const destTemp = yield* Process.Variables.newTemp();
+      yield* Process.Instructions.emit({
+        kind: "allocate",
+        location: "memory",
+        size: Ir.Value.temp(allocSizeTemp, { kind: "uint", bits: 256 }),
+        dest: destTemp,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction);
+
+      // Store the length at the beginning of the allocated memory
+      yield* Process.Instructions.emit({
+        kind: "write",
+        location: "memory",
+        offset: Ir.Value.temp(destTemp, { kind: "uint", bits: 256 }),
+        length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        value: length,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction.Write);
+
+      // Compute source offset (skip length prefix + start offset)
+      const sourceOffsetTemp = yield* Process.Variables.newTemp();
+      yield* Process.Instructions.emit({
+        kind: "binary",
+        op: "add",
+        left: object,
+        right: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        dest: sourceOffsetTemp,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction);
+
+      const adjustedSourceTemp = yield* Process.Variables.newTemp();
+      yield* Process.Instructions.emit({
+        kind: "binary",
+        op: "add",
+        left: Ir.Value.temp(sourceOffsetTemp, { kind: "uint", bits: 256 }),
+        right: start,
+        dest: adjustedSourceTemp,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction);
+
+      // Read the slice data from source
+      const dataTemp = yield* Process.Variables.newTemp();
+      yield* Process.Instructions.emit({
+        kind: "read",
+        location: "memory",
+        offset: Ir.Value.temp(adjustedSourceTemp, { kind: "uint", bits: 256 }),
+        length,
+        type: resultType,
+        dest: dataTemp,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction.Read);
+
+      // Calculate destination offset (skip length prefix)
+      const destDataOffsetTemp = yield* Process.Variables.newTemp();
+      yield* Process.Instructions.emit({
+        kind: "binary",
+        op: "add",
+        left: Ir.Value.temp(destTemp, { kind: "uint", bits: 256 }),
+        right: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        dest: destDataOffsetTemp,
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction);
+
+      // Write the slice data to destination
+      yield* Process.Instructions.emit({
+        kind: "write",
+        location: "memory",
+        offset: Ir.Value.temp(destDataOffsetTemp, { kind: "uint", bits: 256 }),
+        length,
+        value: Ir.Value.temp(dataTemp, resultType),
+        loc: expr.loc ?? undefined,
+      } as Ir.Instruction.Write);
+
+      return Ir.Value.temp(destTemp, resultType);
     }
 
     throw new IrgenError(

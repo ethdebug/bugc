@@ -129,11 +129,6 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
       case "hash":
         this.collectValueUse(inst.value, used);
         break;
-      case "slice":
-        this.collectValueUse(inst.object, used);
-        this.collectValueUse(inst.start, used);
-        this.collectValueUse(inst.end, used);
-        break;
       case "cast":
         this.collectValueUse(inst.value, used);
         break;

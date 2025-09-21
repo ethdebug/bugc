@@ -130,7 +130,7 @@ describe("Function.generate", () => {
     expect(instructions.some((inst) => inst.mnemonic === "ADD")).toBe(true);
   });
 
-  it("should generate slice operation with MCOPY", () => {
+  it.skip("should generate slice operation with MCOPY - REMOVED SLICE INSTRUCTION", () => {
     const func: Ir.Function = {
       name: "test",
       parameters: [],
@@ -1053,7 +1053,7 @@ describe("Function.generate", () => {
     expect(instructions.some((inst) => inst.mnemonic === "SLOAD")).toBe(true);
   });
 
-  it("should handle slice with zero length", () => {
+  it.skip("should handle slice with zero length - REMOVED SLICE INSTRUCTION", () => {
     const func: Ir.Function = {
       name: "test",
       parameters: [],
@@ -1134,84 +1134,9 @@ describe("Function.generate", () => {
     expect(mnemonics).toContain("MCOPY");
   });
 
-  it("should handle slice operation on calldata (msg.data)", () => {
-    const func: Ir.Function = {
-      name: "test",
-      parameters: [],
-      entry: "entry",
-      blocks: new Map([
-        [
-          "entry",
-          {
-            id: "entry",
-            phis: [],
-            predecessors: new Set<string>(),
-            instructions: [
-              {
-                kind: "env",
-                op: "msg_data",
-                dest: "%msg_data_ptr",
-              },
-              {
-                kind: "slice",
-                object: {
-                  kind: "temp",
-                  id: "%msg_data_ptr",
-                  type: {
-                    kind: "array",
-                    element: { kind: "uint", bits: 256 },
-                    size: undefined, // dynamic array
-                  },
-                },
-                start: {
-                  kind: "const",
-                  value: 1n,
-                  type: { kind: "uint", bits: 256 },
-                },
-                end: {
-                  kind: "const",
-                  value: 3n,
-                  type: { kind: "uint", bits: 256 },
-                },
-                dest: "%calldata_slice",
-              },
-            ],
-            terminator: {
-              kind: "return",
-              value: {
-                kind: "temp",
-                id: "%calldata_slice",
-                type: {
-                  kind: "array",
-                  element: { kind: "uint", bits: 256 },
-                  size: undefined,
-                },
-              },
-            },
-          },
-        ],
-      ]),
-    };
-
-    const liveness = Liveness.Function.analyze(func);
-    const memoryResult = Memory.Function.plan(func, liveness);
-    if (!memoryResult.success) throw new Error("Memory planning failed");
-    const memory = memoryResult.value;
-    const layoutResult = Layout.Function.perform(func);
-    if (!layoutResult.success) throw new Error("Block layout failed");
-    const layout = layoutResult.value;
-
-    const { instructions } = generate(func, memory, layout);
-    const mnemonics = instructions.map((inst) => inst.mnemonic);
-
-    // Should have PUSH0 for msg.data pointer (offset 0)
-    expect(mnemonics).toContain("PUSH0");
-
-    // Should have CALLDATACOPY instead of MCOPY for calldata slice
-    expect(mnemonics).toContain("CALLDATACOPY");
-
-    // Should NOT have MCOPY since we're copying from calldata
-    expect(mnemonics).not.toContain("MCOPY");
+  it.skip("should handle slice operation on calldata (msg.data) - REMOVED SLICE INSTRUCTION", () => {
+    // Test removed - slice instruction no longer exists in IR
+    // Slicing is now done through decomposed operations (sub, add, allocate, read, write)
   });
 
   it("should handle msg.data.length using CALLDATASIZE", () => {
@@ -1279,91 +1204,9 @@ describe("Function.generate", () => {
     expect(mnemonics).not.toContain("SLOAD");
   });
 
-  it("should handle slice operation on bytes", () => {
-    const func: Ir.Function = {
-      name: "test",
-      parameters: [],
-      entry: "entry",
-      blocks: new Map([
-        [
-          "entry",
-          {
-            id: "entry",
-            phis: [],
-            predecessors: new Set<string>(),
-            instructions: [
-              {
-                kind: "const",
-                value: "0x1234567890abcdef",
-                type: { kind: "bytes", size: 8 },
-                dest: "%data",
-              },
-              {
-                kind: "slice",
-                object: {
-                  kind: "temp",
-                  id: "%data",
-                  type: {
-                    kind: "bytes",
-                    size: 8,
-                  },
-                },
-                start: {
-                  kind: "const",
-                  value: 2n,
-                  type: { kind: "uint", bits: 256 },
-                },
-                end: {
-                  kind: "const",
-                  value: 6n,
-                  type: { kind: "uint", bits: 256 },
-                },
-                dest: "%sliced_bytes",
-              },
-            ],
-            terminator: {
-              kind: "return",
-              value: {
-                kind: "temp",
-                id: "%sliced_bytes",
-                type: { kind: "bytes", size: 4 },
-              },
-            },
-          },
-        ],
-      ]),
-    };
-
-    const liveness = Liveness.Function.analyze(func);
-    const memoryResult = Memory.Function.plan(func, liveness);
-    if (!memoryResult.success) throw new Error("Memory planning failed");
-    const memory = memoryResult.value;
-    const layoutResult = Layout.Function.perform(func);
-    if (!layoutResult.success) throw new Error("Block layout failed");
-    const layout = layoutResult.value;
-
-    const { instructions } = generate(func, memory, layout);
-    const mnemonics = instructions.map((inst) => inst.mnemonic);
-
-    // Should use MCOPY for memory bytes slicing
-    expect(mnemonics).toContain("MCOPY");
-
-    // Check that slice arithmetic uses 1-byte elements (no MUL by 32)
-    // We multiply by 1 for bytes, which should be optimized out or use PUSH1 0x01
-    const pushInstructions = instructions.filter((inst) =>
-      inst.mnemonic.startsWith("PUSH"),
-    );
-
-    // Should have PUSH instructions for start (2) and end (6)
-    const hasStartValue = pushInstructions.some(
-      (inst) => inst.immediates && inst.immediates[0] === 2,
-    );
-    const hasEndValue = pushInstructions.some(
-      (inst) => inst.immediates && inst.immediates[0] === 6,
-    );
-
-    expect(hasStartValue).toBe(true);
-    expect(hasEndValue).toBe(true);
+  it.skip("should handle slice operation on bytes - REMOVED SLICE INSTRUCTION", () => {
+    // Test removed - slice instruction no longer exists in IR
+    // Slicing is now done through decomposed operations (sub, add, allocate, read, write)
   });
 
   it("should handle string constants with UTF-8 encoding", () => {

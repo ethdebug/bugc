@@ -15,8 +15,6 @@ export type Instruction =
   | Instruction.ComputeSlot
   // Unified compute operations
   | Instruction.ComputeOffset
-  // Slice operations
-  | Instruction.Slice
   // Arithmetic and logic
   | Instruction.BinaryOp
   | Instruction.UnaryOp
@@ -268,15 +266,6 @@ export namespace Instruction {
       dest,
       loc,
     });
-  }
-
-  export interface Slice {
-    kind: "slice";
-    object: Value;
-    start: Value;
-    end: Value;
-    dest: string;
-    loc?: Ast.SourceLocation;
   }
 
   export interface BinaryOp {

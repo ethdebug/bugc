@@ -28,22 +28,25 @@ describe("IR slice generation", () => {
         const ir = irResult.value;
         expect(ir.main).toBeDefined();
 
-        // Find the slice instruction
+        // Find the decomposed slice operations
         const mainBlocks = Array.from(ir.main.blocks.values());
-        const sliceInsts = mainBlocks.flatMap((block) =>
-          block.instructions.filter((inst) => inst.kind === "slice"),
+        const allInsts = mainBlocks.flatMap((block) => block.instructions);
+
+        // Should have operations for: sub (length calc), add (size calc),
+        // allocate, write (length), add (source offset), add (adjusted source),
+        // read, add (dest offset), write (data)
+        const subInsts = allInsts.filter(
+          (inst) => inst.kind === "binary" && inst.op === "sub",
         );
+        const allocInsts = allInsts.filter((inst) => inst.kind === "allocate");
+        const readInsts = allInsts.filter((inst) => inst.kind === "read");
+        const writeInsts = allInsts.filter((inst) => inst.kind === "write");
 
-        expect(sliceInsts).toHaveLength(1);
-        const sliceInst = sliceInsts[0];
-
-        expect(sliceInst.kind).toBe("slice");
-        if (sliceInst.kind === "slice") {
-          // Values could be temp or const depending on evaluation order
-          expect(["temp", "env"]).toContain(sliceInst.object.kind);
-          expect(["temp", "const"]).toContain(sliceInst.start.kind);
-          expect(["temp", "const"]).toContain(sliceInst.end.kind);
-        }
+        // Should have decomposed the slice into multiple operations
+        expect(subInsts.length).toBeGreaterThan(0); // Length calculation
+        expect(allocInsts.length).toBeGreaterThan(0); // Memory allocation(s) - may allocate for result
+        expect(readInsts.length).toBeGreaterThan(0); // Read slice data
+        expect(writeInsts.length).toBeGreaterThan(0); // Write length and data
       }
     }
   });

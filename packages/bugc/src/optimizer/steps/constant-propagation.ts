@@ -112,11 +112,6 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
       case "hash":
         result.value = propagateValue(result.value);
         break;
-      case "slice":
-        result.object = propagateValue(result.object);
-        result.start = propagateValue(result.start);
-        result.end = propagateValue(result.end);
-        break;
       case "cast":
         result.value = propagateValue(result.value);
         break;

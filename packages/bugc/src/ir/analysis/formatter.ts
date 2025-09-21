@@ -135,9 +135,6 @@ export class Formatter {
       case "allocate":
         return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = allocate.${inst.location}, size=${this.formatValue(inst.size)}`;
 
-      case "slice":
-        return `${destWithType(inst.dest)} = slice object=${this.formatValue(inst.object)}, start=${this.formatValue(inst.start)}, end=${this.formatValue(inst.end)}`;
-
       case "binary":
         return `${destWithType(inst.dest)} = ${inst.op} ${this.formatValue(inst.left)}, ${this.formatValue(inst.right)}`;
 

@@ -15,7 +15,6 @@ import {
   generateEnvOp,
   generateHashOp,
   generateLength,
-  generateSlice,
   generateComputeSlot,
   generateRead,
   generateWrite,
@@ -50,8 +49,6 @@ export function generate<S extends Stack>(
       return generateComputeSlot(inst);
     case "cast":
       return generateCast(inst);
-    case "slice":
-      return generateSlice(inst);
     case "allocate":
       return generateAllocate(inst);
     case "compute_offset":
