@@ -68,7 +68,8 @@ export class Formatter {
 
     // Format each block
     for (const blockId of sortedBlocks) {
-      const block = func.blocks.get(blockId)!;
+      const block = func.blocks.get(blockId);
+      if (!block) continue; // Skip blocks that don't exist
       this.formatBlock(blockId, block);
     }
 
@@ -80,9 +81,9 @@ export class Formatter {
     // Block header - only show predecessors for merge points (multiple preds)
     // or if block has phi nodes (which indicates it's a merge point)
     const showPreds =
-      block.predecessors.size > 1 || (block.phis && block.phis.length > 0);
+      block.predecessors?.size > 1 || (block.phis && block.phis.length > 0);
     const predsStr =
-      showPreds && block.predecessors.size > 0
+      showPreds && block.predecessors?.size > 0
         ? ` preds=[${Array.from(block.predecessors).sort().join(", ")}]`
         : "";
     this.line(`${id}${predsStr}:`);
@@ -447,16 +448,17 @@ export class Formatter {
       if (visited.has(blockId)) return;
       visited.add(blockId);
 
+      // Add current block first (pre-order)
+      result.push(blockId);
+
       const block = func.blocks.get(blockId);
       if (!block) return;
 
-      // Visit successors first (post-order)
+      // Then visit successors
       const successors = this.getSuccessors(block);
       for (const succ of successors) {
         visit(succ);
       }
-
-      result.push(blockId);
     };
 
     // Start from entry
@@ -467,7 +469,7 @@ export class Formatter {
       visit(blockId);
     }
 
-    return result.reverse();
+    return result;
   }
 
   private getSuccessors(block: Ir.Block): string[] {
@@ -476,6 +478,8 @@ export class Formatter {
         return [block.terminator.target];
       case "branch":
         return [block.terminator.trueTarget, block.terminator.falseTarget];
+      case "call":
+        return [block.terminator.continuation];
       case "return":
         return [];
       default:
