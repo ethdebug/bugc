@@ -547,6 +547,36 @@ const blockExpression = located(
   }),
 );
 
+// Array literal: [expr1, expr2, ...]
+const arrayLiteral = P.lazy(() =>
+  P.seq(
+    Lang.lbracket,
+    P.sepBy(expression, Lang.comma),
+    Lang.rbracket,
+  ).map(([_, elements, __]) =>
+    Ast.Expression.arrayLiteral(PENDING_ID, elements),
+  ),
+);
+
+// Struct literal: StructName { field1: expr1, field2: expr2, ... }
+const structLiteral = P.lazy(() => {
+  const fieldInit = P.seq(
+    Lang.identifier,
+    Lang.colon,
+    expression,
+  ).map(([name, _, value]) => ({ name, value }));
+
+  // Only named struct literals for now to avoid ambiguity
+  return P.seq(
+    Lang.identifier,
+    Lang.lbrace,
+    P.sepBy(fieldInit, Lang.comma),
+    Lang.rbrace,
+  ).map(([structName, _, fields, __]) =>
+    Ast.Expression.structLiteral(PENDING_ID, fields, structName),
+  );
+});
+
 // Primary expressions (atoms)
 const primaryExpression = P.lazy(() =>
   P.alt(
@@ -556,6 +586,8 @@ const primaryExpression = P.lazy(() =>
     numberLiteral,
     booleanLiteral,
     stringLiteral,
+    arrayLiteral,
+    structLiteral,
     msgExpression,
     blockExpression,
     identifier,
