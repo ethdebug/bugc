@@ -226,20 +226,29 @@ const makeBuildIndexAccess = (
       Type.isElementary(objectType) &&
       Type.Elementary.isBytes(objectType)
     ) {
-      // Handle bytes indexing directly, not as storage chain
+      // Fixed-size bytes types (bytes1, bytes4, etc.) cannot be indexed
+      // They are atomic values, not arrays
+      if (objectType.size !== undefined) {
+        throw new IrgenError(
+          `Cannot index into fixed-size bytes type 'bytes${objectType.size}'`,
+          expr.loc ?? undefined,
+          Severity.Error,
+        );
+      }
+      
+      // Dynamic bytes can be indexed
       const object = yield* buildExpression(expr.object, { kind: "rvalue" });
       const index = yield* buildExpression(expr.index, { kind: "rvalue" });
       // Bytes indexing returns uint8
       const elementType: Ir.Type = { kind: "uint", bits: 8 };
 
-      // Compute offset for the byte at the index
+      // Compute offset for the byte at the index using byte offset
       const offsetTemp = yield* Process.Variables.newTemp();
       yield* Process.Instructions.emit(
-        Ir.Instruction.ComputeOffset.array(
+        Ir.Instruction.ComputeOffset.byte(
           "memory",
           object,
           index,
-          1, // bytes are 1 byte each
           offsetTemp,
           expr.loc ?? undefined,
         ),
@@ -410,4 +419,4 @@ const makeBuildIndexAccess = (
       expr.loc ?? undefined,
       Severity.Error,
     );
-  };
+  };;

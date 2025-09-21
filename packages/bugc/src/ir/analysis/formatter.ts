@@ -153,18 +153,24 @@ export class Formatter {
         return `${destWithType(inst.dest, inst.targetType)} = cast ${this.formatValue(inst.value)} to ${this.formatType(inst.targetType)}`;
 
       case "compute_slot": {
-        const parts: string[] = [`compute_slot kind="${inst.slotKind}"`];
-        parts.push(`base=${this.formatValue(inst.base)}`);
+        const base = this.formatValue(inst.base);
+        let slotExpr: string;
 
         if (Ir.Instruction.ComputeSlot.isMapping(inst)) {
-          parts.push(`key=${this.formatValue(inst.key)}`);
+          const key = this.formatValue(inst.key);
+          slotExpr = `slot[${base}].mapping[${key}]`;
         } else if (Ir.Instruction.ComputeSlot.isArray(inst)) {
-          parts.push(`index=${this.formatValue(inst.index)}`);
+          const index = this.formatValue(inst.index);
+          slotExpr = `slot[${base}].array[${index}]`;
         } else if (Ir.Instruction.ComputeSlot.isField(inst)) {
-          parts.push(`offset=${inst.fieldOffset}`);
+          // Just show the offset, no field name
+          slotExpr = `slot[${base}].field[${inst.fieldOffset}]`;
+        } else {
+          // Shouldn't happen with proper typing
+          slotExpr = `slot[${base}]`;
         }
 
-        return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = ${parts.join(", ")}`;
+        return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = ${slotExpr}`;
       }
 
       // Call instruction removed - calls are now block terminators
@@ -175,42 +181,125 @@ export class Formatter {
       // NEW: unified read instruction
       case "read": {
         const location = inst.location;
-        const parts: string[] = [`read.${location}`];
-        if (inst.slot) parts.push(`slot=${this.formatValue(inst.slot)}`);
-        if (inst.offset) parts.push(`offset=${this.formatValue(inst.offset)}`);
-        if (inst.length) parts.push(`length=${this.formatValue(inst.length)}`);
-        if (inst.name) parts.push(`name="${inst.name}"`);
-        return `${destWithType(inst.dest, inst.type)} = ${parts.join(", ")}`;
+
+        // Check if we're using defaults
+        const isDefaultOffset = !inst.offset || (inst.offset.kind === "const" && inst.offset.value === 0n);
+        const isDefaultLength = !inst.length || (inst.length.kind === "const" && inst.length.value === 32n);
+
+        let locationStr: string;
+        if (location === "storage" || location === "transient") {
+          // For storage/transient, slot is required
+          const slot = inst.slot ? this.formatValue(inst.slot) : "0";
+
+          if (isDefaultOffset && isDefaultLength) {
+            // Only slot - compact syntax with * to indicate word-sized operation
+            locationStr = `${location}[${slot}*]`;
+          } else {
+            // Multiple fields - use named syntax
+            const parts: string[] = [`slot: ${slot}`];
+            if (!isDefaultOffset && inst.offset) {
+              parts.push(`offset: ${this.formatValue(inst.offset)}`);
+            }
+            if (!isDefaultLength && inst.length) {
+              parts.push(`length: ${this.formatValue(inst.length)}`);
+            }
+            locationStr = `${location}[${parts.join(", ")}]`;
+          }
+        } else {
+          // For memory/calldata/returndata
+          if (inst.offset) {
+            const offset = this.formatValue(inst.offset);
+            if (isDefaultLength) {
+              // Only offset - compact syntax with * to indicate word-sized operation
+              locationStr = `${location}[${offset}*]`;
+            } else {
+              // Multiple fields - use named syntax
+              const length = inst.length ? this.formatValue(inst.length) : "32";
+              locationStr = `${location}[offset: ${offset}, length: ${length}]`;
+            }
+          } else {
+            // No offset specified
+            locationStr = `${location}[]`;
+          }
+        }
+
+        return `${destWithType(inst.dest, inst.type)} = ${locationStr}`;
       }
 
       // NEW: unified write instruction
       case "write": {
         const location = inst.location;
-        const parts: string[] = [`write.${location}`];
-        if (inst.slot) parts.push(`slot=${this.formatValue(inst.slot)}`);
-        if (inst.offset) parts.push(`offset=${this.formatValue(inst.offset)}`);
-        if (inst.length) parts.push(`length=${this.formatValue(inst.length)}`);
-        if (inst.name) parts.push(`name="${inst.name}"`);
-        parts.push(`value=${this.formatValue(inst.value)}`);
-        return parts.join(", ");
+        const value = this.formatValue(inst.value);
+
+        // Check if we're using defaults
+        const isDefaultOffset = !inst.offset || (inst.offset.kind === "const" && inst.offset.value === 0n);
+        const isDefaultLength = !inst.length || (inst.length.kind === "const" && inst.length.value === 32n);
+
+        if (location === "storage" || location === "transient") {
+          // For storage/transient, slot is required
+          const slot = inst.slot ? this.formatValue(inst.slot) : "0";
+
+          if (isDefaultOffset && isDefaultLength) {
+            // Only slot - compact syntax with * to indicate word-sized operation
+            return `${location}[${slot}*] = ${value}`;
+          } else {
+            // Multiple fields - use named syntax
+            const parts: string[] = [`slot: ${slot}`];
+            if (!isDefaultOffset && inst.offset) {
+              parts.push(`offset: ${this.formatValue(inst.offset)}`);
+            }
+            if (!isDefaultLength && inst.length) {
+              parts.push(`length: ${this.formatValue(inst.length)}`);
+            }
+            return `${location}[${parts.join(", ")}] = ${value}`;
+          }
+        } else {
+          // For memory/calldata/returndata
+          if (inst.offset) {
+            const offset = this.formatValue(inst.offset);
+            if (isDefaultLength) {
+              // Only offset - compact syntax with * to indicate word-sized operation
+              return `${location}[${offset}*] = ${value}`;
+            } else {
+              // Multiple fields - use named syntax
+              const length = inst.length ? this.formatValue(inst.length) : "32";
+              return `${location}[offset: ${offset}, length: ${length}] = ${value}`;
+            }
+          } else {
+            // No offset specified
+            return `${location}[] = ${value}`;
+          }
+        }
       }
 
       // NEW: unified compute offset
       case "compute_offset": {
-        const parts: string[] = [`compute_offset.${inst.location}`];
-        parts.push(`base=${this.formatValue(inst.base)}`);
+        const base = this.formatValue(inst.base);
+        let offsetExpr: string;
 
         if (Ir.Instruction.ComputeOffset.isArray(inst)) {
-          parts.push(`index=${this.formatValue(inst.index)}`);
-          parts.push(`stride=${inst.stride}`);
+          const index = this.formatValue(inst.index);
+          if (inst.stride === 32) {
+            // Default stride - single param syntax
+            offsetExpr = `offset[${base}].array[${index}]`;
+          } else {
+            // Non-default stride - named syntax
+            offsetExpr = `offset[${base}].array[index: ${index}, stride: ${inst.stride}]`;
+          }
         } else if (Ir.Instruction.ComputeOffset.isField(inst)) {
-          parts.push(`field="${inst.field}"`);
-          parts.push(`fieldOffset=${inst.fieldOffset}`);
+          // Field just shows the offset
+          offsetExpr = `offset[${base}].field[${inst.fieldOffset}]`;
         } else if (Ir.Instruction.ComputeOffset.isByte(inst)) {
-          parts.push(`offset=${this.formatValue(inst.offset)}`);
+          const offset = this.formatValue(inst.offset);
+          offsetExpr = `offset[${base}].byte[${offset}]`;
+        } else {
+          // Shouldn't happen with proper typing
+          offsetExpr = `offset[${base}]`;
         }
 
-        return `${inst.dest} = ${parts.join(", ")}`;
+        // Add % prefix for temp destinations
+        const dest = inst.dest.startsWith("t") ? `%${inst.dest}` : inst.dest;
+        return `${dest} = ${offsetExpr}`;
       }
 
       default:
