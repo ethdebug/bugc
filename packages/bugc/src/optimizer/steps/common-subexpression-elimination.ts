@@ -15,9 +15,11 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
     this.processAllFunctions(optimized, (func) => {
       // Global replacements map for the entire function
       const globalReplacements = new Map<string, string>();
+      // Pure expressions that persist across side effects
+      const pureExpressions = new Map<string, string>();
 
       for (const block of func.blocks.values()) {
-        // Map of expression -> temp that computes it
+        // Map of expression -> temp that computes it (cleared on side effects)
         const expressions = new Map<string, string>();
         const newInstructions: Ir.Instruction[] = [];
 
@@ -30,13 +32,20 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
 
           if (
             processedInst.kind === "binary" ||
-            processedInst.kind === "unary"
+            processedInst.kind === "unary" ||
+            processedInst.kind === "compute_slot" ||
+            processedInst.kind === "env"
           ) {
             // Create a canonical representation of the expression
             const exprKey = this.getExpressionKey(processedInst);
+            const isPure =
+              processedInst.kind === "compute_slot" ||
+              processedInst.kind === "env";
 
             // Check if we've seen this expression before
-            const existing = expressions.get(exprKey);
+            const existing = isPure
+              ? pureExpressions.get(exprKey) || expressions.get(exprKey)
+              : expressions.get(exprKey);
             if (existing && "dest" in processedInst) {
               // This is a duplicate - map this temp to the existing one
               globalReplacements.set(processedInst.dest, existing);
@@ -53,6 +62,9 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
               // First time seeing this expression
               if ("dest" in processedInst && exprKey) {
                 expressions.set(exprKey, processedInst.dest);
+                if (isPure) {
+                  pureExpressions.set(exprKey, processedInst.dest);
+                }
               }
               newInstructions.push(processedInst);
             }
@@ -189,6 +201,25 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
       const operandKey = this.getValueKey(inst.operand);
       const typeKey = this.getTypeKey(inst.operand.type);
       return `${inst.op}(${operandKey}:${typeKey})`;
+    } else if (inst.kind === "compute_slot") {
+      // Create a unique key for compute_slot instructions
+      const baseKey = this.getValueKey(inst.base);
+
+      if (inst.slotKind === "field") {
+        return `compute_slot:field(${baseKey},${inst.fieldOffset})`;
+      } else if (inst.slotKind === "mapping") {
+        const keyKey = this.getValueKey(inst.key);
+        const keyTypeKey = inst.keyType
+          ? this.getTypeKey(inst.keyType)
+          : "unknown";
+        return `compute_slot:mapping(${baseKey},${keyKey}:${keyTypeKey})`;
+      } else if (inst.slotKind === "array") {
+        const indexKey = this.getValueKey(inst.index);
+        return `compute_slot:array(${baseKey},${indexKey})`;
+      }
+    } else if (inst.kind === "env") {
+      // Environment values are constant during execution
+      return `env:${inst.op}`;
     }
     return "";
   }
