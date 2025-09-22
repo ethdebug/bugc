@@ -90,9 +90,9 @@ export function getSourceSnippet(
   for (let i = 0; i < lines.length; i++) {
     const lineLength = lines[i].length + 1; // +1 for newline
 
-    if (currentOffset + lineLength > offset) {
+    if (currentOffset + lineLength > Number(offset)) {
       lineNumber = i;
-      columnNumber = offset - currentOffset;
+      columnNumber = Number(offset) - currentOffset;
       break;
     }
 
@@ -112,7 +112,7 @@ export function getSourceSnippet(
 
   // Add the error indicator
   output += " ".repeat(columnNumber);
-  output += "^".repeat(Math.min(length, line.length - columnNumber));
+  output += "^".repeat(Math.min(Number(length), line.length - columnNumber));
 
   return output;
 }

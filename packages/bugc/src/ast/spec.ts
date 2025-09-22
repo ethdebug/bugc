@@ -12,20 +12,12 @@
  * 5. Alignment with ethdebug format terminology and structure
  */
 
-export interface SourceLocation {
-  offset: number;
-  length: number;
-}
+import * as Format from "@ethdebug/format";
+
+export type SourceLocation = NonNullable<Format.Materials.SourceRange["range"]>;
 
 export const isSourceLocation = (loc: unknown): loc is SourceLocation =>
-  typeof loc === "object" &&
-  !!loc &&
-  "offset" in loc &&
-  typeof loc.offset === "number" &&
-  loc.offset >= 0 &&
-  "length" in loc &&
-  typeof loc.length === "number" &&
-  loc.length >= 0;
+  Format.Materials.isSourceRange({ source: { id: "pending" }, range: loc });
 
 // ID type for AST nodes - using string type with numeric identifiers
 export type Id = string;

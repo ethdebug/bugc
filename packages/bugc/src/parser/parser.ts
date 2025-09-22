@@ -734,7 +734,10 @@ function precedenceParser(
           const loc = left.loc &&
             right.loc && {
               offset: left.loc.offset,
-              length: right.loc.offset + right.loc.length - left.loc.offset,
+              length:
+                Number(right.loc.offset) +
+                Number(right.loc.length) -
+                Number(left.loc.offset),
             };
           return Ast.Expression.operator(
             PENDING_ID,
