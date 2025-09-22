@@ -21,7 +21,7 @@ export function* buildSpecial(expr: Ast.Expression.Special): Process<Ir.Value> {
       ),
     );
     // Return a default value to allow compilation to continue
-    return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+    return Ir.Value.constant(0n, Ir.Type.Scalar.uint256);
   }
 
   const resultType = fromBugType(nodeType);
@@ -52,7 +52,7 @@ export function* buildSpecial(expr: Ast.Expression.Special): Process<Ir.Value> {
           Severity.Error,
         ),
       );
-      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+      return Ir.Value.constant(0n, Ir.Type.Scalar.uint256);
   }
 
   yield* Process.Instructions.emit({

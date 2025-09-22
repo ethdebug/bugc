@@ -20,7 +20,11 @@ describe("IrFormatter", () => {
               instructions: [],
               terminator: {
                 kind: "branch",
-                condition: { kind: "temp", id: "t0", type: { kind: "bool" } },
+                condition: {
+                  kind: "temp",
+                  id: "t0",
+                  type: Ir.Type.Scalar.bool,
+                },
                 trueTarget: "then",
                 falseTarget: "else",
               },
@@ -36,7 +40,7 @@ describe("IrFormatter", () => {
                 {
                   kind: "const",
                   value: 20n,
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                   dest: "t1",
                 },
               ],
@@ -56,7 +60,7 @@ describe("IrFormatter", () => {
                 {
                   kind: "const",
                   value: 30n,
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                   dest: "t2",
                 },
               ],
@@ -86,7 +90,7 @@ describe("IrFormatter", () => {
                       {
                         kind: "temp",
                         id: "t1",
-                        type: { kind: "uint", bits: 256 },
+                        type: Ir.Type.Scalar.uint256,
                       },
                     ],
                     [
@@ -94,12 +98,12 @@ describe("IrFormatter", () => {
                       {
                         kind: "temp",
                         id: "t2",
-                        type: { kind: "uint", bits: 256 },
+                        type: Ir.Type.Scalar.uint256,
                       },
                     ],
                   ]),
                   dest: "t3",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
               ],
             },
@@ -154,7 +158,7 @@ describe("IrFormatter", () => {
                       {
                         kind: "temp",
                         id: "t1",
-                        type: { kind: "uint", bits: 256 },
+                        type: Ir.Type.Scalar.uint256,
                       },
                     ],
                     [
@@ -162,27 +166,31 @@ describe("IrFormatter", () => {
                       {
                         kind: "temp",
                         id: "t2",
-                        type: { kind: "uint", bits: 256 },
+                        type: Ir.Type.Scalar.uint256,
                       },
                     ],
                   ]),
                   dest: "t3",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 {
                   kind: "phi",
                   sources: new Map([
                     [
                       "pred1",
-                      { kind: "const", value: true, type: { kind: "bool" } },
+                      { kind: "const", value: true, type: Ir.Type.Scalar.bool },
                     ],
                     [
                       "pred2",
-                      { kind: "const", value: false, type: { kind: "bool" } },
+                      {
+                        kind: "const",
+                        value: false,
+                        type: Ir.Type.Scalar.bool,
+                      },
                     ],
                   ]),
                   dest: "t4",
-                  type: { kind: "bool" },
+                  type: Ir.Type.Scalar.bool,
                 },
               ],
             },
@@ -233,7 +241,7 @@ describe("IrFormatter", () => {
                       {
                         kind: "temp",
                         id: "t1",
-                        type: { kind: "uint", bits: 256 },
+                        type: Ir.Type.Scalar.uint256,
                       },
                     ],
                     [
@@ -241,7 +249,7 @@ describe("IrFormatter", () => {
                       {
                         kind: "temp",
                         id: "t2",
-                        type: { kind: "uint", bits: 256 },
+                        type: Ir.Type.Scalar.uint256,
                       },
                     ],
                     [
@@ -249,12 +257,12 @@ describe("IrFormatter", () => {
                       {
                         kind: "temp",
                         id: "t3",
-                        type: { kind: "uint", bits: 256 },
+                        type: Ir.Type.Scalar.uint256,
                       },
                     ],
                   ]),
                   dest: "t4",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
               ],
             },

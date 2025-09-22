@@ -20,19 +20,16 @@ export function* buildArray(
     case "lvalue-storage": {
       // Storage array assignment - expand to individual storage writes
       // First, store the array length at the base slot
-      const lengthValue = Ir.Value.constant(BigInt(expr.elements.length), {
-        kind: "uint",
-        bits: 256,
-      });
+      const lengthValue = Ir.Value.constant(
+        BigInt(expr.elements.length),
+        Ir.Type.Scalar.uint256,
+      );
       yield* Process.Instructions.emit({
         kind: "write",
         location: "storage",
-        slot: Ir.Value.constant(BigInt(context.slot), {
-          kind: "uint",
-          bits: 256,
-        }),
-        offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-        length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        slot: Ir.Value.constant(BigInt(context.slot), Ir.Type.Scalar.uint256),
+        offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
+        length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         value: lengthValue,
         loc: expr.loc ?? undefined,
       } as Ir.Instruction.Write);
@@ -45,19 +42,13 @@ export function* buildArray(
         });
 
         // Generate the index value
-        const indexValue = Ir.Value.constant(BigInt(i), {
-          kind: "uint",
-          bits: 256,
-        });
+        const indexValue = Ir.Value.constant(BigInt(i), Ir.Type.Scalar.uint256);
 
         // Compute slot for array[i]
         const slotTemp = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit(
           Ir.Instruction.ComputeSlot.array(
-            Ir.Value.constant(BigInt(context.slot), {
-              kind: "uint",
-              bits: 256,
-            }),
+            Ir.Value.constant(BigInt(context.slot), Ir.Type.Scalar.uint256),
             indexValue,
             slotTemp,
             expr.loc ?? undefined,
@@ -68,16 +59,16 @@ export function* buildArray(
         yield* Process.Instructions.emit({
           kind: "write",
           location: "storage",
-          slot: Ir.Value.temp(slotTemp, { kind: "uint", bits: 256 }),
-          offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-          length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+          slot: Ir.Value.temp(slotTemp, Ir.Type.Scalar.uint256),
+          offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
+          length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           value: elementValue,
           loc: expr.loc ?? undefined,
         } as Ir.Instruction.Write);
       }
 
       // Return a marker value since storage arrays don't have a memory address
-      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+      return Ir.Value.constant(0n, Ir.Type.Scalar.uint256);
     }
 
     case "lvalue-memory":
@@ -97,7 +88,7 @@ export function* buildArray(
         yield* Process.Instructions.emit({
           kind: "allocate",
           location: "memory",
-          size: Ir.Value.constant(totalSize, { kind: "uint", bits: 256 }),
+          size: Ir.Value.constant(totalSize, Ir.Type.Scalar.uint256),
           dest: basePtr,
           loc: expr.loc ?? undefined,
         } as Ir.Instruction.Allocate);
@@ -106,9 +97,9 @@ export function* buildArray(
         yield* Process.Instructions.emit({
           kind: "write",
           location: "memory",
-          offset: Ir.Value.temp(basePtr, { kind: "uint", bits: 256 }),
-          length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
-          value: Ir.Value.constant(elementCount, { kind: "uint", bits: 256 }),
+          offset: Ir.Value.temp(basePtr, Ir.Type.Scalar.uint256),
+          length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
+          value: Ir.Value.constant(elementCount, Ir.Type.Scalar.uint256),
           loc: expr.loc ?? undefined,
         } as Ir.Instruction.Write);
 
@@ -117,8 +108,8 @@ export function* buildArray(
         yield* Process.Instructions.emit({
           kind: "binary",
           op: "add",
-          left: Ir.Value.temp(basePtr, { kind: "uint", bits: 256 }),
-          right: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+          left: Ir.Value.temp(basePtr, Ir.Type.Scalar.uint256),
+          right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           dest: elementsBaseTemp,
           loc: expr.loc ?? undefined,
         } as Ir.Instruction);
@@ -133,8 +124,8 @@ export function* buildArray(
           yield* Process.Instructions.emit(
             Ir.Instruction.ComputeOffset.array(
               "memory",
-              Ir.Value.temp(elementsBaseTemp, { kind: "uint", bits: 256 }),
-              Ir.Value.constant(BigInt(i), { kind: "uint", bits: 256 }),
+              Ir.Value.temp(elementsBaseTemp, Ir.Type.Scalar.uint256),
+              Ir.Value.constant(BigInt(i), Ir.Type.Scalar.uint256),
               32,
               offsetTemp,
               expr.loc ?? undefined,
@@ -144,14 +135,14 @@ export function* buildArray(
           yield* Process.Instructions.emit({
             kind: "write",
             location: "memory",
-            offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
-            length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+            offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
+            length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
             value: elementValue,
             loc: expr.loc ?? undefined,
           } as Ir.Instruction.Write);
         }
 
-        return Ir.Value.temp(basePtr, { kind: "uint", bits: 256 });
+        return Ir.Value.temp(basePtr, Ir.Type.Scalar.uint256);
       }
 
       // Same implementation as above but with proper type
@@ -162,7 +153,7 @@ export function* buildArray(
       yield* Process.Instructions.emit({
         kind: "allocate",
         location: "memory",
-        size: Ir.Value.constant(totalSize, { kind: "uint", bits: 256 }),
+        size: Ir.Value.constant(totalSize, Ir.Type.Scalar.uint256),
         dest: basePtr,
         loc: expr.loc ?? undefined,
       } as Ir.Instruction.Allocate);
@@ -171,9 +162,9 @@ export function* buildArray(
       yield* Process.Instructions.emit({
         kind: "write",
         location: "memory",
-        offset: Ir.Value.temp(basePtr, { kind: "uint", bits: 256 }),
-        length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
-        value: Ir.Value.constant(elementCount, { kind: "uint", bits: 256 }),
+        offset: Ir.Value.temp(basePtr, Ir.Type.Scalar.uint256),
+        length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
+        value: Ir.Value.constant(elementCount, Ir.Type.Scalar.uint256),
         loc: expr.loc ?? undefined,
       } as Ir.Instruction.Write);
 
@@ -182,8 +173,8 @@ export function* buildArray(
       yield* Process.Instructions.emit({
         kind: "binary",
         op: "add",
-        left: Ir.Value.temp(basePtr, { kind: "uint", bits: 256 }),
-        right: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        left: Ir.Value.temp(basePtr, Ir.Type.Scalar.uint256),
+        right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         dest: elementsBaseTemp,
         loc: expr.loc ?? undefined,
       } as Ir.Instruction);
@@ -198,8 +189,8 @@ export function* buildArray(
         yield* Process.Instructions.emit(
           Ir.Instruction.ComputeOffset.array(
             "memory",
-            Ir.Value.temp(elementsBaseTemp, { kind: "uint", bits: 256 }),
-            Ir.Value.constant(BigInt(i), { kind: "uint", bits: 256 }),
+            Ir.Value.temp(elementsBaseTemp, Ir.Type.Scalar.uint256),
+            Ir.Value.constant(BigInt(i), Ir.Type.Scalar.uint256),
             32,
             offsetTemp,
             expr.loc ?? undefined,
@@ -209,14 +200,14 @@ export function* buildArray(
         yield* Process.Instructions.emit({
           kind: "write",
           location: "memory",
-          offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
-          length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+          offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
+          length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           value: elementValue,
           loc: expr.loc ?? undefined,
         } as Ir.Instruction.Write);
       }
 
-      return Ir.Value.temp(basePtr, { kind: "uint", bits: 256 });
+      return Ir.Value.temp(basePtr, Ir.Type.Scalar.uint256);
     }
   }
 }

@@ -1,7 +1,6 @@
 import type * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Severity } from "#result";
-import { Type } from "#types";
 
 import { Error as IrgenError } from "#irgen/errors";
 import { fromBugType } from "#irgen/type";
@@ -48,60 +47,41 @@ function* buildVariableDeclaration(
 ): Process<void> {
   // Infer type from the types map or use default
   const type = yield* Process.Types.nodeType(decl);
-  const irType = type
-    ? fromBugType(type)
-    : ({ kind: "uint", bits: 256 } as Ir.Type);
+  const irType = type ? fromBugType(type) : Ir.Type.Scalar.uint256;
 
-  // Check if this is a bytes type that needs memory allocation
-  const needsMemoryAllocation =
-    irType.kind === "bytes" ||
-    irType.kind === "string" ||
-    irType.kind === "array" ||
-    irType.kind === "struct";
+  // Check if this is a reference type that needs memory allocation
+  const needsMemoryAllocation = irType.kind === "ref";
 
   if (needsMemoryAllocation) {
     // For types that need memory allocation
 
-    // Calculate size needed
+    // For reference types, calculate size needed
     let sizeValue: Ir.Value;
-    if (irType.kind === "bytes" && irType.size) {
-      // Fixed size bytes
-      sizeValue = Ir.Value.constant(BigInt(irType.size), {
-        kind: "uint",
-        bits: 256,
-      });
-    } else if (decl.initializer && irType.kind === "bytes") {
-      // Dynamic bytes with initializer - get size from the literal
-      // Don't build the expression yet, just calculate size
-      const initializerType = yield* Process.Types.nodeType(decl.initializer);
+
+    // Check if we have an initializer to determine size
+    if (decl.initializer) {
+      // For hex literals, calculate actual size needed
       if (
-        initializerType &&
-        Type.isElementary(initializerType) &&
-        Type.Elementary.isBytes(initializerType)
+        decl.initializer.type === "LiteralExpression" &&
+        (decl.initializer as Ast.Expression.Literal).kind === "hex"
       ) {
-        // For hex literals, the size is (hex length - 2) / 2 (minus 0x, then 2 hex chars per byte)
         const hexLiteral = decl.initializer as Ast.Expression.Literal;
-        if (
-          hexLiteral.type === "LiteralExpression" &&
-          hexLiteral.kind === "hex"
-        ) {
-          const hexValue = hexLiteral.value.startsWith("0x")
-            ? hexLiteral.value.slice(2)
-            : hexLiteral.value;
-          const byteSize = hexValue.length / 2;
-          sizeValue = Ir.Value.constant(BigInt(byteSize + 32), {
-            kind: "uint",
-            bits: 256,
-          }); // Add 32 for length prefix
-        } else {
-          sizeValue = Ir.Value.constant(64n, { kind: "uint", bits: 256 }); // Default size
-        }
+        const hexValue = hexLiteral.value.startsWith("0x")
+          ? hexLiteral.value.slice(2)
+          : hexLiteral.value;
+        const byteSize = hexValue.length / 2;
+        // Add 32 bytes for length prefix
+        sizeValue = Ir.Value.constant(
+          BigInt(byteSize + 32),
+          Ir.Type.Scalar.uint256,
+        );
       } else {
-        sizeValue = Ir.Value.constant(64n, { kind: "uint", bits: 256 }); // Default size
+        // Default size for other initializers
+        sizeValue = Ir.Value.constant(64n, Ir.Type.Scalar.uint256);
       }
     } else {
-      // Default size for dynamic types
-      sizeValue = Ir.Value.constant(64n, { kind: "uint", bits: 256 });
+      // Default size when no initializer
+      sizeValue = Ir.Value.constant(64n, Ir.Type.Scalar.uint256);
     }
 
     // Allocate memory
@@ -127,86 +107,70 @@ function* buildVariableDeclaration(
         kind: "rvalue",
       });
 
-      if (irType.kind === "bytes") {
-        // Check if it's a hex literal or a slice expression
-        if (decl.initializer.type === "LiteralExpression") {
-          const hexLiteral = decl.initializer as Ast.Expression.Literal;
-          if (hexLiteral.kind === "hex") {
-            const hexValue = hexLiteral.value.startsWith("0x")
-              ? hexLiteral.value.slice(2)
-              : hexLiteral.value;
-            const byteSize = hexValue.length / 2;
+      // For reference types, we need to handle initialization
+      // Check the initializer type to determine how to store it
+      if (decl.initializer.type === "LiteralExpression") {
+        const hexLiteral = decl.initializer as Ast.Expression.Literal;
+        if (hexLiteral.kind === "hex") {
+          const hexValue = hexLiteral.value.startsWith("0x")
+            ? hexLiteral.value.slice(2)
+            : hexLiteral.value;
+          const byteSize = hexValue.length / 2;
 
-            // Store length at the beginning
-            yield* Process.Instructions.emit({
-              kind: "write",
-              location: "memory",
-              offset: Ir.Value.temp(allocTemp, {
-                kind: "uint",
-                bits: 256,
-              }),
-              length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
-              value: Ir.Value.constant(BigInt(byteSize), {
-                kind: "uint",
-                bits: 256,
-              }),
-              loc: decl.loc ?? undefined,
-            } as Ir.Instruction.Write);
+          // Store length at the beginning
+          yield* Process.Instructions.emit({
+            kind: "write",
+            location: "memory",
+            offset: Ir.Value.temp(allocTemp, Ir.Type.Scalar.uint256),
+            length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
+            value: Ir.Value.constant(BigInt(byteSize), Ir.Type.Scalar.uint256),
+            loc: decl.loc ?? undefined,
+          } as Ir.Instruction.Write);
 
-            // Store the actual bytes data after the length
-            const dataOffsetTemp = yield* Process.Variables.newTemp();
-            yield* Process.Instructions.emit({
-              kind: "binary",
-              op: "add",
-              left: Ir.Value.temp(allocTemp, {
-                kind: "uint",
-                bits: 256,
-              }),
-              right: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
-              dest: dataOffsetTemp,
-              loc: decl.loc ?? undefined,
-            } as Ir.Instruction.BinaryOp);
+          // Store the actual bytes data after the length
+          const dataOffsetTemp = yield* Process.Variables.newTemp();
+          yield* Process.Instructions.emit({
+            kind: "binary",
+            op: "add",
+            left: Ir.Value.temp(allocTemp, Ir.Type.Scalar.uint256),
+            right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
+            dest: dataOffsetTemp,
+            loc: decl.loc ?? undefined,
+          } as Ir.Instruction.BinaryOp);
 
-            yield* Process.Instructions.emit({
-              kind: "write",
-              location: "memory",
-              offset: Ir.Value.temp(dataOffsetTemp, {
-                kind: "uint",
-                bits: 256,
-              }),
-              length: Ir.Value.constant(BigInt(byteSize), {
-                kind: "uint",
-                bits: 256,
-              }),
-              value: value,
-              loc: decl.loc ?? undefined,
-            } as Ir.Instruction.Write);
-          }
+          yield* Process.Instructions.emit({
+            kind: "write",
+            location: "memory",
+            offset: Ir.Value.temp(dataOffsetTemp, Ir.Type.Scalar.uint256),
+            length: Ir.Value.constant(BigInt(byteSize), Ir.Type.Scalar.uint256),
+            value: value,
+            loc: decl.loc ?? undefined,
+          } as Ir.Instruction.Write);
+        }
+      } else {
+        // For slice expressions and other bytes operations,
+        // the value is already a reference to memory
+        // We need to copy the slice result to the new allocation
+        // This is a simplified version - a full implementation would need to
+        // handle different cases more carefully
+
+        // If the value is a temp, update the SSA variable to point to it
+        if (value.kind === "temp") {
+          yield* Process.Variables.updateSsaToExistingTemp(
+            decl.name,
+            value.id,
+            irType,
+          );
         } else {
-          // For slice expressions and other bytes operations,
-          // the value is already a reference to memory
-          // We need to copy the slice result to the new allocation
-          // This is a simplified version - a full implementation would need to
-          // handle different cases more carefully
-
-          // If the value is a temp, update the SSA variable to point to it
-          if (value.kind === "temp") {
-            yield* Process.Variables.updateSsaToExistingTemp(
-              decl.name,
-              value.id,
-              irType,
-            );
-          } else {
-            // For non-temp values, we need to copy it
-            yield* Process.Instructions.emit({
-              kind: "binary",
-              op: "add",
-              left: value,
-              right: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-              dest: allocTemp,
-              loc: decl.loc ?? undefined,
-            } as Ir.Instruction.BinaryOp);
-          }
+          // For non-temp values, we need to copy it
+          yield* Process.Instructions.emit({
+            kind: "binary",
+            op: "add",
+            left: value,
+            right: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
+            dest: allocTemp,
+            loc: decl.loc ?? undefined,
+          } as Ir.Instruction.BinaryOp);
         }
       }
     }

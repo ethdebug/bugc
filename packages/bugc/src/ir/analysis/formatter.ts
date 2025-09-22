@@ -7,6 +7,7 @@ import * as Ir from "#ir/spec";
 export class Formatter {
   private indent = 0;
   private output: string[] = [];
+  private commentedValues: Set<string> = new Set();
 
   format(module: Ir.Module): string {
     this.output = [];
@@ -78,6 +79,9 @@ export class Formatter {
   }
 
   private formatBlock(id: string, block: Ir.Block): void {
+    // Reset commented values for each block
+    this.commentedValues = new Set();
+
     // Block header - only show predecessors for merge points (multiple preds)
     // or if block has phi nodes (which indicates it's a merge point)
     const showPreds =
@@ -133,7 +137,7 @@ export class Formatter {
         return `${destWithType(inst.dest, inst.type)} = const ${this.formatConstValue(inst.value, inst.type)}`;
 
       case "allocate":
-        return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = allocate.${inst.location}, size=${this.formatValue(inst.size)}`;
+        return `${destWithType(inst.dest, Ir.Type.Scalar.uint256)} = allocate.${inst.location}, size=${this.formatValue(inst.size)}`;
 
       case "binary":
         return `${destWithType(inst.dest)} = ${inst.op} ${this.formatValue(inst.left)}, ${this.formatValue(inst.right)}`;
@@ -168,7 +172,7 @@ export class Formatter {
           slotExpr = `slot[${base}]`;
         }
 
-        return `${destWithType(inst.dest, { kind: "uint", bits: 256 })} = ${slotExpr}`;
+        return `${destWithType(inst.dest, Ir.Type.Scalar.uint256)} = ${slotExpr}`;
       }
 
       // Call instruction removed - calls are now block terminators
@@ -385,12 +389,39 @@ export class Formatter {
   ): string {
     if (typeof value === "bigint") {
       // If we have type information and it's a bytes type, format as hex
-      if (type && type.kind === "bytes") {
+      if (type && type.kind === "scalar" && type.size <= 32) {
         // Convert to hex string with 0x prefix
         const hex = value.toString(16);
         // Pad to even number of characters (2 per byte)
         const padded = hex.length % 2 === 0 ? hex : "0" + hex;
-        return `0x${padded}`;
+        const hexStr = `0x${padded}`;
+
+        // Add decimal comment for meaningful values (not tiny single-digit values)
+        const shouldAddComment =
+          value >= 10n &&
+          // Small values (less than 4 bytes)
+          (value <= 0xffffffffn ||
+            // Common round numbers
+            value % 10000n === 0n ||
+            // Powers of 10
+            value === 10n ||
+            value === 100n ||
+            value === 1000n ||
+            value === 10000n ||
+            value === 100000n ||
+            value === 1000000n ||
+            // Powers of 2 up to 2^16
+            ((value & (value - 1n)) === 0n && value <= 65536n));
+
+        if (shouldAddComment) {
+          // Check if we've already commented this value in this block
+          const valueKey = value.toString();
+          if (!this.commentedValues.has(valueKey)) {
+            this.commentedValues.add(valueKey);
+            return `${hexStr} /* ${value} */`;
+          }
+        }
+        return hexStr;
       }
       return value.toString();
     }
@@ -407,26 +438,19 @@ export class Formatter {
 
   private formatType(type: Ir.Type): string {
     switch (type.kind) {
-      case "uint":
-        return `uint${type.bits}`;
-      case "int":
-        return `int${type.bits}`;
-      case "address":
-        return "address";
-      case "bool":
-        return "bool";
-      case "bytes":
-        return type.size !== undefined ? `bytes${type.size}` : "bytes";
-      case "string":
-        return "string";
-      case "array":
-        return type.size !== undefined
-          ? `${this.formatType(type.element)}[${type.size}]`
-          : `${this.formatType(type.element)}[]`;
-      case "mapping":
-        return `mapping<${this.formatType(type.key)} => ${this.formatType(type.value)}>`;
-      case "struct":
-        return type.name || "struct";
+      case "scalar":
+        // Format scalar types based on size and origin
+        if (type.origin === "synthetic") {
+          return `scalar${type.size}`;
+        }
+        // Common scalar sizes
+        if (type.size === 32) return "uint256";
+        if (type.size === 20) return "address";
+        if (type.size === 1) return "bool";
+        return `bytes${type.size}`;
+      case "ref":
+        // Format reference types based on location
+        return `ref<${type.location}>`;
       default:
         return "unknown";
     }

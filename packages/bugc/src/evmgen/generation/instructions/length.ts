@@ -1,4 +1,4 @@
-import type * as Ir from "#ir";
+import * as Ir from "#ir";
 import type { Stack } from "#evm";
 
 import { Error, ErrorCode } from "#evmgen/errors";
@@ -28,73 +28,12 @@ export function generateLength<S extends Stack>(
       .done();
   }
 
-  // Length instruction - behavior depends on the type
+  // Length instruction - with the new type system, we need to handle references
   const objectType = inst.object.type;
 
-  if (objectType.kind === "array") {
-    if (objectType.size !== undefined) {
-      // Fixed-size array - return the size
-      return pipe<S>()
-        .then(PUSHn(BigInt(objectType.size)))
-        .then(storeValueIfNeeded(inst.dest))
-        .done();
-    } else {
-      // Dynamic array - length is stored at the slot
-      return pipe<S>()
-        .then(loadValue(inst.object), { as: "key" })
-        .then(SLOAD())
-        .then(storeValueIfNeeded(inst.dest))
-        .done();
-    }
-  }
-
-  if (objectType.kind === "bytes") {
-    if (objectType.size !== undefined) {
-      // Fixed-size bytes - return the size
-      return pipe<S>()
-        .then(PUSHn(BigInt(objectType.size)))
-        .then(storeValueIfNeeded(inst.dest))
-        .done();
-    } else {
-      // Dynamic bytes - need to check if in memory or storage
-      return pipe<S>()
-        .peek((state, builder) => {
-          // Check if value is in memory
-          const isInMemory =
-            objectId in state.memory.allocations ||
-            state.stack.findIndex(({ irValue }) => irValue === objectId) > -1;
-
-          if (isInMemory) {
-            // Memory bytes: length is stored at the pointer location
-            // First word contains length (in bytes)
-            return builder
-              .then(loadValue(inst.object), { as: "offset" })
-              .then(MLOAD(), { as: "value" })
-              .then(storeValueIfNeeded(inst.dest));
-          } else {
-            // Storage bytes: length is packed with data if short, or in slot if long
-            // For simplicity, assume it's stored at the slot (long string/bytes)
-            // The length is stored as 2 * length + 1 in the slot for long strings
-            return (
-              builder
-                .then(loadValue(inst.object), { as: "key" })
-                .then(SLOAD(), { as: "b" })
-                // Extract length from storage format
-                // For long strings: (value - 1) / 2
-                .then(PUSHn(1n), { as: "a" })
-                .then(SUB(), { as: "value" })
-                .then(PUSHn(1n), { as: "shift" })
-                .then(SHR(), { as: "value" })
-                .then(storeValueIfNeeded(inst.dest))
-            );
-          }
-        })
-        .done();
-    }
-  }
-
-  if (objectType.kind === "string") {
-    // Strings work the same as dynamic bytes
+  // For references, we need to check the origin type to understand the data structure
+  if (objectType.kind === "ref") {
+    // Check if this is a dynamic array or string in memory
     return pipe<S>()
       .peek((state, builder) => {
         // Check if value is in memory
@@ -102,19 +41,23 @@ export function generateLength<S extends Stack>(
           objectId in state.memory.allocations ||
           state.stack.findIndex(({ irValue }) => irValue === objectId) > -1;
 
-        if (isInMemory) {
-          // Memory string: length is stored at the pointer location
+        if (isInMemory || objectType.location === "memory") {
+          // Memory data: length is stored at the pointer location
+          // First word contains length
           return builder
             .then(loadValue(inst.object), { as: "offset" })
             .then(MLOAD(), { as: "value" })
             .then(storeValueIfNeeded(inst.dest));
         } else {
-          // Storage string: same as storage bytes
+          // Storage data: length is packed with data if short, or in slot if long
+          // For simplicity, assume it's stored at the slot (long string/bytes)
+          // The length is stored as 2 * length + 1 in the slot for long strings
           return (
             builder
               .then(loadValue(inst.object), { as: "key" })
               .then(SLOAD(), { as: "b" })
               // Extract length from storage format
+              // For long strings: (value - 1) / 2
               .then(PUSHn(1n), { as: "a" })
               .then(SUB(), { as: "value" })
               .then(PUSHn(1n), { as: "shift" })
@@ -126,8 +69,20 @@ export function generateLength<S extends Stack>(
       .done();
   }
 
+  // For scalars, we might have fixed-size data
+  if (objectType.kind === "scalar") {
+    // Fixed-size data - this shouldn't normally happen for length instruction
+    // but we could return the size in bytes
+    return pipe<S>()
+      .then(PUSHn(BigInt(objectType.size)))
+      .then(storeValueIfNeeded(inst.dest))
+      .done();
+  }
+
+  // This should never happen as we've covered all type kinds
+  // But TypeScript doesn't know that, so we need to handle it
   throw new Error(
     ErrorCode.UNSUPPORTED_INSTRUCTION,
-    `length operation not supported for type: ${objectType.kind}`,
+    `length operation not supported for type`,
   );
 }

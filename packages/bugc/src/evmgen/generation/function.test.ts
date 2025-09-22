@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import type * as Ir from "#ir";
+import * as Ir from "#ir";
 import { Memory, Liveness, Layout } from "#evmgen/analysis";
 
 import { generate } from "./function.js";
@@ -21,7 +21,7 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 42n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%1",
               },
             ],
@@ -79,7 +79,7 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 0n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%1",
               },
               // In SSA form, we don't have store_local/load_local
@@ -87,7 +87,7 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 1n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%3",
               },
               {
@@ -96,12 +96,12 @@ describe("Function.generate", () => {
                 left: {
                   kind: "temp",
                   id: "%1",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 right: {
                   kind: "temp",
                   id: "%3",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "%4",
               },
@@ -145,23 +145,19 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 0x100n, // Array pointer in memory
-                type: {
-                  kind: "array",
-                  element: { kind: "uint", bits: 256 },
-                  size: undefined, // dynamic array
-                },
+                type: Ir.Type.Ref.memory(),
                 dest: "%1",
               },
               {
                 kind: "const",
                 value: 2n, // Start index
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%2",
               },
               {
                 kind: "const",
                 value: 5n, // End index
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%3",
               },
               {
@@ -169,21 +165,17 @@ describe("Function.generate", () => {
                 object: {
                   kind: "temp",
                   id: "%1",
-                  type: {
-                    kind: "array",
-                    element: { kind: "uint", bits: 256 },
-                    size: undefined,
-                  },
+                  type: Ir.Type.Ref.memory(),
                 },
                 start: {
                   kind: "temp",
                   id: "%2",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 end: {
                   kind: "temp",
                   id: "%3",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "%4",
               },
@@ -193,7 +185,7 @@ describe("Function.generate", () => {
               value: {
                 kind: "temp",
                 id: "%4",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
             },
             predecessors: new Set(),
@@ -255,13 +247,13 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 10n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%1",
               },
               {
                 kind: "const",
                 value: 20n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%2",
               },
               {
@@ -270,12 +262,12 @@ describe("Function.generate", () => {
                 left: {
                   kind: "temp",
                   id: "%1",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 right: {
                   kind: "temp",
                   id: "%2",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "%3",
               },
@@ -392,7 +384,7 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 1n,
-                type: { kind: "bool" },
+                type: Ir.Type.Scalar.bool,
                 dest: "%cond",
               },
             ],
@@ -401,7 +393,7 @@ describe("Function.generate", () => {
               condition: {
                 kind: "temp",
                 id: "%cond",
-                type: { kind: "bool" },
+                type: Ir.Type.Scalar.bool,
               },
               trueTarget: "then",
               falseTarget: "else",
@@ -472,13 +464,13 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 0n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%slot",
               },
               {
                 kind: "const",
                 value: 42n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%value",
               },
               {
@@ -487,12 +479,12 @@ describe("Function.generate", () => {
                 slot: {
                   kind: "temp",
                   id: "%slot",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 value: {
                   kind: "temp",
                   id: "%value",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
               },
             ],
@@ -589,13 +581,13 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 42n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%value",
               },
               {
                 kind: "const",
                 value: 3n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%index",
               },
               {
@@ -604,12 +596,12 @@ describe("Function.generate", () => {
                 base: {
                   kind: "const",
                   value: 0n,
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 index: {
                   kind: "temp",
                   id: "%index",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "%slot",
               },
@@ -619,12 +611,12 @@ describe("Function.generate", () => {
                 slot: {
                   kind: "temp",
                   id: "%slot",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 value: {
                   kind: "temp",
                   id: "%value",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
               },
             ],
@@ -682,7 +674,7 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 2n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%index",
               },
               {
@@ -691,12 +683,12 @@ describe("Function.generate", () => {
                 base: {
                   kind: "const",
                   value: 0n,
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 index: {
                   kind: "temp",
                   id: "%index",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "%slot",
               },
@@ -706,9 +698,9 @@ describe("Function.generate", () => {
                 slot: {
                   kind: "temp",
                   id: "%slot",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%value",
               },
             ],
@@ -717,7 +709,7 @@ describe("Function.generate", () => {
               value: {
                 kind: "temp",
                 id: "%value",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
             },
             predecessors: new Set(),
@@ -777,7 +769,7 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 100n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%value",
               },
               {
@@ -786,12 +778,12 @@ describe("Function.generate", () => {
                 base: {
                   kind: "const",
                   value: 1n,
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 key: {
                   kind: "temp",
                   id: "%sender",
-                  type: { kind: "address" },
+                  type: Ir.Type.Scalar.address,
                 },
                 keyType: { kind: "address" },
                 dest: "%slot",
@@ -802,12 +794,12 @@ describe("Function.generate", () => {
                 slot: {
                   kind: "temp",
                   id: "%slot",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 value: {
                   kind: "temp",
                   id: "%value",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
               },
             ],
@@ -869,12 +861,12 @@ describe("Function.generate", () => {
                 base: {
                   kind: "const",
                   value: 1n,
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 key: {
                   kind: "temp",
                   id: "%sender",
-                  type: { kind: "address" },
+                  type: Ir.Type.Scalar.address,
                 },
                 keyType: { kind: "address" },
                 dest: "%slot",
@@ -885,9 +877,9 @@ describe("Function.generate", () => {
                 slot: {
                   kind: "temp",
                   id: "%slot",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%balance",
               },
             ],
@@ -896,7 +888,7 @@ describe("Function.generate", () => {
               value: {
                 kind: "temp",
                 id: "%balance",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
             },
             predecessors: new Set(),
@@ -959,7 +951,7 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 5n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%index",
               },
               // First compute mapping slot for users[msg.sender]
@@ -969,12 +961,12 @@ describe("Function.generate", () => {
                 base: {
                   kind: "const",
                   value: 0n,
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 key: {
                   kind: "temp",
                   id: "%sender",
-                  type: { kind: "address" },
+                  type: Ir.Type.Scalar.address,
                 },
                 keyType: { kind: "address" },
                 dest: "%userSlot",
@@ -986,12 +978,12 @@ describe("Function.generate", () => {
                 base: {
                   kind: "temp",
                   id: "%userSlot",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 index: {
                   kind: "temp",
                   id: "%index",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "%finalSlot",
               },
@@ -1001,9 +993,9 @@ describe("Function.generate", () => {
                 slot: {
                   kind: "temp",
                   id: "%finalSlot",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%value",
               },
             ],
@@ -1012,7 +1004,7 @@ describe("Function.generate", () => {
               value: {
                 kind: "temp",
                 id: "%value",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
             },
             predecessors: new Set(),
@@ -1068,23 +1060,19 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: 0x100n, // Array pointer
-                type: {
-                  kind: "array",
-                  element: { kind: "uint", bits: 256 },
-                  size: undefined, // dynamic array
-                },
+                type: Ir.Type.Ref.memory(),
                 dest: "%1",
               },
               {
                 kind: "const",
                 value: 3n, // Start index
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%2",
               },
               {
                 kind: "const",
                 value: 3n, // End index (same as start = empty slice)
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%3",
               },
               {
@@ -1092,21 +1080,17 @@ describe("Function.generate", () => {
                 object: {
                   kind: "temp",
                   id: "%1",
-                  type: {
-                    kind: "array",
-                    element: { kind: "uint", bits: 256 },
-                    size: undefined,
-                  },
+                  type: Ir.Type.Ref.memory(),
                 },
                 start: {
                   kind: "temp",
                   id: "%2",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 end: {
                   kind: "temp",
                   id: "%3",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "%4",
               },
@@ -1162,10 +1146,7 @@ describe("Function.generate", () => {
                 object: {
                   kind: "temp",
                   id: "%msg_data",
-                  type: {
-                    kind: "bytes",
-                    size: undefined, // dynamic bytes (calldata)
-                  },
+                  type: Ir.Type.Ref.calldata(),
                 },
                 dest: "%data_length",
               },
@@ -1175,7 +1156,7 @@ describe("Function.generate", () => {
               value: {
                 kind: "temp",
                 id: "%data_length",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
             },
           },
@@ -1225,7 +1206,7 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: "Hello, world!",
-                type: { kind: "string" },
+                type: Ir.Type.Ref.memory(),
                 dest: "%greeting",
               },
             ],
@@ -1234,7 +1215,7 @@ describe("Function.generate", () => {
               value: {
                 kind: "temp",
                 id: "%greeting",
-                type: { kind: "string" },
+                type: Ir.Type.Ref.memory(),
               },
             },
           },
@@ -1283,7 +1264,7 @@ describe("Function.generate", () => {
               {
                 kind: "const",
                 value: "Hello 世界! 😊", // Mix of ASCII, Chinese, and emoji
-                type: { kind: "string" },
+                type: Ir.Type.Ref.memory(),
                 dest: "%greeting",
               },
             ],
@@ -1292,7 +1273,7 @@ describe("Function.generate", () => {
               value: {
                 kind: "temp",
                 id: "%greeting",
-                type: { kind: "string" },
+                type: Ir.Type.Ref.memory(),
               },
             },
           },

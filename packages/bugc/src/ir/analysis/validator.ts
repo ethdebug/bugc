@@ -378,52 +378,28 @@ export class Validator {
     }
 
     switch (type.kind) {
-      case "uint":
-        if (!type.bits || ![8, 16, 32, 64, 128, 256].includes(type.bits)) {
-          this.error(`Invalid uint bit size: ${type.bits}`);
+      case "scalar":
+        if (!type.size || type.size < 1 || type.size > 32) {
+          this.error(`Invalid scalar size: ${type.size}`);
+        }
+        if (!type.origin) {
+          this.error("Scalar type must have an origin");
         }
         break;
 
-      case "bytes":
-        if (type.size !== undefined && (type.size < 1 || type.size > 32)) {
-          this.error(`Invalid bytes size: ${type.size}`);
+      case "ref":
+        if (!type.location) {
+          this.error("Reference type must have a location");
+        } else if (
+          !["memory", "storage", "calldata", "returndata"].includes(
+            type.location,
+          )
+        ) {
+          this.error(`Invalid reference location: ${type.location}`);
         }
-        break;
-
-      case "array":
-        if (!type.element) {
-          this.error("Array type must have an element type");
-        } else {
-          this.validateType(type.element);
+        if (!type.origin) {
+          this.error("Reference type must have an origin");
         }
-        if (type.size !== undefined && type.size < 0) {
-          this.error(`Array size must be non-negative: ${type.size}`);
-        }
-        break;
-
-      case "mapping":
-        if (!type.key) {
-          this.error("Mapping type must have a key type");
-        } else {
-          this.validateType(type.key);
-        }
-        if (!type.value) {
-          this.error("Mapping type must have a value type");
-        } else {
-          this.validateType(type.value);
-        }
-        break;
-
-      case "struct":
-        if (!type.name) {
-          this.error("Struct type must have a name");
-        }
-        break;
-
-      case "address":
-      case "bool":
-      case "string":
-        // These types have no additional validation
         break;
 
       default:

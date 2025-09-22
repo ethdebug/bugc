@@ -35,7 +35,7 @@ export const makeBuildOperator = (
           Severity.Error,
         ),
       );
-      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+      return Ir.Value.constant(0n, Ir.Type.Scalar.uint256);
     }
 
     switch (expr.operands.length) {
@@ -75,7 +75,7 @@ const makeBuildUnaryOperator = (
           Severity.Error,
         ),
       );
-      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+      return Ir.Value.constant(0n, Ir.Type.Scalar.uint256);
     }
 
     const resultType = fromBugType(nodeType);
@@ -127,7 +127,7 @@ const makeBuildBinaryOperator = (
           Severity.Error,
         ),
       );
-      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+      return Ir.Value.constant(0n, Ir.Type.Scalar.uint256);
     }
 
     const resultType = fromBugType(nodeType);

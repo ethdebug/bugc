@@ -42,7 +42,10 @@ describe("IR Builder - Length Instructions", () => {
       expect(lengthInst?.kind).toBe("length");
 
       if (lengthInst && lengthInst.kind === "length") {
-        expect(lengthInst.object.type?.kind).toBe("array");
+        expect(lengthInst.object.type?.kind).toBe("ref");
+        if (lengthInst.object.type?.kind === "ref") {
+          expect(lengthInst.object.type.location).toBe("memory");
+        }
       }
     }
   });
@@ -86,7 +89,10 @@ describe("IR Builder - Length Instructions", () => {
       expect(lengthInst?.kind).toBe("length");
 
       if (lengthInst && lengthInst.kind === "length") {
-        expect(lengthInst.object.type?.kind).toBe("bytes");
+        expect(lengthInst.object.type?.kind).toBe("ref");
+        if (lengthInst.object.type?.kind === "ref") {
+          expect(lengthInst.object.type.location).toBe("memory");
+        }
       }
     }
   });

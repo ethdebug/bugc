@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import type * as Ir from "#ir";
+import * as Ir from "#ir";
 import * as Liveness from "./liveness.js";
 
 describe("Liveness Analysis", () => {
@@ -19,13 +19,13 @@ describe("Liveness Analysis", () => {
               {
                 kind: "const",
                 value: 42n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%1",
               },
               {
                 kind: "const",
                 value: 10n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%2",
               },
               {
@@ -34,12 +34,12 @@ describe("Liveness Analysis", () => {
                 left: {
                   kind: "temp",
                   id: "%1",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 right: {
                   kind: "temp",
                   id: "%2",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "%3",
               },
@@ -78,13 +78,13 @@ describe("Liveness Analysis", () => {
               {
                 kind: "const",
                 value: 1n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%1",
               },
             ],
             terminator: {
               kind: "branch",
-              condition: { kind: "temp", id: "%1", type: { kind: "bool" } },
+              condition: { kind: "temp", id: "%1", type: Ir.Type.Scalar.bool },
               trueTarget: "then",
               falseTarget: "else",
             },
@@ -100,7 +100,7 @@ describe("Liveness Analysis", () => {
               {
                 kind: "const",
                 value: 10n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%2",
               },
             ],
@@ -120,7 +120,7 @@ describe("Liveness Analysis", () => {
               {
                 kind: "const",
                 value: 20n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%3",
               },
             ],
@@ -169,7 +169,7 @@ describe("Liveness Analysis", () => {
               {
                 kind: "const",
                 value: 0n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%1",
               },
             ],
@@ -193,7 +193,7 @@ describe("Liveness Analysis", () => {
                     {
                       kind: "temp",
                       id: "%1",
-                      type: { kind: "uint", bits: 256 },
+                      type: Ir.Type.Scalar.uint256,
                     },
                   ],
                   [
@@ -201,19 +201,19 @@ describe("Liveness Analysis", () => {
                     {
                       kind: "temp",
                       id: "%3",
-                      type: { kind: "uint", bits: 256 },
+                      type: Ir.Type.Scalar.uint256,
                     },
                   ],
                 ]),
                 dest: "%2",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
             ],
             instructions: [
               {
                 kind: "const",
                 value: 1n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%inc",
               },
               {
@@ -222,19 +222,19 @@ describe("Liveness Analysis", () => {
                 left: {
                   kind: "temp",
                   id: "%2",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 right: {
                   kind: "temp",
                   id: "%inc",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "%3",
               },
               {
                 kind: "const",
                 value: 10n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%limit",
               },
               {
@@ -243,19 +243,23 @@ describe("Liveness Analysis", () => {
                 left: {
                   kind: "temp",
                   id: "%3",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 right: {
                   kind: "temp",
                   id: "%limit",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "%cond",
               },
             ],
             terminator: {
               kind: "branch",
-              condition: { kind: "temp", id: "%cond", type: { kind: "bool" } },
+              condition: {
+                kind: "temp",
+                id: "%cond",
+                type: Ir.Type.Scalar.bool,
+              },
               trueTarget: "loop",
               falseTarget: "exit",
             },
@@ -273,7 +277,7 @@ describe("Liveness Analysis", () => {
               value: {
                 kind: "temp",
                 id: "%3",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
             },
             predecessors: new Set(["loop"]),

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import type * as Ir from "#ir";
+import * as Ir from "#ir";
 
 import { generate } from "./module.js";
 
@@ -157,7 +157,7 @@ describe("Module.generate", () => {
                   {
                     kind: "const",
                     value: 42n,
-                    type: { kind: "uint", bits: 256 },
+                    type: Ir.Type.Scalar.uint256,
                     dest: "%1",
                   },
                 ],
@@ -219,7 +219,7 @@ describe("Module.generate", () => {
       const instructions = Array.from({ length: 1000 }, (_, i) => ({
         kind: "const" as const,
         value: BigInt(0xffffff), // Large constant to generate more bytes
-        type: { kind: "uint" as const, bits: 256 },
+        type: Ir.Type.Scalar.uint256,
         dest: `%${i}`,
       }));
 
@@ -416,7 +416,7 @@ describe("Module.generate", () => {
                     {
                       kind: "const",
                       value,
-                      type: { kind: "uint", bits: 256 },
+                      type: Ir.Type.Scalar.uint256,
                       dest: "%1",
                     },
                   ],

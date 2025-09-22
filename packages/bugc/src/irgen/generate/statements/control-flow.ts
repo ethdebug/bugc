@@ -158,7 +158,7 @@ const makeBuildLoop = (
 
     const condVal = config.condition
       ? yield* buildExpression(config.condition, { kind: "rvalue" })
-      : Ir.Value.constant(1n, { kind: "bool" }); // infinite loop if no condition
+      : Ir.Value.constant(1n, Ir.Type.Scalar.bool); // infinite loop if no condition
 
     yield* Process.Blocks.terminate({
       kind: "branch",

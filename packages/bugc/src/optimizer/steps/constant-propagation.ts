@@ -150,11 +150,12 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
 
   private getTypeForValue(value: bigint | boolean | string): Ir.Type {
     if (typeof value === "boolean") {
-      return { kind: "bool" };
+      return Ir.Type.Scalar.bool;
     } else if (typeof value === "bigint") {
-      return { kind: "uint", bits: 256 };
+      return Ir.Type.Scalar.uint256;
     } else {
-      return { kind: "string" };
+      // Strings are references in the new type system
+      return Ir.Type.Ref.memory();
     }
   }
 

@@ -7,12 +7,7 @@ import { buildExpression } from "../expressions/index.js";
 import { Process } from "../process.js";
 import type { Context } from "../expressions/context.js";
 
-import {
-  makeFindStorageAccessChain,
-  emitStorageChainAssignment,
-} from "../storage.js";
-
-const findStorageAccessChain = makeFindStorageAccessChain(buildExpression);
+import { findStorageAccessChain, emitStorageChainStore } from "../storage.js";
 
 /**
  * Build an assignment statement
@@ -120,12 +115,12 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
       yield* Process.Instructions.emit({
         kind: "write",
         location: "storage",
-        slot: Ir.Value.constant(BigInt(storageSlot.slot), {
-          kind: "uint",
-          bits: 256,
-        }),
-        offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-        length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }), // 32 bytes for uint256
+        slot: Ir.Value.constant(
+          BigInt(storageSlot.slot),
+          Ir.Type.Scalar.uint256,
+        ),
+        offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
+        length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256), // 32 bytes for uint256
         value,
         loc: node.loc ?? undefined,
       } as Ir.Instruction.Write);
@@ -149,7 +144,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
       // First check if this is a storage chain assignment
       const chain = yield* findStorageAccessChain(node);
       if (chain) {
-        yield* emitStorageChainAssignment(chain, value, node.loc ?? undefined);
+        yield* emitStorageChainStore(chain, value, node.loc ?? undefined);
         return;
       }
 
@@ -188,8 +183,8 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
           yield* Process.Instructions.emit({
             kind: "write",
             location: "memory",
-            offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
-            length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+            offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
+            length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
             value,
             loc: node.loc ?? undefined,
           } as Ir.Instruction.Write);
@@ -229,8 +224,8 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
         yield* Process.Instructions.emit({
           kind: "write",
           location: "memory",
-          offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
-          length: Ir.Value.constant(1n, { kind: "uint", bits: 256 }),
+          offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
+          length: Ir.Value.constant(1n, Ir.Type.Scalar.uint256),
           value,
           loc: node.loc ?? undefined,
         } as Ir.Instruction.Write);
@@ -240,7 +235,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
       // For non-bytes types, try to find a complete storage access chain
       const chain = yield* findStorageAccessChain(node);
       if (chain) {
-        yield* emitStorageChainAssignment(chain, value, node.loc ?? undefined);
+        yield* emitStorageChainStore(chain, value, node.loc ?? undefined);
         return;
       }
 
@@ -269,8 +264,8 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
         yield* Process.Instructions.emit({
           kind: "write",
           location: "memory",
-          offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
-          length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+          offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
+          length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           value,
           loc: node.loc ?? undefined,
         } as Ir.Instruction.Write);

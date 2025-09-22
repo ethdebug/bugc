@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import type * as Ir from "#ir";
+import * as Ir from "#ir";
 
 import * as Memory from "./memory.js";
 import * as Liveness from "./liveness.js";
@@ -21,19 +21,23 @@ describe("Memory Planning", () => {
               {
                 kind: "const",
                 value: 1n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%1",
               },
               {
                 kind: "const",
                 value: 2n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%2",
               },
             ],
             terminator: {
               kind: "branch",
-              condition: { kind: "const", value: true, type: { kind: "bool" } },
+              condition: {
+                kind: "const",
+                value: true,
+                type: Ir.Type.Scalar.bool,
+              },
               trueTarget: "merge",
               falseTarget: "merge",
             },
@@ -53,12 +57,12 @@ describe("Memory Planning", () => {
                     {
                       kind: "temp",
                       id: "%1",
-                      type: { kind: "uint", bits: 256 },
+                      type: Ir.Type.Scalar.uint256,
                     },
                   ],
                 ]),
                 dest: "%3",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
             ],
             instructions: [],
@@ -102,7 +106,7 @@ describe("Memory Planning", () => {
               {
                 kind: "const",
                 value: 42n,
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: "%1",
               },
             ],
@@ -125,12 +129,12 @@ describe("Memory Planning", () => {
                 left: {
                   kind: "temp",
                   id: "%1",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 right: {
                   kind: "const",
                   value: 1n,
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "%2",
               },
@@ -170,7 +174,7 @@ describe("Memory Planning", () => {
               ...Array.from({ length: 20 }, (_, i) => ({
                 kind: "const" as const,
                 value: BigInt(i),
-                type: { kind: "uint" as const, bits: 256 },
+                type: Ir.Type.Scalar.uint256,
                 dest: `%${i}`,
               })),
             ],
@@ -226,12 +230,12 @@ describe("Memory Planning", () => {
                     {
                       kind: "const",
                       value: 1n,
-                      type: { kind: "uint", bits: 256 },
+                      type: Ir.Type.Scalar.uint256,
                     },
                   ],
                 ]),
                 dest: "%phi1",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
               {
                 kind: "phi",
@@ -241,12 +245,12 @@ describe("Memory Planning", () => {
                     {
                       kind: "const",
                       value: 2n,
-                      type: { kind: "uint", bits: 256 },
+                      type: Ir.Type.Scalar.uint256,
                     },
                   ],
                 ]),
                 dest: "%phi2",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
             ],
             instructions: [],

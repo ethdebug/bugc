@@ -7,7 +7,6 @@
 
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
-
 import * as Ir from "#ir";
 
 import { optimizeIr as optimize } from "./simple-optimizer.js";
@@ -251,13 +250,13 @@ function createModuleWithBinaryOp(a: bigint, b: bigint, op: string): Ir.Module {
                 kind: "const",
                 value: a,
                 dest: "t0",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
               {
                 kind: "const",
                 value: b,
                 dest: "t1",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
               {
                 kind: "binary",
@@ -276,15 +275,15 @@ function createModuleWithBinaryOp(a: bigint, b: bigint, op: string): Ir.Module {
                 left: {
                   kind: "temp",
                   id: "t0",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 right: {
                   kind: "temp",
                   id: "t1",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "t2",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
             ],
             terminator: { kind: "return" },
@@ -308,7 +307,7 @@ function createModuleWithDeadCode(useFlags: boolean[]): Ir.Module {
       kind: "const",
       value: BigInt(index),
       dest: `t${index}`,
-      type: { kind: "uint", bits: 256 },
+      type: Ir.Type.Scalar.uint256,
     });
   });
 
@@ -322,9 +321,9 @@ function createModuleWithDeadCode(useFlags: boolean[]): Ir.Module {
         left: {
           kind: "temp",
           id: `t${index}`,
-          type: { kind: "uint", bits: 256 },
+          type: Ir.Type.Scalar.uint256,
         },
-        right: { kind: "temp", id: "t0", type: { kind: "uint", bits: 256 } },
+        right: { kind: "temp", id: "t0", type: Ir.Type.Scalar.uint256 },
         dest: `result${index}`,
       });
     }
@@ -371,13 +370,13 @@ function createModuleWithDuplicateExpressions(a: bigint, b: bigint): Ir.Module {
                 kind: "const",
                 value: a,
                 dest: "t0",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
               {
                 kind: "const",
                 value: b,
                 dest: "t1",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
               // First computation
               {
@@ -386,15 +385,15 @@ function createModuleWithDuplicateExpressions(a: bigint, b: bigint): Ir.Module {
                 left: {
                   kind: "temp",
                   id: "t0",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 right: {
                   kind: "temp",
                   id: "t1",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "t2",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
               // Duplicate computation
               {
@@ -403,15 +402,15 @@ function createModuleWithDuplicateExpressions(a: bigint, b: bigint): Ir.Module {
                 left: {
                   kind: "temp",
                   id: "t0",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 right: {
                   kind: "temp",
                   id: "t1",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "t3",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
               // Use both results
               {
@@ -420,15 +419,15 @@ function createModuleWithDuplicateExpressions(a: bigint, b: bigint): Ir.Module {
                 left: {
                   kind: "temp",
                   id: "t2",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 right: {
                   kind: "temp",
                   id: "t3",
-                  type: { kind: "uint", bits: 256 },
+                  type: Ir.Type.Scalar.uint256,
                 },
                 dest: "t4",
-                type: { kind: "uint", bits: 256 },
+                type: Ir.Type.Scalar.uint256,
               },
             ],
             terminator: { kind: "return" },
@@ -457,12 +456,12 @@ function createModuleWithMergeableBlocks(
         kind: "const",
         value: cond1 ? 1n : 0n,
         dest: "t0",
-        type: { kind: "bool" },
+        type: Ir.Type.Scalar.bool,
       },
     ],
     terminator: {
       kind: "branch",
-      condition: { kind: "temp", id: "t0", type: { kind: "bool" } },
+      condition: { kind: "temp", id: "t0", type: Ir.Type.Scalar.bool },
       trueTarget: "block1",
       falseTarget: "block2",
     },
@@ -539,7 +538,7 @@ function createSimpleBlocks(): Map<string, Ir.Block> {
         kind: "const",
         value: 42n,
         dest: "t0",
-        type: { kind: "uint", bits: 256 },
+        type: Ir.Type.Scalar.uint256,
       },
     ],
     terminator: { kind: "return" },

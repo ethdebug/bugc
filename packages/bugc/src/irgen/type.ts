@@ -14,63 +14,51 @@ export function fromBugType(type: BugType): Ir.Type {
     );
   }
 
+  // Arrays, mappings, structs, and dynamic types become references
   if (BugType.isArray(type)) {
-    return {
-      kind: "array",
-      element: fromBugType(type.element),
-      size: type.size,
-    };
+    // Arrays are memory references when not in storage
+    return Ir.Type.ref("memory", type);
   }
 
   if (BugType.isMapping(type)) {
-    return {
-      kind: "mapping",
-      key: fromBugType(type.key),
-      value: fromBugType(type.value),
-    };
+    // Mappings are always storage references
+    return Ir.Type.ref("storage", type);
   }
 
   if (BugType.isStruct(type)) {
-    const fields: Ir.Type.StructField[] = [];
-    for (const [name, fieldType] of type.fields) {
-      const layout = type.layout.get(name);
-      if (!layout) {
-        throw new IrgenError(
-          `Missing layout for field ${name} in struct ${type.name}`,
-          undefined,
-          Severity.Error,
-          ErrorCode.UNKNOWN_TYPE,
-        );
-      }
-      fields.push({
-        name,
-        type: fromBugType(fieldType),
-        offset: layout.byteOffset,
-      });
-    }
-    return {
-      kind: "struct",
-      name: type.name,
-      fields,
-    };
+    // Structs are memory references when not in storage
+    return Ir.Type.ref("memory", type);
   }
 
   if (BugType.isElementary(type)) {
     switch (type.kind) {
-      case "uint":
-        return { kind: "uint", bits: type.bits || 256 };
-      case "int":
-        return { kind: "uint", bits: type.bits || 256 }; // BUG language doesn't have signed ints
+      case "uint": {
+        // Uints become scalars
+        const bits = type.bits || 256;
+        return Ir.Type.scalar((bits / 8) as Ir.Type.Scalar.Size, type);
+      }
+      case "int": {
+        // BUG language doesn't have signed ints, treat as uint
+        const intBits = type.bits || 256;
+        return Ir.Type.scalar((intBits / 8) as Ir.Type.Scalar.Size, type);
+      }
       case "address":
-        return { kind: "address" };
+        // Addresses are 20-byte scalars
+        return Ir.Type.scalar(20, type);
       case "bool":
-        return { kind: "bool" };
+        // Bools are 1-byte scalars
+        return Ir.Type.scalar(1, type);
       case "bytes":
-        return type.size
-          ? { kind: "bytes", size: type.size }
-          : { kind: "bytes" };
+        if (type.size) {
+          // Fixed-size bytes are scalars
+          return Ir.Type.scalar(type.size as Ir.Type.Scalar.Size, type);
+        } else {
+          // Dynamic bytes are memory references
+          return Ir.Type.ref("memory", type);
+        }
       case "string":
-        return { kind: "string" };
+        // Strings are always memory references
+        return Ir.Type.ref("memory", type);
       default:
         assertExhausted(type);
     }

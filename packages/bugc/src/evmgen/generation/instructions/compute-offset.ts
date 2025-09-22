@@ -31,10 +31,7 @@ export function generateComputeOffset<S extends Stack>(
         // Load stride
         .then(
           loadValue(
-            Ir.Value.constant(BigInt(inst.stride), {
-              kind: "uint",
-              bits: 256,
-            }),
+            Ir.Value.constant(BigInt(inst.stride), Ir.Type.Scalar.uint256),
           ),
           { as: "stride" },
         )
@@ -65,10 +62,7 @@ export function generateComputeOffset<S extends Stack>(
         .then(loadValue(inst.base), { as: "base" })
         .then(
           loadValue(
-            Ir.Value.constant(BigInt(inst.fieldOffset), {
-              kind: "uint",
-              bits: 256,
-            }),
+            Ir.Value.constant(BigInt(inst.fieldOffset), Ir.Type.Scalar.uint256),
           ),
           { as: "field_offset" },
         )

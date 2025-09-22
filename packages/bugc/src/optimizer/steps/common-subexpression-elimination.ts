@@ -205,22 +205,10 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
   private getTypeKey(type: Ir.Value["type"]): string {
     if (!type) return "unknown";
     switch (type.kind) {
-      case "bool":
-        return "bool";
-      case "uint":
-        return `uint${type.bits}`;
-      case "address":
-        return "address";
-      case "bytes":
-        return `bytes${type.size || ""}`;
-      case "string":
-        return "string";
-      case "array":
-        return `array[${type.size || ""}]`;
-      case "mapping":
-        return "mapping";
-      case "struct":
-        return `struct:${type.name}`;
+      case "scalar":
+        return `scalar:${type.size}`;
+      case "ref":
+        return `ref:${type.location}`;
       default:
         return "unknown";
     }

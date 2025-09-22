@@ -982,7 +982,7 @@ export namespace Process {
         dest: tempId,
         loc,
       } as Ir.Instruction.ComputeSlot);
-      return Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
+      return Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
     }
 
     /**
@@ -998,8 +998,8 @@ export namespace Process {
         kind: "read",
         location: "storage",
         slot,
-        offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-        length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
+        length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         type,
         dest: tempId,
         loc,
@@ -1019,8 +1019,8 @@ export namespace Process {
         kind: "write",
         location: "storage",
         slot,
-        offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-        length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
+        length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         value,
         loc,
       } as Ir.Instruction.Write);

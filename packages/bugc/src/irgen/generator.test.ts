@@ -68,12 +68,20 @@ describe("generateModule", () => {
       expect(ir.storage.slots[0]).toMatchObject({
         slot: 0,
         name: "count",
-        type: { kind: "uint", bits: 256 },
+        type: {
+          kind: "scalar",
+          size: 32,
+          // origin will be the Bug type
+        },
       });
       expect(ir.storage.slots[1]).toMatchObject({
         slot: 1,
         name: "owner",
-        type: { kind: "address" },
+        type: {
+          kind: "scalar",
+          size: 20,
+          // origin will be the Bug type
+        },
       });
     });
   });
@@ -306,17 +314,17 @@ describe("generateModule", () => {
         slot: {
           kind: "const",
           value: 0n,
-          type: { kind: "uint", bits: 256 },
+          type: Ir.Type.Scalar.uint256,
         },
         offset: {
           kind: "const",
           value: 0n,
-          type: { kind: "uint", bits: 256 },
+          type: Ir.Type.Scalar.uint256,
         },
         length: {
           kind: "const",
           value: 32n,
-          type: { kind: "uint", bits: 256 },
+          type: Ir.Type.Scalar.uint256,
         },
         dest: expect.stringMatching(/^t\d+$/),
       });
@@ -345,17 +353,17 @@ describe("generateModule", () => {
         slot: {
           kind: "const",
           value: 0n,
-          type: { kind: "uint", bits: 256 },
+          type: Ir.Type.Scalar.uint256,
         },
         offset: {
           kind: "const",
           value: 0n,
-          type: { kind: "uint", bits: 256 },
+          type: Ir.Type.Scalar.uint256,
         },
         length: {
           kind: "const",
           value: 32n,
-          type: { kind: "uint", bits: 256 },
+          type: Ir.Type.Scalar.uint256,
         },
       });
     });

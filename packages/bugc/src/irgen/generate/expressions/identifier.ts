@@ -37,12 +37,9 @@ export function* buildIdentifier(
     yield* Process.Instructions.emit({
       kind: "read",
       location: "storage",
-      slot: Ir.Value.constant(BigInt(storageSlot.slot), {
-        kind: "uint",
-        bits: 256,
-      }),
-      offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-      length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }), // 32 bytes for uint256
+      slot: Ir.Value.constant(BigInt(storageSlot.slot), Ir.Type.Scalar.uint256),
+      offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
+      length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256), // 32 bytes for uint256
       type: storageSlot.type,
       dest: tempId,
       loc: expr.loc ?? undefined,
@@ -59,5 +56,5 @@ export function* buildIdentifier(
     ),
   );
 
-  return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+  return Ir.Value.constant(0n, Ir.Type.Scalar.uint256);
 }

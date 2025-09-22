@@ -3,115 +3,121 @@ import * as Ir from "#ir";
 import { Severity } from "#result";
 import { Type } from "#types";
 
-import { Error as IrgenError, ErrorMessages } from "#irgen/errors";
+import { Error as IrgenError } from "#irgen/errors";
+import { fromBugType } from "#irgen/type";
 import { Process } from "./process.js";
+import { buildExpression } from "./expressions/index.js";
 import type { Context } from "./expressions/context.js";
 
 export interface StorageAccessChain {
   slot: Ir.Module.StorageSlot;
   accesses: Array<{
     kind: "index" | "member";
-    key?: Ir.Value; // For index access
-    fieldName?: string; // For member access
-    fieldOffset?: number; // Slot offset for member access
-    fieldType?: Ir.Type; // Type of the field for member access
+    key?: Ir.Value;
+    fieldName?: string;
+    fieldOffset?: number;
+    fieldType?: Ir.Type;
   }>;
 }
 
 /**
- * Find a storage access chain starting from an expression (matching generator.ts)
+ * Try to extract a complete storage access chain from an expression.
+ * Returns undefined if the expression isn't a pure storage access.
  */
-export const makeFindStorageAccessChain = (
-  buildExpression: (
-    node: Ast.Expression,
-    context: Context,
-  ) => Process<Ir.Value>,
-) =>
-  function* findStorageAccessChain(
-    expr: Ast.Expression,
-  ): Process<StorageAccessChain | undefined> {
-    const accesses: StorageAccessChain["accesses"] = [];
-    let current = expr;
-
-    // Walk up the access chain from right to left
-    while (Ast.Expression.isAccess(current)) {
-      const accessNode = current as Ast.Expression.Access;
-
-      if (accessNode.kind === "index") {
-        // For index access, we need to evaluate the key expression
-        const key = yield* buildExpression(accessNode.index, {
-          kind: "rvalue",
-        });
-        accesses.unshift({ kind: "index", key });
-      } else if (accessNode.kind === "member") {
-        // For member access on structs
-        const fieldName = accessNode.property as string;
-        accesses.unshift({ kind: "member", fieldName });
-      }
-
-      current = accessNode.object;
+export function* findStorageAccessChain(
+  expr: Ast.Expression,
+): Process<StorageAccessChain | undefined> {
+  // Handle different expression types
+  if (Ast.Expression.isIdentifier(expr)) {
+    // Check if this is a storage variable
+    const storageSlot = yield* Process.Storage.findSlot(expr.name);
+    if (storageSlot) {
+      return {
+        slot: storageSlot,
+        accesses: [],
+      };
     }
-
-    // At the end, we should have an identifier that references storage
-    if (Ast.Expression.isIdentifier(current)) {
-      const name = (current as Ast.Expression.Identifier).name;
-      const slot = yield* Process.Storage.findSlot(name);
-      if (slot) {
-        return { slot, accesses };
-      }
-
-      // Check if it's a local variable
-      const local = yield* Process.Variables.lookup(name);
-      if (local) {
-        if (accesses.length > 0) {
-          // Error: trying to access members/indices on a local variable
-          const localType = yield* Process.Types.nodeType(current);
-          const typeDesc = localType
-            ? (localType as Type & { name?: string; kind?: string }).name ||
-              (localType as Type & { name?: string; kind?: string }).kind ||
-              "complex"
-            : "unknown";
-
-          yield* Process.Errors.report(
-            new IrgenError(
-              ErrorMessages.STORAGE_MODIFICATION_ERROR(name, typeDesc),
-              expr.loc ?? undefined,
-              Severity.Error,
-            ),
-          );
-        }
-        // Whether or not we have accesses, this is a local variable, not storage
-        return undefined;
-      }
-
-      // Neither storage nor local - undefined identifier
-      return undefined;
-    }
-
-    // Non-identifier base expressions
-    if (accesses.length > 0) {
-      // Error: trying to access members/indices on non-identifier base
-      yield* Process.Errors.report(
-        accesses.length > 0
-          ? new IrgenError(
-              ErrorMessages.UNSUPPORTED_STORAGE_PATTERN(
-                "function return values",
-              ),
-              expr.loc || undefined,
-              Severity.Error,
-            )
-          : new IrgenError(
-              `Storage access chain must start with a storage variable identifier. ` +
-                `Found ${current.type} at the base of the access chain.`,
-              current.loc ?? undefined,
-              Severity.Error,
-            ),
-      );
-    }
-
-    // Base is not an identifier and has no accesses - just return undefined
     return undefined;
-  };
+  }
+
+  if (Ast.Expression.isAccess(expr) && Ast.Expression.Access.isIndex(expr)) {
+    // array[index] or mapping[key]
+    const indexExpr = expr as Ast.Expression.Access.Index;
+    const baseChain = yield* findStorageAccessChain(indexExpr.object);
+    if (!baseChain) return undefined;
+
+    // Build the index value
+    const key = yield* buildExpression(indexExpr.index, { kind: "rvalue" });
+
+    baseChain.accesses.push({
+      kind: "index",
+      key,
+    });
+    return baseChain;
+  }
+
+  if (Ast.Expression.isAccess(expr) && Ast.Expression.Access.isMember(expr)) {
+    // struct.field
+    const memberExpr = expr as Ast.Expression.Access.Member;
+    const baseChain = yield* findStorageAccessChain(memberExpr.object);
+    if (!baseChain) return undefined;
+
+    baseChain.accesses.push({
+      kind: "member",
+      fieldName: memberExpr.property,
+    });
+    return baseChain;
+  }
+
+  return undefined;
+}
+
+/**
+ * Emit instructions to read from a storage location by following
+ * an access chain (e.g., accounts[user].balance)
+ */
+export function* emitStorageChainAccess(
+  expr: Ast.Expression,
+  _context: Context,
+): Process<Ir.Value | undefined> {
+  const chain = yield* findStorageAccessChain(expr);
+  if (!chain) return undefined;
+
+  // Build the expression to load from storage
+  const value = yield* emitStorageChainLoad(
+    chain,
+    chain.slot.type, // Use the final type from the chain
+    expr.loc ?? undefined,
+  );
+
+  return value;
+}
+
+/**
+ * Determines field size in bytes based on type
+ */
+function getFieldSize(type: Ir.Type): number {
+  // Check origin to get semantic type info
+  if (type.origin !== "synthetic") {
+    if (Type.Elementary.isAddress(type.origin)) {
+      return 20; // addresses are 20 bytes
+    } else if (Type.Elementary.isBool(type.origin)) {
+      return 1; // bools are 1 byte
+    } else if (Type.Elementary.isBytes(type.origin) && type.origin.size) {
+      return type.origin.size; // fixed bytes
+    } else if (Type.Elementary.isUint(type.origin)) {
+      return (type.origin.bits || 256) / 8;
+    }
+  }
+
+  // For scalars, use the size directly
+  if (type.kind === "scalar") {
+    return type.size;
+  }
+
+  // Default to full slot for references and unknown types
+  return 32;
+}
 
 /**
  * Emit a storage chain load
@@ -121,11 +127,13 @@ export function* emitStorageChainLoad(
   valueType: Ir.Type,
   loc: Ast.SourceLocation | undefined,
 ): Process<Ir.Value> {
-  let currentSlot = Ir.Value.constant(BigInt(chain.slot.slot), {
-    kind: "uint",
-    bits: 256,
-  });
+  let currentSlot = Ir.Value.constant(
+    BigInt(chain.slot.slot),
+    Ir.Type.Scalar.uint256,
+  );
   let currentType = chain.slot.type;
+  // Track the Bug type origin for semantic information
+  let currentOrigin = currentType.origin;
 
   // Process each access in the chain
   for (const access of chain.accesses) {
@@ -133,19 +141,23 @@ export function* emitStorageChainLoad(
       // For mapping/array access
       const tempId = yield* Process.Variables.newTemp();
 
-      if (currentType.kind === "mapping") {
-        // Mapping access
+      // Check the origin to determine if it's a mapping or array
+      if (currentOrigin !== "synthetic" && Type.isMapping(currentOrigin)) {
+        // Mapping access - get key and value types from Bug type
+        const keyIrType = fromBugType(currentOrigin.key);
         yield* Process.Instructions.emit(
           Ir.Instruction.ComputeSlot.mapping(
             currentSlot,
             access.key,
-            currentType.key || { kind: "address" },
+            keyIrType,
             tempId,
             loc,
           ),
         );
-        currentType = currentType.value || { kind: "uint", bits: 256 };
-      } else if (currentType.kind === "array") {
+        // Update to the value type
+        currentOrigin = currentOrigin.value;
+        currentType = fromBugType(currentOrigin);
+      } else if (currentOrigin !== "synthetic" && Type.isArray(currentOrigin)) {
         // Array access - compute array slot with index
         yield* Process.Instructions.emit(
           Ir.Instruction.ComputeSlot.array(
@@ -155,32 +167,28 @@ export function* emitStorageChainLoad(
             loc,
           ),
         );
-        currentType = currentType.element || { kind: "uint", bits: 256 };
+        // Update to the element type
+        currentOrigin = currentOrigin.element;
+        currentType = fromBugType(currentOrigin);
       }
 
-      currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
+      currentSlot = Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
     } else if (access.kind === "member" && access.fieldName) {
       // For struct field access
-      if (currentType.kind === "struct") {
-        // currentType is an IR.Type with struct fields as an array
-        const structType = currentType as {
-          kind: "struct";
-          name: string;
-          fields: Ir.Type.StructField[];
-        };
-        const field = structType.fields.find(
-          (f) => f.name === access.fieldName,
-        );
+      if (currentOrigin !== "synthetic" && Type.isStruct(currentOrigin)) {
+        // Access struct information from the Bug type origin
+        const fieldType = currentOrigin.fields.get(access.fieldName);
+        const layout = currentOrigin.layout.get(access.fieldName);
 
-        if (!field) {
+        if (!fieldType || !layout) {
           throw new Error(
-            `Field ${access.fieldName} not found in struct ${structType.name}`,
+            `Field ${access.fieldName} not found in struct ${currentOrigin.name}`,
           );
         }
 
         // For structs in mappings, we need to generate compute_slot.field
         // to compute the field's slot offset
-        const fieldSlotOffset = Math.floor(field.offset / 32);
+        const fieldSlotOffset = Math.floor(layout.byteOffset / 32);
 
         if (fieldSlotOffset > 0) {
           // Field is in a different slot, generate compute_slot.field
@@ -193,14 +201,15 @@ export function* emitStorageChainLoad(
               loc,
             ),
           );
-          currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
+          currentSlot = Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
         }
 
         // Store field info for later use in read/write
-        access.fieldOffset = field.offset;
+        access.fieldOffset = layout.byteOffset;
         // Store the field type so we know the correct size
-        access.fieldType = field.type;
-        currentType = field.type;
+        access.fieldType = fromBugType(fieldType);
+        currentOrigin = fieldType;
+        currentType = fromBugType(fieldType);
       }
     }
   }
@@ -214,17 +223,12 @@ export function* emitStorageChainLoad(
     lastAccess.kind === "member" &&
     lastAccess.fieldOffset !== undefined
   ) {
-    const fieldOffset = lastAccess.fieldOffset;
-    // For packed fields, get the byte offset within the slot
-    byteOffset = fieldOffset % 32;
+    // Calculate the byte offset within the slot
+    byteOffset = lastAccess.fieldOffset % 32;
 
-    // Use the field type we stored to determine field size
-    const fieldType = lastAccess.fieldType;
-    if (fieldType) {
-      fieldSize = getTypeSize(fieldType);
-    } else {
-      // Fallback to valueType if fieldType not available
-      fieldSize = getTypeSize(valueType);
+    // Determine field size from type
+    if (lastAccess.fieldType) {
+      fieldSize = getFieldSize(lastAccess.fieldType);
     }
   }
 
@@ -234,8 +238,8 @@ export function* emitStorageChainLoad(
     kind: "read",
     location: "storage",
     slot: currentSlot,
-    offset: Ir.Value.constant(BigInt(byteOffset), { kind: "uint", bits: 256 }),
-    length: Ir.Value.constant(BigInt(fieldSize), { kind: "uint", bits: 256 }),
+    offset: Ir.Value.constant(BigInt(byteOffset), Ir.Type.Scalar.uint256),
+    length: Ir.Value.constant(BigInt(fieldSize), Ir.Type.Scalar.uint256),
     type: valueType,
     dest: loadTempId,
     loc,
@@ -245,48 +249,22 @@ export function* emitStorageChainLoad(
 }
 
 /**
- * Get the size of a type in bytes
+ * Emit a storage write for an access chain
  */
-function getTypeSize(type: Ir.Type): number {
-  switch (type.kind) {
-    case "bool":
-      return 1;
-    case "uint":
-    case "int":
-      return Math.ceil((type.bits || 256) / 8);
-    case "address":
-      return 20;
-    case "bytes":
-      return type.size || 32;
-    case "string":
-    case "array":
-    case "mapping":
-    case "struct":
-      return 32;
-    default:
-      return 32;
-  }
-}
-
-/**
- * Emit a storage chain assignment
- */
-export function* emitStorageChainAssignment(
+export function* emitStorageChainStore(
   chain: StorageAccessChain,
   value: Ir.Value,
   loc: Ast.SourceLocation | undefined,
 ): Process<void> {
+  // Handle direct storage variable assignment (no accesses)
   if (chain.accesses.length === 0) {
     // Direct storage assignment using new unified format
     yield* Process.Instructions.emit({
       kind: "write",
       location: "storage",
-      slot: Ir.Value.constant(BigInt(chain.slot.slot), {
-        kind: "uint",
-        bits: 256,
-      }),
-      offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-      length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+      slot: Ir.Value.constant(BigInt(chain.slot.slot), Ir.Type.Scalar.uint256),
+      offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
+      length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
       value,
       loc,
     } as Ir.Instruction.Write);
@@ -294,31 +272,34 @@ export function* emitStorageChainAssignment(
   }
 
   // Compute the final storage slot through the chain
-  let currentSlot: Ir.Value = Ir.Value.constant(BigInt(chain.slot.slot), {
-    kind: "uint",
-    bits: 256,
-  });
+  let currentSlot: Ir.Value = Ir.Value.constant(
+    BigInt(chain.slot.slot),
+    Ir.Type.Scalar.uint256,
+  );
   let currentType = chain.slot.type;
+  let currentOrigin = currentType.origin;
 
-  // Process each access in the chain to compute the final slot
+  // Process each access in the chain
   for (const access of chain.accesses) {
     if (access.kind === "index" && access.key) {
-      // Mapping access: compute keccak256(key || slot)
-      if (currentType.kind === "mapping") {
+      // For mapping/array access
+      if (currentOrigin !== "synthetic" && Type.isMapping(currentOrigin)) {
+        // Mapping access
         const slotTemp = yield* Process.Variables.newTemp();
-        yield* Process.Instructions.emit({
-          kind: "compute_slot",
-          slotKind: "mapping",
-          base: currentSlot,
-          key: access.key,
-          keyType: currentType.key || { kind: "address" },
-          dest: slotTemp,
-          loc,
-        } as Ir.Instruction.ComputeSlot);
-        currentSlot = Ir.Value.temp(slotTemp, { kind: "uint", bits: 256 });
-        currentType = (currentType as { kind: "mapping"; value: Ir.Type })
-          .value;
-      } else if (currentType.kind === "array") {
+        const keyIrType = fromBugType(currentOrigin.key);
+        yield* Process.Instructions.emit(
+          Ir.Instruction.ComputeSlot.mapping(
+            currentSlot,
+            access.key,
+            keyIrType,
+            slotTemp,
+            loc,
+          ),
+        );
+        currentSlot = Ir.Value.temp(slotTemp, Ir.Type.Scalar.uint256);
+        currentOrigin = currentOrigin.value;
+        currentType = fromBugType(currentOrigin);
+      } else if (currentOrigin !== "synthetic" && Type.isArray(currentOrigin)) {
         // Array access - compute array slot with index
         const slotTemp = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit(
@@ -329,33 +310,22 @@ export function* emitStorageChainAssignment(
             loc,
           ),
         );
-
-        currentSlot = Ir.Value.temp(slotTemp, {
-          kind: "uint",
-          bits: 256,
-        });
-        currentType = (currentType as { kind: "array"; element: Ir.Type })
-          .element;
+        currentSlot = Ir.Value.temp(slotTemp, Ir.Type.Scalar.uint256);
+        currentOrigin = currentOrigin.element;
+        currentType = fromBugType(currentOrigin);
       }
     } else if (access.kind === "member" && access.fieldName) {
-      // Struct field access: handle packed fields properly
-      if (currentType.kind === "struct") {
-        const structType = currentType as {
-          kind: "struct";
-          name: string;
-          fields: Ir.Type.StructField[];
-        };
-        const field = structType.fields.find(
-          (f) => f.name === access.fieldName,
-        );
+      // For struct field access
+      if (currentOrigin !== "synthetic" && Type.isStruct(currentOrigin)) {
+        const fieldType = currentOrigin.fields.get(access.fieldName);
+        const layout = currentOrigin.layout.get(access.fieldName);
 
-        if (field) {
-          // For structs in mappings, we need to generate compute_slot.field
-          // to compute the field's slot offset
-          const fieldSlotOffset = Math.floor(field.offset / 32);
+        if (fieldType && layout) {
+          // Calculate the slot offset for the field
+          const fieldSlotOffset = Math.floor(layout.byteOffset / 32);
 
           if (fieldSlotOffset > 0) {
-            // Field is in a different slot, generate compute_slot.field
+            // Field is in a different slot
             const tempId = yield* Process.Variables.newTemp();
             yield* Process.Instructions.emit(
               Ir.Instruction.ComputeSlot.field(
@@ -365,18 +335,19 @@ export function* emitStorageChainAssignment(
                 loc,
               ),
             );
-            currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
+            currentSlot = Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
           }
 
           // Store field info for later use in write
-          access.fieldOffset = field.offset;
+          access.fieldOffset = layout.byteOffset;
           // Store the field type so we know the correct size
-          access.fieldType = field.type;
-          currentType = field.type;
+          access.fieldType = fromBugType(fieldType);
+          currentOrigin = fieldType;
+          currentType = fromBugType(fieldType);
         } else {
           yield* Process.Errors.report(
             new IrgenError(
-              `Field ${access.fieldName} not found in struct ${structType.name}`,
+              `Field ${access.fieldName} not found in struct`,
               loc,
               Severity.Error,
             ),
@@ -386,23 +357,21 @@ export function* emitStorageChainAssignment(
     }
   }
 
-  // Check if the last access was a struct field to get packed field info
+  // Check if the last access was a struct field to handle packed fields
   let byteOffset = 0;
-  let fieldSize: number | undefined = undefined;
+  let fieldSize: number | undefined;
   const lastAccess = chain.accesses[chain.accesses.length - 1];
   if (
     lastAccess &&
     lastAccess.kind === "member" &&
     lastAccess.fieldOffset !== undefined
   ) {
-    const fieldOffset = lastAccess.fieldOffset;
-    // For packed fields, get the byte offset within the slot
-    byteOffset = fieldOffset % 32;
+    // Calculate the byte offset within the slot
+    byteOffset = lastAccess.fieldOffset % 32;
 
-    // Use the field type we stored to determine field size
-    const fieldType = lastAccess.fieldType;
-    if (fieldType) {
-      fieldSize = getTypeSize(fieldType);
+    // Determine field size from type
+    if (lastAccess.fieldType) {
+      fieldSize = getFieldSize(lastAccess.fieldType);
     }
   }
 
@@ -414,144 +383,42 @@ export function* emitStorageChainAssignment(
     kind: "write",
     location: "storage",
     slot: currentSlot,
-    offset: Ir.Value.constant(BigInt(byteOffset), { kind: "uint", bits: 256 }),
-    length: Ir.Value.constant(BigInt(actualFieldSize), {
-      kind: "uint",
-      bits: 256,
-    }),
+    offset: Ir.Value.constant(BigInt(byteOffset), Ir.Type.Scalar.uint256),
+    length: Ir.Value.constant(BigInt(actualFieldSize), Ir.Type.Scalar.uint256),
     value,
     loc,
   } as Ir.Instruction.Write);
 }
 
-// export interface StorageAccessChain {
-//   slot: Ir.Module.StorageSlot;
-//   accesses: Array<{
-//     kind: "index" | "member";
-//     key?: Ir.Value; // For index access
-//     fieldName?: string; // For member access
-//     fieldIndex?: number; // For member access
-//   }>;
-// }
+// The rest of the file contains commented-out old implementations
+// which we can keep for reference...
 
 // /**
-//  * Find a storage access chain starting from an expression (matching generator.ts)
+//  * Generate storage access for a complete chain (e.g., accounts[user].balance)
 //  */
-// export const makeFindStorageAccessChain = (
-//   buildExpression: (node: Ast.Expression) => IrGen<Ir.Value>,
-// ) =>
-//   function* findStorageAccessChain(
-//     expr: Ast.Expression,
-//   ): IrGen<StorageAccessChain | undefined> {
-//     const accesses: StorageAccessChain["accesses"] = [];
-//     let current = expr;
-
-//     // Walk up the access chain from right to left
-//     while (current.type === "AccessExpression") {
-//       const accessNode = current as Ast.Expression.Access;
-
-//       if (accessNode.kind === "index") {
-//         // For index access, we need to evaluate the key expression
-//         const key = yield* buildExpression(
-//           accessNode.property as Ast.Expression,
-//         );
-//         accesses.unshift({ kind: "index", key });
-//       } else {
-//         // For member access on structs
-//         const fieldName = accessNode.property as string;
-//         accesses.unshift({ kind: "member", fieldName });
-//       }
-
-//       current = accessNode.object;
-//     }
-
-//     // At the end, we should have an identifier that references storage
-//     if (current.type === "IdentifierExpression") {
-//       const name = (current as Ast.Expression.Identifier).name;
-//       const state = yield* peek();
-//       const slot = state.module.storage.slots.find((s) => s.name === name);
-//       if (slot) {
-//         return { slot, accesses };
-//       }
-
-//       // Check if it's a local variable (which means we're trying to access
-//       // storage through an intermediate variable - not supported)
-//       const local = yield* lookupVariable(name);
-
-//       if (local && accesses.length > 0) {
-//         // Get the type to provide better error message
-//         const localType = state.types.get(current.id);
-//         const typeDesc = localType
-//           ? (localType as Type & { name?: string; kind?: string }).name ||
-//             (localType as Type & { name?: string; kind?: string }).kind ||
-//             "complex"
-//           : "unknown";
-
-//         yield* addError(
-//           new IrgenError(
-//             ErrorMessages.STORAGE_MODIFICATION_ERROR(name, typeDesc),
-//             expr.loc ?? undefined,
-//             Severity.Error,
-//           ),
-//         );
-//       }
-//     } else if (current.type === "CallExpression") {
-//       // Provide specific error for function calls
-//       yield* addError(
-//         new IrgenError(
-//           ErrorMessages.UNSUPPORTED_STORAGE_PATTERN("function return values"),
-//           expr.loc || undefined,
-//           Severity.Error,
-//         ),
-//       );
-//     } else if (accesses.length > 0) {
-//       // Other unsupported base expressions when we have an access chain
-//       yield* addError(
-//         new IrgenError(
-//           `Storage access chain must start with a storage variable identifier. ` +
-//             `Found ${current.type} at the base of the access chain.`,
-//           current.loc ?? undefined,
-//           Severity.Error,
-//         ),
-//       );
-//     }
-
-//     return undefined;
-//   };
-
-// /**
-//  * Find a storage variable from an expression
-//  */
-// export function* findStorageVariable(
-//   expr: Ast.Expression,
-// ): IrGen<Ir.Module.StorageSlot | undefined> {
-//   if (expr.type === "IdentifierExpression") {
-//     const name = (expr as Ast.Expression.Identifier).name;
-//     const state = yield* peek();
-//     return state.module.storage.slots.find((s) => s.name === name);
-//   }
-//   return undefined;
-// }
-
-// /**
-//  * Emit a storage chain load (matching generator.ts pattern)
-//  */
-// export function* emitStorageChainLoad(
+// export function* generateStorageAccess(
 //   chain: StorageAccessChain,
-//   valueType: Ir.Type,
-//   loc: Ast.SourceLocation | undefined,
-// ): IrGen<Ir.Value> {
+//   context: Context,
+// ): Process<Ir.Value> {
+//   const {
+//     emit,
+//     newTemp,
+//     getNodeType,
+//   } = yield* Process.all();
+//
+//   // Start with the base storage slot
 //   let currentSlot = Ir.Value.constant(BigInt(chain.slot.slot), {
 //     kind: "uint",
 //     bits: 256,
 //   });
 //   let currentType = chain.slot.type;
-
+//
 //   // Process each access in the chain
 //   for (const access of chain.accesses) {
 //     if (access.kind === "index" && access.key) {
-//       // For mapping/array access
+//       // For mapping/array access, compute the slot
 //       const tempId = yield* newTemp();
+//
 //       yield* emit({
 //         kind: "compute_slot",
 //         baseSlot: currentSlot,
@@ -559,14 +426,14 @@ export function* emitStorageChainAssignment(
 //         dest: tempId,
 //         loc,
 //       } as Ir.Instruction);
-
-//       currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
-
+//
+//       currentSlot = Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
+//
 //       // Update type based on mapping/array element type
 //       if (currentType.kind === "mapping") {
-//         currentType = currentType.value || { kind: "uint", bits: 256 };
+//         currentType = currentType.value || Ir.Type.Scalar.uint256;
 //       } else if (currentType.kind === "array") {
-//         currentType = currentType.element || { kind: "uint", bits: 256 };
+//         currentType = currentType.element || Ir.Type.Scalar.uint256;
 //       }
 //     } else if (access.kind === "member" && access.fieldName) {
 //       // For struct field access
@@ -575,8 +442,8 @@ export function* emitStorageChainAssignment(
 //           currentType.fields.findIndex(
 //             ({ name }) => name === access.fieldName,
 //           ) ?? 0;
-
 //         const tempId = yield* newTemp();
+//
 //         yield* emit({
 //           kind: "compute_field_offset",
 //           baseSlot: currentSlot,
@@ -584,8 +451,8 @@ export function* emitStorageChainAssignment(
 //           dest: tempId,
 //           loc,
 //         } as Ir.Instruction);
-
-//         currentSlot = Ir.Value.temp(tempId, { kind: "uint", bits: 256 });
+//
+//         currentSlot = Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
 //         currentType = currentType.fields[fieldIndex]?.type || {
 //           kind: "uint",
 //           bits: 256,
@@ -593,30 +460,31 @@ export function* emitStorageChainAssignment(
 //       }
 //     }
 //   }
-
-//   // Generate the final load_storage instruction
+//
+//   // Load from the final slot
 //   const loadTempId = yield* newTemp();
 //   yield* emit({
 //     kind: "load_storage",
 //     slot: currentSlot,
-//     type: valueType,
 //     dest: loadTempId,
 //     loc,
-//   } as Ir.Instruction.LoadStorage);
-
-//   return Ir.Value.temp(loadTempId, valueType);
+//   } as Ir.Instruction);
+//
+//   return Ir.Value.temp(loadTempId, currentType);
 // }
 
-// /**
-//  * Emit a storage chain assignment
-//  */
-// export function* emitStorageChainAssignment(
+/**
+ * Emit storage chain store for assignment
+ */
+// export function* generateStorageStore(
 //   chain: StorageAccessChain,
 //   value: Ir.Value,
 //   loc: Ast.SourceLocation | undefined,
-// ): IrGen<void> {
+// ): Process<void> {
+//   const { emit, newTemp } = yield* Process.all();
+//
+//   // Handle direct storage variable assignment (no accesses)
 //   if (chain.accesses.length === 0) {
-//     // Direct storage assignment
 //     yield* emit({
 //       kind: "store_storage",
 //       slot: Ir.Value.constant(BigInt(chain.slot.slot), {
@@ -628,19 +496,20 @@ export function* emitStorageChainAssignment(
 //     } as Ir.Instruction);
 //     return;
 //   }
-
+//
 //   // Compute the final storage slot through the chain
 //   let currentSlot: Ir.Value = Ir.Value.constant(BigInt(chain.slot.slot), {
 //     kind: "uint",
 //     bits: 256,
 //   });
 //   let currentType = chain.slot.type;
-
-//   // Process each access in the chain to compute the final slot
+//
+//   // Process each access in the chain
 //   for (const access of chain.accesses) {
 //     if (access.kind === "index" && access.key) {
-//       // Mapping access: compute keccak256(key || slot)
+//       // For mapping/array access
 //       if (currentType.kind === "mapping") {
+//         // Mapping access
 //         const slotTemp = yield* newTemp();
 //         yield* emit({
 //           kind: "compute_slot",
@@ -649,7 +518,7 @@ export function* emitStorageChainAssignment(
 //           dest: slotTemp,
 //           loc,
 //         } as Ir.Instruction);
-//         currentSlot = Ir.Value.temp(slotTemp, { kind: "uint", bits: 256 });
+//         currentSlot = Ir.Value.temp(slotTemp, Ir.Type.Scalar.uint256);
 //         currentType = (currentType as { kind: "mapping"; value: Ir.Type })
 //           .value;
 //       } else if (currentType.kind === "array") {
@@ -661,18 +530,18 @@ export function* emitStorageChainAssignment(
 //           dest: baseSlotTemp,
 //           loc,
 //         } as Ir.Instruction);
-
+//
 //         // Add the index to get the final slot
 //         const finalSlotTemp = yield* newTemp();
 //         yield* emit({
 //           kind: "binary",
 //           op: "add",
-//           left: Ir.Value.temp(baseSlotTemp, { kind: "uint", bits: 256 }),
+//           left: Ir.Value.temp(baseSlotTemp, Ir.Type.Scalar.uint256),
 //           right: access.key,
 //           dest: finalSlotTemp,
 //           loc,
 //         } as Ir.Instruction);
-
+//
 //         currentSlot = Ir.Value.temp(finalSlotTemp, {
 //           kind: "uint",
 //           bits: 256,
@@ -681,45 +550,35 @@ export function* emitStorageChainAssignment(
 //           .element;
 //       }
 //     } else if (access.kind === "member" && access.fieldName) {
-//       // Struct field access: add field offset
+//       // For struct field access
 //       if (currentType.kind === "struct") {
-//         const structType = currentType as {
-//           kind: "struct";
-//           name: string;
-//           fields: Ir.Type.StructField[];
+//         const fieldIndex =
+//           currentType.fields.findIndex(
+//             ({ name }) => name === access.fieldName,
+//           ) ?? 0;
+//         const slotTemp = yield* newTemp();
+//
+//         yield* emit({
+//           kind: "compute_field_offset",
+//           baseSlot: currentSlot,
+//           fieldIndex,
+//           dest: slotTemp,
+//           loc,
+//         } as Ir.Instruction);
+//
+//         currentSlot = Ir.Value.temp(slotTemp, {
+//           kind: "uint",
+//           bits: 256,
+//         });
+//         currentType = currentType.fields[fieldIndex]?.type || {
+//           kind: "uint",
+//           bits: 256,
 //         };
-//         const fieldIndex = structType.fields.findIndex(
-//           (f) => f.name === access.fieldName,
-//         );
-
-//         if (fieldIndex >= 0) {
-//           const offsetTemp = yield* newTemp();
-//           yield* emit({
-//             kind: "compute_field_offset",
-//             baseSlot: currentSlot,
-//             fieldIndex,
-//             dest: offsetTemp,
-//             loc,
-//           } as Ir.Instruction);
-//           currentSlot = Ir.Value.temp(offsetTemp, {
-//             kind: "uint",
-//             bits: 256,
-//           });
-//           currentType = structType.fields[fieldIndex].type;
-//         } else {
-//           yield* addError(
-//             new IrgenError(
-//               `Field ${access.fieldName} not found in struct ${structType.name}`,
-//               loc,
-//               Severity.Error,
-//             ),
-//           );
-//         }
 //       }
 //     }
 //   }
-
-//   // Store to the computed slot
+//
+//   // Store to the final slot
 //   yield* emit({
 //     kind: "store_storage",
 //     slot: currentSlot,

@@ -35,7 +35,7 @@ export const makeBuildCall = (
             Severity.Error,
           ),
         );
-        return Ir.Value.constant(0n, { kind: "bytes", size: 32 });
+        return Ir.Value.constant(0n, Ir.Type.Scalar.bytes32);
       }
 
       // Evaluate the argument
@@ -44,7 +44,7 @@ export const makeBuildCall = (
       });
 
       // Generate hash instruction
-      const resultType: Ir.Type = { kind: "bytes", size: 32 }; // bytes32
+      const resultType: Ir.Type = Ir.Type.Scalar.bytes32;
       const resultTemp = yield* Process.Variables.newTemp();
 
       yield* Process.Instructions.emit({
@@ -72,7 +72,7 @@ export const makeBuildCall = (
             Severity.Error,
           ),
         );
-        return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+        return Ir.Value.constant(0n, Ir.Type.Scalar.uint256);
       }
 
       // Evaluate arguments
@@ -116,7 +116,7 @@ export const makeBuildCall = (
         return Ir.Value.temp(dest, irType);
       }
       // Void function - return a dummy value
-      return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+      return Ir.Value.constant(0n, Ir.Type.Scalar.uint256);
     }
 
     // Other forms of function calls not supported
@@ -127,5 +127,5 @@ export const makeBuildCall = (
         Severity.Error,
       ),
     );
-    return Ir.Value.constant(0n, { kind: "uint", bits: 256 });
+    return Ir.Value.constant(0n, Ir.Type.Scalar.uint256);
   };

@@ -345,24 +345,11 @@ function findStackPosition(stack: string[], value: string): number {
  */
 function getTypeSize(type: Ir.Type): number {
   switch (type.kind) {
-    case "bool":
-      return 1;
-    case "uint":
-    case "int":
-      return Math.ceil((type.bits || 256) / 8);
-    case "bytes":
-      if (type.size) {
-        return type.size; // Fixed-size bytes
-      }
-      return 32; // Dynamic bytes need full slot for length/data pointer
-    case "address":
-      return 20;
-    case "string":
-    case "array":
-    case "mapping":
-      return 32; // Reference types need full slot
-    case "struct":
-      // For now, structs get full slot - could be optimized later
+    case "scalar":
+      // Scalar types have their size directly
+      return type.size;
+    case "ref":
+      // References are always 32-byte pointers on the stack
       return 32;
     default:
       return 32; // Conservative default
@@ -399,13 +386,13 @@ function getValueType(valueId: string, func: Ir.Function): Ir.Type | undefined {
         // For instructions without explicit type, infer from operation
         if (inst.kind === "binary" || inst.kind === "unary") {
           // Binary/unary ops typically produce uint256
-          return { kind: "uint", bits: 256 };
+          return Ir.Type.Scalar.uint256;
         }
         if (inst.kind === "env") {
           // Environment ops produce address or uint256
           return inst.op === "msg_sender"
-            ? { kind: "address" }
-            : { kind: "uint", bits: 256 };
+            ? Ir.Type.Scalar.address
+            : Ir.Type.Scalar.uint256;
         }
       }
     }

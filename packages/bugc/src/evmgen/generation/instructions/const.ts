@@ -20,9 +20,9 @@ export function generateConst<S extends Stack>(
   inst: Ir.Instruction.Const,
 ): Transition<S, readonly ["value", ...S]> {
   // Check the type to determine how to handle the constant
-  // Fixed-size bytes are stored as values on the stack
-  if (inst.type.kind === "bytes" && inst.type.size !== undefined) {
-    // Fixed-size bytes - just push the value
+  // Scalar values are stored directly on the stack
+  if (inst.type.kind === "scalar") {
+    // Scalar - just push the value
     let value: bigint;
     if (typeof inst.value === "string" && inst.value.startsWith("0x")) {
       // It's a hex string, convert to bigint
@@ -38,19 +38,14 @@ export function generateConst<S extends Stack>(
       .done();
   }
 
-  // Dynamic bytes and strings need memory allocation
-  if (
-    inst.type.kind === "string" ||
-    (inst.type.kind === "bytes" && inst.type.size === undefined)
-  ) {
+  // References need memory allocation for the data they point to
+  if (inst.type.kind === "ref" && inst.type.location === "memory") {
     let bytes: Uint8Array;
     let byteLength: bigint;
 
-    if (
-      inst.type.kind === "bytes" &&
-      typeof inst.value === "string" &&
-      inst.value.startsWith("0x")
-    ) {
+    // For memory references, we need to check the origin type to understand what data to store
+    // For now, we'll handle hex strings and regular strings
+    if (typeof inst.value === "string" && inst.value.startsWith("0x")) {
       // Dynamic bytes from hex string - decode the hex
       const hexStr = inst.value.slice(2); // Remove 0x prefix
       const hexBytes = [];

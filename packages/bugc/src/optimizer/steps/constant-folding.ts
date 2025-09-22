@@ -200,11 +200,11 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
 
   private getResultType(_op: string, resultType: string): Ir.Type {
     if (resultType === "boolean") {
-      return { kind: "bool" };
+      return Ir.Type.Scalar.bool;
     } else if (resultType === "bigint") {
-      return { kind: "uint", bits: 256 };
+      return Ir.Type.Scalar.uint256;
     }
-    return { kind: "bool" };
+    return Ir.Type.Scalar.bool;
   }
 
   private canFoldHash(
@@ -242,7 +242,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
     return {
       kind: "const",
       value: hashValue,
-      type: { kind: "bytes", size: 32 },
+      type: Ir.Type.Scalar.bytes32,
       dest: inst.dest,
       loc: inst.loc,
     };
@@ -251,26 +251,16 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
   private canFoldLength(inst: Ir.Instruction): boolean {
     if (inst.kind !== "length") return false;
 
-    // We can only fold length of fixed-size arrays
-    const objectType = inst.object.type;
-    return objectType.kind === "array" && objectType.size !== undefined;
+    // In the new type system, we can't easily fold length without Bug type info
+    // For now, disable length folding
+    return false;
   }
 
   private foldLength(
-    inst: Ir.Instruction & { kind: "length" },
+    _inst: Ir.Instruction & { kind: "length" },
   ): Ir.Instruction | null {
-    const objectType = inst.object.type;
-
-    if (objectType.kind === "array" && objectType.size !== undefined) {
-      // Return the array size as a constant
-      return {
-        kind: "const",
-        value: BigInt(objectType.size),
-        type: { kind: "uint", bits: 256 },
-        dest: inst.dest,
-        loc: inst.loc,
-      };
-    }
+    // Length folding disabled for now with new type system
+    // Would need to check origin Bug type for array info
 
     return null;
   }

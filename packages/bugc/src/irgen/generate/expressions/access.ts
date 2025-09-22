@@ -10,7 +10,7 @@ import type { Context } from "./context.js";
 import { fromBugType } from "#irgen/type";
 import {
   type StorageAccessChain,
-  makeFindStorageAccessChain,
+  findStorageAccessChain,
   emitStorageChainLoad,
 } from "../storage.js";
 
@@ -23,7 +23,7 @@ export const makeBuildAccess = (
     context: Context,
   ) => Process<Ir.Value>,
 ) => {
-  const findStorageAccessChain = makeFindStorageAccessChain(buildExpression);
+  // findStorageAccessChain is now imported directly
   const buildIndexAccess = makeBuildIndexAccess(
     buildExpression,
     findStorageAccessChain,
@@ -80,7 +80,7 @@ const makeBuildMemberAccess = (
               Type.Elementary.isString(objectType))))
       ) {
         const object = yield* buildExpression(expr.object, { kind: "rvalue" });
-        const resultType: Ir.Type = { kind: "uint", bits: 256 };
+        const resultType: Ir.Type = Ir.Type.Scalar.uint256;
         const tempId = yield* Process.Variables.newTemp();
 
         yield* Process.Instructions.emit({
@@ -142,8 +142,8 @@ const makeBuildMemberAccess = (
         yield* Process.Instructions.emit({
           kind: "read",
           location: "memory",
-          offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
-          length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+          offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
+          length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           type: irFieldType,
           dest: tempId,
           loc: expr.loc ?? undefined,
@@ -181,8 +181,8 @@ const makeBuildSliceAccess = (
       const start = yield* buildExpression(expr.start, { kind: "rvalue" });
       const end = yield* buildExpression(expr.end, { kind: "rvalue" });
 
-      // Slicing bytes returns dynamic bytes
-      const resultType: Ir.Type = { kind: "bytes" };
+      // Slicing bytes returns dynamic bytes (memory reference)
+      const resultType: Ir.Type = Ir.Type.Ref.memory();
 
       // Calculate the length of the slice
       const lengthTemp = yield* Process.Variables.newTemp();
@@ -194,7 +194,7 @@ const makeBuildSliceAccess = (
         dest: lengthTemp,
         loc: expr.loc ?? undefined,
       } as Ir.Instruction);
-      const length = Ir.Value.temp(lengthTemp, { kind: "uint", bits: 256 });
+      const length = Ir.Value.temp(lengthTemp, Ir.Type.Scalar.uint256);
 
       // Allocate memory for the slice result (length + 32 for length prefix)
       const allocSizeTemp = yield* Process.Variables.newTemp();
@@ -202,7 +202,7 @@ const makeBuildSliceAccess = (
         kind: "binary",
         op: "add",
         left: length,
-        right: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         dest: allocSizeTemp,
         loc: expr.loc ?? undefined,
       } as Ir.Instruction);
@@ -211,7 +211,7 @@ const makeBuildSliceAccess = (
       yield* Process.Instructions.emit({
         kind: "allocate",
         location: "memory",
-        size: Ir.Value.temp(allocSizeTemp, { kind: "uint", bits: 256 }),
+        size: Ir.Value.temp(allocSizeTemp, Ir.Type.Scalar.uint256),
         dest: destTemp,
         loc: expr.loc ?? undefined,
       } as Ir.Instruction);
@@ -220,8 +220,8 @@ const makeBuildSliceAccess = (
       yield* Process.Instructions.emit({
         kind: "write",
         location: "memory",
-        offset: Ir.Value.temp(destTemp, { kind: "uint", bits: 256 }),
-        length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        offset: Ir.Value.temp(destTemp, Ir.Type.Scalar.uint256),
+        length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         value: length,
         loc: expr.loc ?? undefined,
       } as Ir.Instruction.Write);
@@ -232,7 +232,7 @@ const makeBuildSliceAccess = (
         kind: "binary",
         op: "add",
         left: object,
-        right: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         dest: sourceOffsetTemp,
         loc: expr.loc ?? undefined,
       } as Ir.Instruction);
@@ -241,7 +241,7 @@ const makeBuildSliceAccess = (
       yield* Process.Instructions.emit({
         kind: "binary",
         op: "add",
-        left: Ir.Value.temp(sourceOffsetTemp, { kind: "uint", bits: 256 }),
+        left: Ir.Value.temp(sourceOffsetTemp, Ir.Type.Scalar.uint256),
         right: start,
         dest: adjustedSourceTemp,
         loc: expr.loc ?? undefined,
@@ -252,7 +252,7 @@ const makeBuildSliceAccess = (
       yield* Process.Instructions.emit({
         kind: "read",
         location: "memory",
-        offset: Ir.Value.temp(adjustedSourceTemp, { kind: "uint", bits: 256 }),
+        offset: Ir.Value.temp(adjustedSourceTemp, Ir.Type.Scalar.uint256),
         length,
         type: resultType,
         dest: dataTemp,
@@ -264,8 +264,8 @@ const makeBuildSliceAccess = (
       yield* Process.Instructions.emit({
         kind: "binary",
         op: "add",
-        left: Ir.Value.temp(destTemp, { kind: "uint", bits: 256 }),
-        right: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        left: Ir.Value.temp(destTemp, Ir.Type.Scalar.uint256),
+        right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         dest: destDataOffsetTemp,
         loc: expr.loc ?? undefined,
       } as Ir.Instruction);
@@ -274,7 +274,7 @@ const makeBuildSliceAccess = (
       yield* Process.Instructions.emit({
         kind: "write",
         location: "memory",
-        offset: Ir.Value.temp(destDataOffsetTemp, { kind: "uint", bits: 256 }),
+        offset: Ir.Value.temp(destDataOffsetTemp, Ir.Type.Scalar.uint256),
         length,
         value: Ir.Value.temp(dataTemp, resultType),
         loc: expr.loc ?? undefined,
@@ -326,7 +326,7 @@ const makeBuildIndexAccess = (
       const object = yield* buildExpression(expr.object, { kind: "rvalue" });
       const index = yield* buildExpression(expr.index, { kind: "rvalue" });
       // Bytes indexing returns uint8
-      const elementType: Ir.Type = { kind: "uint", bits: 8 };
+      const elementType: Ir.Type = Ir.Type.scalar(1, "synthetic");
 
       // Compute offset for the byte at the index using byte offset
       const offsetTemp = yield* Process.Variables.newTemp();
@@ -345,8 +345,8 @@ const makeBuildIndexAccess = (
       yield* Process.Instructions.emit({
         kind: "read",
         location: "memory",
-        offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
-        length: Ir.Value.constant(1n, { kind: "uint", bits: 256 }),
+        offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
+        length: Ir.Value.constant(1n, Ir.Type.Scalar.uint256),
         type: elementType,
         dest: tempId,
         loc: expr.loc ?? undefined,
@@ -375,7 +375,7 @@ const makeBuildIndexAccess = (
             kind: "binary",
             op: "add",
             left: object,
-            right: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+            right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
             dest: elementsBaseTemp,
             loc: expr.loc ?? undefined,
           } as Ir.Instruction);
@@ -385,7 +385,7 @@ const makeBuildIndexAccess = (
           yield* Process.Instructions.emit(
             Ir.Instruction.ComputeOffset.array(
               "memory",
-              Ir.Value.temp(elementsBaseTemp, { kind: "uint", bits: 256 }),
+              Ir.Value.temp(elementsBaseTemp, Ir.Type.Scalar.uint256),
               index,
               32, // array elements are 32 bytes each
               offsetTemp,
@@ -398,8 +398,8 @@ const makeBuildIndexAccess = (
           yield* Process.Instructions.emit({
             kind: "read",
             location: "memory",
-            offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
-            length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+            offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
+            length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
             type: elementType,
             dest: tempId,
             loc: expr.loc ?? undefined,
@@ -448,8 +448,8 @@ const makeBuildIndexAccess = (
       yield* Process.Instructions.emit({
         kind: "read",
         location: "memory",
-        offset: Ir.Value.temp(offsetTemp, { kind: "uint", bits: 256 }),
-        length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+        offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
+        length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         type: elementType,
         dest: tempId,
         loc: expr.loc ?? undefined,
@@ -473,10 +473,10 @@ const makeBuildIndexAccess = (
         yield* Process.Instructions.emit({
           kind: "compute_slot",
           slotKind: "mapping",
-          base: Ir.Value.constant(BigInt(storageVar.slot), {
-            kind: "uint",
-            bits: 256,
-          }),
+          base: Ir.Value.constant(
+            BigInt(storageVar.slot),
+            Ir.Type.Scalar.uint256,
+          ),
           key: index,
           keyType: fromBugType(objectType.key),
           dest: slotTempId,
@@ -488,9 +488,9 @@ const makeBuildIndexAccess = (
         yield* Process.Instructions.emit({
           kind: "read",
           location: "storage",
-          slot: Ir.Value.temp(slotTempId, { kind: "uint", bits: 256 }),
-          offset: Ir.Value.constant(0n, { kind: "uint", bits: 256 }),
-          length: Ir.Value.constant(32n, { kind: "uint", bits: 256 }),
+          slot: Ir.Value.temp(slotTempId, Ir.Type.Scalar.uint256),
+          offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
+          length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           type: valueType,
           dest: tempId,
           loc: expr.loc ?? undefined,

@@ -35,12 +35,12 @@ describe("ConstantFoldingStep", () => {
       {
         kind: "const",
         value: "transfer(address,uint256)",
-        type: { kind: "string" },
+        type: Ir.Type.Scalar.uint256,
         dest: "t0",
       },
       {
         kind: "hash",
-        value: { kind: "temp", id: "t0", type: { kind: "string" } },
+        value: { kind: "temp", id: "t0", type: Ir.Type.Scalar.uint256 },
         dest: "t1",
       },
     ]);
@@ -61,7 +61,7 @@ describe("ConstantFoldingStep", () => {
       // This is keccak256("transfer(address,uint256)")
       value:
         76450787364331811106618268332334209071204572358820727073668507032443496760475n,
-      type: { kind: "bytes", size: 32 },
+      type: Ir.Type.Scalar.bytes32,
       dest: "t1",
     });
   });
@@ -71,12 +71,12 @@ describe("ConstantFoldingStep", () => {
       {
         kind: "const",
         value: 123n,
-        type: { kind: "uint", bits: 256 },
+        type: Ir.Type.Scalar.uint256,
         dest: "t0",
       },
       {
         kind: "hash",
-        value: { kind: "temp", id: "t0", type: { kind: "string" } },
+        value: { kind: "temp", id: "t0", type: Ir.Type.Scalar.uint256 },
         dest: "t1",
       },
     ]);
@@ -104,23 +104,23 @@ describe("ConstantFoldingStep", () => {
       {
         kind: "const",
         value: "pause()",
-        type: { kind: "string" },
+        type: Ir.Type.Scalar.uint256,
         dest: "t0",
       },
       {
         kind: "hash",
-        value: { kind: "temp", id: "t0", type: { kind: "string" } },
+        value: { kind: "temp", id: "t0", type: Ir.Type.Scalar.uint256 },
         dest: "t1",
       },
       {
         kind: "const",
         value: "unpause()",
-        type: { kind: "string" },
+        type: Ir.Type.Scalar.uint256,
         dest: "t2",
       },
       {
         kind: "hash",
-        value: { kind: "temp", id: "t2", type: { kind: "string" } },
+        value: { kind: "temp", id: "t2", type: Ir.Type.Scalar.uint256 },
         dest: "t3",
       },
     ]);
@@ -140,13 +140,13 @@ describe("ConstantFoldingStep", () => {
     // Check that both hash instructions were folded
     expect(block.instructions[1]).toMatchObject({
       kind: "const",
-      type: { kind: "bytes", size: 32 },
+      type: Ir.Type.Scalar.bytes32,
       dest: "t1",
     });
 
     expect(block.instructions[3]).toMatchObject({
       kind: "const",
-      type: { kind: "bytes", size: 32 },
+      type: Ir.Type.Scalar.bytes32,
       dest: "t3",
     });
   });
