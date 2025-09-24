@@ -39,7 +39,7 @@ code {}
     // Generate IR
     const irResult = Irgen.generateModule(
       parseResult.value,
-      typeCheckResult.value,
+      typeCheckResult.value.types,
     );
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
@@ -117,7 +117,7 @@ code {}
     // Generate IR
     const irResult = Irgen.generateModule(
       parseResult.value,
-      typeCheckResult.value,
+      typeCheckResult.value.types,
     );
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
@@ -188,7 +188,7 @@ code {}
     // Generate IR
     const irResult = Irgen.generateModule(
       parseResult.value,
-      typeCheckResult.value,
+      typeCheckResult.value.types,
     );
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;

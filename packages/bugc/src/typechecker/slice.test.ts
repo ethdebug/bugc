@@ -25,7 +25,7 @@ describe("Slice type checking", () => {
     expect(typeResult.success).toBe(true);
 
     if (typeResult.success) {
-      const types = typeResult.value;
+      const { types } = typeResult.value;
       const program = result.value;
       const statement = program.body?.items[0];
       if (Ast.isStatement(statement) && Ast.Statement.isDeclare(statement)) {

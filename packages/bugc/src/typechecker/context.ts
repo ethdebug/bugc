@@ -2,6 +2,7 @@ import { Type, type Types } from "#types";
 import type { Visitor } from "#ast";
 import type { Declaration } from "./declarations.js";
 import { type Symbols } from "./symbols.js";
+import { type Bindings } from "./bindings.js";
 import { type Error as TypeError } from "./errors.js";
 
 /**
@@ -21,6 +22,9 @@ export interface Context {
   /** Accumulated type information for nodes */
   readonly nodeTypes: Types;
 
+  /** Accumulated bindings from identifiers to declarations */
+  readonly bindings: Bindings;
+
   /** The visitor itself for recursive calls */
   readonly visitor: Visitor<Report, Context>;
 }
@@ -38,6 +42,9 @@ export interface Report {
 
   /** Updated node type map (with this node's type added) */
   readonly nodeTypes: Types;
+
+  /** Updated bindings map (with new identifier->declaration mappings) */
+  readonly bindings: Bindings;
 
   /** Any type errors found in this subtree */
   readonly errors: readonly TypeError[];

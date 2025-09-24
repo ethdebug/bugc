@@ -17,24 +17,29 @@ import * as Ir from "#ir";
 import { EvmFormatter } from "#evm/analysis";
 import type { Program } from "#ast";
 import type { EvmGenerationOutput } from "#evmgen/pass";
+import type { Types } from "#types";
+import * as TypesAnalysis from "#types/analysis";
 import { compile } from "#compiler";
 import { Result } from "#result";
 import type { BugError } from "#errors";
 
-type Phase = "ast" | "ir" | "bytecode";
+type Phase = "ast" | "types" | "ir" | "bytecode";
 
 // Helper type to represent the compiler output
 type CompilerOutput<T extends Phase> = T extends "ast"
   ? { ast: Program }
-  : T extends "ir"
-    ? { ast: Program; ir: Ir.Module }
-    : T extends "bytecode"
-      ? {
-          ast: Program;
-          ir: Ir.Module;
-          bytecode: EvmGenerationOutput;
-        }
-      : never;
+  : T extends "types"
+    ? { ast: Program; types: Types }
+    : T extends "ir"
+      ? { ast: Program; types: Types; ir: Ir.Module }
+      : T extends "bytecode"
+        ? {
+            ast: Program;
+            types: Types;
+            ir: Ir.Module;
+            bytecode: EvmGenerationOutput;
+          }
+        : never;
 
 const compileOptions = {
   ...optimizationOption,
@@ -97,8 +102,8 @@ export async function handleCompileCommand(args: string[]): Promise<void> {
   try {
     // Validate arguments
     const phase = String(parsedValues["stop-after"] || "bytecode") as Phase;
-    if (!["ast", "ir", "bytecode"].includes(phase)) {
-      throw new Error("--stop-after must be one of: ast, ir, bytecode");
+    if (!["ast", "types", "ir", "bytecode"].includes(phase)) {
+      throw new Error("--stop-after must be one of: ast, types, ir, bytecode");
     }
 
     const format = String(parsedValues.format || "text");
@@ -130,7 +135,13 @@ export async function handleCompileCommand(args: string[]): Promise<void> {
     displayWarnings(result.messages, source);
 
     // Format output
-    const output = formatOutput(result.value, phase, format, parsedValues);
+    const output = formatOutput(
+      result.value,
+      phase,
+      format,
+      parsedValues,
+      source,
+    );
 
     // Write output
     if (parsedValues.output) {
@@ -155,7 +166,7 @@ function showHelp(): void {
 Compile BUG source code with configurable output phase
 
 Options:
-  -s, --stop-after <phase>  Stop compilation after phase (ast, ir, bytecode)
+  -s, --stop-after <phase>  Stop compilation after phase (ast, types, ir, bytecode)
                            Default: bytecode
   -O, --optimize <level>    Set optimization level (0-3)
                            Default: 0
@@ -179,6 +190,13 @@ async function compileForPhase<T extends Phase>(
   if (phase === "ast") {
     const result = await compile({
       to: "ast",
+      source,
+      sourcePath: filePath,
+    });
+    return result as Result<CompilerOutput<T>, BugError>;
+  } else if (phase === "types") {
+    const result = await compile({
+      to: "types",
       source,
       sourcePath: filePath,
     });
@@ -211,6 +229,7 @@ function formatOutput<T extends Phase>(
   phase: T,
   format: string,
   values: Record<string, unknown>,
+  source?: string,
 ): string {
   switch (phase) {
     case "ast":
@@ -218,6 +237,13 @@ function formatOutput<T extends Phase>(
         (result as CompilerOutput<"ast">).ast,
         format,
         values.pretty as boolean,
+      );
+    case "types":
+      return formatTypes(
+        (result as CompilerOutput<"types">).types,
+        format,
+        values.pretty as boolean,
+        source,
       );
     case "ir":
       return formatIr((result as CompilerOutput<"ir">).ir, format);
@@ -253,6 +279,25 @@ function formatAst(ast: Program, format: string, pretty: boolean): string {
   } else {
     // For text format, show the AST structure
     return formatJson(ast, true);
+  }
+}
+
+function formatTypes(
+  types: Types,
+  format: string,
+  pretty: boolean,
+  source?: string,
+): string {
+  if (format === "json") {
+    // Convert Map to object for JSON serialization
+    const typesObj = Object.fromEntries(
+      Array.from(types.entries()).map(([id, type]) => [id, type]),
+    );
+    return formatJson(typesObj, pretty);
+  } else {
+    // Use the formatter for text output
+    const formatter = new TypesAnalysis.Formatter();
+    return formatter.format(types, source);
   }
 }
 

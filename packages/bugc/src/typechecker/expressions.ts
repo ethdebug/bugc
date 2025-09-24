@@ -2,6 +2,7 @@ import * as Ast from "#ast";
 import { Type } from "#types";
 import type { Visitor } from "#ast";
 import type { Context, Report } from "./context.js";
+import { recordBinding } from "./bindings.js";
 import {
   Error as TypeError,
   ErrorCode,
@@ -20,6 +21,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
     if (Ast.Expression.isIdentifier(node)) {
       const errors: TypeError[] = [];
       const nodeTypes = new Map(context.nodeTypes);
+      let bindings = context.bindings;
 
       const symbol = context.symbols.lookup(node.name);
       if (!symbol) {
@@ -35,15 +37,20 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           type: undefined,
           symbols: context.symbols,
           nodeTypes,
+          bindings,
           errors,
         };
       }
 
       nodeTypes.set(node.id, symbol.type);
+      // Record the binding from this identifier to its declaration
+      bindings = recordBinding(bindings, node.id, symbol.declaration);
+
       return {
         type: symbol.type,
         symbols: context.symbols,
         nodeTypes,
+        bindings,
         errors,
       };
     }
@@ -94,6 +101,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
         type,
         symbols: context.symbols,
         nodeTypes,
+        bindings: context.bindings,
         errors: [],
       };
     }
@@ -102,6 +110,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
       const errors: TypeError[] = [];
       let nodeTypes = new Map(context.nodeTypes);
       let symbols = context.symbols;
+      let bindings = context.bindings;
 
       // Type check all operands
       const operandTypes: Type[] = [];
@@ -110,6 +119,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           ...context,
           nodeTypes,
           symbols,
+          bindings,
         };
         const operandResult = Ast.visit(
           context.visitor,
@@ -118,6 +128,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
         );
         nodeTypes = operandResult.nodeTypes;
         symbols = operandResult.symbols;
+        bindings = operandResult.bindings;
         errors.push(...operandResult.errors);
         if (operandResult.type) {
           operandTypes.push(operandResult.type);
@@ -126,7 +137,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
 
       // If any operand failed to type check, bail out
       if (operandTypes.length !== node.operands.length) {
-        return { symbols, nodeTypes, errors };
+        return { symbols, nodeTypes, bindings, errors };
       }
 
       let resultType: Type | undefined;
@@ -285,6 +296,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
         type: resultType,
         symbols,
         nodeTypes,
+        bindings,
         errors,
       };
     }
@@ -293,12 +305,14 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
       const errors: TypeError[] = [];
       let nodeTypes = new Map(context.nodeTypes);
       let symbols = context.symbols;
+      let bindings = context.bindings;
 
       // Type check the object being accessed
       const objectContext: Context = {
         ...context,
         nodeTypes,
         symbols,
+        bindings,
       };
       const objectResult = Ast.visit(
         context.visitor,
@@ -307,10 +321,11 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
       );
       nodeTypes = objectResult.nodeTypes;
       symbols = objectResult.symbols;
+      bindings = objectResult.bindings;
       errors.push(...objectResult.errors);
 
       if (!objectResult.type) {
-        return { symbols, nodeTypes, errors };
+        return { symbols, nodeTypes, bindings, errors };
       }
 
       const objectType = objectResult.type;
@@ -330,7 +345,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
               ErrorCode.NO_SUCH_FIELD,
             );
             errors.push(error);
-            return { symbols, nodeTypes, errors };
+            return { symbols, nodeTypes, bindings, errors };
           }
           resultType = fieldType;
         } else if (property === "length") {
@@ -354,7 +369,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
               ErrorCode.INVALID_OPERATION,
             );
             errors.push(error);
-            return { symbols, nodeTypes, errors };
+            return { symbols, nodeTypes, bindings, errors };
           }
         } else {
           const error = new TypeError(
@@ -365,7 +380,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
             ErrorCode.INVALID_OPERATION,
           );
           errors.push(error);
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
       } else if (Ast.Expression.Access.isSlice(node)) {
         // Slice access - start:end
@@ -376,24 +391,28 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           ...context,
           nodeTypes,
           symbols,
+          bindings,
         };
         const startResult = Ast.visit(context.visitor, startExpr, startContext);
         nodeTypes = startResult.nodeTypes;
         symbols = startResult.symbols;
+        bindings = startResult.bindings;
         errors.push(...startResult.errors);
 
         const endContext: Context = {
           ...context,
           nodeTypes,
           symbols,
+          bindings,
         };
         const endResult = Ast.visit(context.visitor, endExpr, endContext);
         nodeTypes = endResult.nodeTypes;
         symbols = endResult.symbols;
+        bindings = endResult.bindings;
         errors.push(...endResult.errors);
 
         if (!startResult.type || !endResult.type) {
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
 
         // Only bytes types can be sliced for now
@@ -438,7 +457,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
             ErrorCode.INVALID_OPERATION,
           );
           errors.push(error);
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
       } else {
         // Index access
@@ -448,14 +467,16 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           ...context,
           nodeTypes,
           symbols,
+          bindings,
         };
         const indexResult = Ast.visit(context.visitor, indexExpr, indexContext);
         nodeTypes = indexResult.nodeTypes;
         symbols = indexResult.symbols;
+        bindings = indexResult.bindings;
         errors.push(...indexResult.errors);
 
         if (!indexResult.type) {
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
 
         const indexType = indexResult.type;
@@ -513,7 +534,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
             ErrorCode.NOT_INDEXABLE,
           );
           errors.push(error);
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
       }
 
@@ -525,6 +546,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
         type: resultType,
         symbols,
         nodeTypes,
+        bindings,
         errors,
       };
     }
@@ -533,6 +555,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
       const errors: TypeError[] = [];
       let nodeTypes = new Map(context.nodeTypes);
       let symbols = context.symbols;
+      let bindings = context.bindings;
 
       // Check if this is a built-in function call
       if (node.callee.kind === "expression:identifier") {
@@ -549,13 +572,14 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
               ErrorCode.INVALID_ARGUMENT_COUNT,
             );
             errors.push(error);
-            return { symbols, nodeTypes, errors };
+            return { symbols, nodeTypes, bindings, errors };
           }
 
           const argContext: Context = {
             ...context,
             nodeTypes,
             symbols,
+            bindings,
           };
           const argResult = Ast.visit(
             context.visitor,
@@ -564,10 +588,11 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           );
           nodeTypes = argResult.nodeTypes;
           symbols = argResult.symbols;
+          bindings = argResult.bindings;
           errors.push(...argResult.errors);
 
           if (!argResult.type) {
-            return { symbols, nodeTypes, errors };
+            return { symbols, nodeTypes, bindings, errors };
           }
 
           // keccak256 accepts bytes types and strings
@@ -583,7 +608,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
               ErrorCode.TYPE_MISMATCH,
             );
             errors.push(error);
-            return { symbols, nodeTypes, errors };
+            return { symbols, nodeTypes, bindings, errors };
           }
 
           // keccak256 returns bytes32
@@ -593,6 +618,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
             type: resultType,
             symbols,
             nodeTypes,
+            bindings,
             errors,
           };
         }
@@ -608,8 +634,11 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
             ErrorCode.UNDEFINED_VARIABLE,
           );
           errors.push(error);
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
+
+        // Record binding for the function identifier
+        bindings = recordBinding(bindings, node.callee.id, symbol.declaration);
 
         if (!Type.isFunction(symbol.type)) {
           const error = new TypeError(
@@ -620,7 +649,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
             ErrorCode.TYPE_MISMATCH,
           );
           errors.push(error);
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
 
         const funcType = symbol.type;
@@ -635,7 +664,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
             ErrorCode.INVALID_ARGUMENT_COUNT,
           );
           errors.push(error);
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
 
         // Check argument types
@@ -644,6 +673,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
             ...context,
             nodeTypes,
             symbols,
+            bindings,
           };
           const argResult = Ast.visit(
             context.visitor,
@@ -652,6 +682,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           );
           nodeTypes = argResult.nodeTypes;
           symbols = argResult.symbols;
+          bindings = argResult.bindings;
           errors.push(...argResult.errors);
 
           if (!argResult.type) continue;
@@ -676,6 +707,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           type: returnType,
           symbols,
           nodeTypes,
+          bindings,
           errors,
         };
       }
@@ -689,19 +721,21 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
         ErrorCode.INVALID_OPERATION,
       );
       errors.push(error);
-      return { symbols, nodeTypes, errors };
+      return { symbols, nodeTypes, bindings, errors };
     }
 
     if (Ast.Expression.isCast(node)) {
       const errors: TypeError[] = [];
       let nodeTypes = new Map(context.nodeTypes);
       let symbols = context.symbols;
+      let bindings = context.bindings;
 
       // Get the type of the expression being cast
       const exprContext: Context = {
         ...context,
         nodeTypes,
         symbols,
+        bindings,
       };
       const exprResult = Ast.visit(
         context.visitor,
@@ -710,10 +744,11 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
       );
       nodeTypes = exprResult.nodeTypes;
       symbols = exprResult.symbols;
+      bindings = exprResult.bindings;
       errors.push(...exprResult.errors);
 
       if (!exprResult.type) {
-        return { symbols, nodeTypes, errors };
+        return { symbols, nodeTypes, bindings, errors };
       }
 
       // Resolve the target type
@@ -721,6 +756,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
         ...context,
         nodeTypes,
         symbols,
+        bindings,
       };
       const targetTypeResult = Ast.visit(
         context.visitor,
@@ -729,10 +765,11 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
       );
       nodeTypes = targetTypeResult.nodeTypes;
       symbols = targetTypeResult.symbols;
+      bindings = targetTypeResult.bindings;
       errors.push(...targetTypeResult.errors);
 
       if (!targetTypeResult.type) {
-        return { symbols, nodeTypes, errors };
+        return { symbols, nodeTypes, bindings, errors };
       }
 
       // Check if the cast is valid
@@ -745,7 +782,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           ErrorCode.INVALID_TYPE_CAST,
         );
         errors.push(error);
-        return { symbols, nodeTypes, errors };
+        return { symbols, nodeTypes, bindings, errors };
       }
 
       // Set the type of the cast expression to the target type
@@ -754,6 +791,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
         type: targetTypeResult.type,
         symbols,
         nodeTypes,
+        bindings,
         errors,
       };
     }
@@ -762,6 +800,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
       const errors: TypeError[] = [];
       let nodeTypes = new Map(context.nodeTypes);
       let symbols = context.symbols;
+      let bindings = context.bindings;
 
       // Type check all elements
       const elementTypes: Type[] = [];
@@ -770,6 +809,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           ...context,
           nodeTypes,
           symbols,
+          bindings,
         };
         const elementResult = Ast.visit(
           context.visitor,
@@ -778,6 +818,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
         );
         nodeTypes = elementResult.nodeTypes;
         symbols = elementResult.symbols;
+        bindings = elementResult.bindings;
         errors.push(...elementResult.errors);
         if (elementResult.type) {
           elementTypes.push(elementResult.type);
@@ -786,7 +827,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
 
       // If any element failed to type check, bail out
       if (elementTypes.length !== node.elements.length) {
-        return { symbols, nodeTypes, errors };
+        return { symbols, nodeTypes, bindings, errors };
       }
 
       // Determine common element type
@@ -804,7 +845,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
               ErrorCode.TYPE_MISMATCH,
             );
             errors.push(error);
-            return { symbols, nodeTypes, errors };
+            return { symbols, nodeTypes, bindings, errors };
           }
           elementType = common;
         }
@@ -821,6 +862,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
         type: arrayType,
         symbols,
         nodeTypes,
+        bindings,
         errors,
       };
     }
@@ -829,6 +871,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
       const errors: TypeError[] = [];
       let nodeTypes = new Map(context.nodeTypes);
       let symbols = context.symbols;
+      let bindings = context.bindings;
 
       // If a struct name is provided, look it up
       let structType: Type | undefined;
@@ -843,7 +886,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
             ErrorCode.TYPE_MISMATCH,
           );
           errors.push(error);
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
         structType = symbol.type;
       }
@@ -856,6 +899,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           ...context,
           nodeTypes,
           symbols,
+          bindings,
         };
         const fieldResult = Ast.visit(
           context.visitor,
@@ -864,6 +908,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
         );
         nodeTypes = fieldResult.nodeTypes;
         symbols = fieldResult.symbols;
+        bindings = fieldResult.bindings;
         errors.push(...fieldResult.errors);
 
         if (fieldResult.type) {
@@ -927,6 +972,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           type: structType,
           symbols,
           nodeTypes,
+          bindings,
           errors,
         };
       } else {
@@ -938,6 +984,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
           type: anonStructType,
           symbols,
           nodeTypes,
+          bindings,
           errors,
         };
       }
@@ -974,6 +1021,7 @@ export const expressionChecker: Pick<Visitor<Report, Context>, "expression"> = {
         type,
         symbols: context.symbols,
         nodeTypes,
+        bindings: context.bindings,
         errors: [],
       };
     }

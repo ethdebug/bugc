@@ -39,7 +39,7 @@ code {
     if (!checkResult.value) {
       throw new Error("Check result has no value");
     }
-    const irResult = generateModule(parseResult.value, checkResult.value);
+    const irResult = generateModule(parseResult.value, checkResult.value.types);
     expect(irResult.success).toBe(true);
     if (!irResult.success) throw new Error("IR generation failed");
 
@@ -106,7 +106,7 @@ code {
     if (!checkResult.value) {
       throw new Error("Check result has no value");
     }
-    const irResult = generateModule(parseResult.value, checkResult.value);
+    const irResult = generateModule(parseResult.value, checkResult.value.types);
     expect(irResult.success).toBe(true);
     if (!irResult.success) throw new Error("IR generation failed");
 
@@ -160,7 +160,7 @@ code {
     if (!checkResult.value) {
       throw new Error("Check result has no value");
     }
-    const irResult = generateModule(parseResult.value, checkResult.value);
+    const irResult = generateModule(parseResult.value, checkResult.value.types);
     expect(irResult.success).toBe(true);
     if (!irResult.success) throw new Error("IR generation failed");
 

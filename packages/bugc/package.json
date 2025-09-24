@@ -56,6 +56,8 @@
     "#typechecker": "./dist/src/typechecker/index.js",
     "#typechecker/pass": "./dist/src/typechecker/pass.js",
     "#types": "./dist/src/types/index.js",
+    "#types/analysis": "./dist/src/types/analysis/index.js",
+    "#types/spec": "./dist/src/types/spec.js",
     "#test/*": "./dist/test/*.js"
   },
   "scripts": {

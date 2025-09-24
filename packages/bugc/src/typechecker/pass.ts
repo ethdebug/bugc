@@ -5,6 +5,7 @@ import type { Pass } from "#compiler";
 
 import type { Error as TypeError } from "./errors.js";
 import { checkProgram } from "./checker.js";
+import type { Bindings } from "./bindings.js";
 
 /**
  * Type checking pass - validates types and builds symbol table
@@ -15,11 +16,15 @@ const pass: Pass<{
   };
   adds: {
     types: Types;
+    bindings: Bindings;
   };
   error: TypeError;
 }> = {
   async run({ ast }) {
-    return Result.map(checkProgram(ast), (types) => ({ types }));
+    return Result.map(checkProgram(ast), ({ types, bindings }) => ({
+      types,
+      bindings,
+    }));
   },
 };
 

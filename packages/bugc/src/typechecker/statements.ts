@@ -28,6 +28,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
       const errors: TypeError[] = [];
       let nodeTypes = new Map(context.nodeTypes);
       let symbols = context.symbols;
+      let bindings = context.bindings;
 
       if (!Ast.Expression.isAssignable(node.target)) {
         const error = new TypeError(
@@ -38,7 +39,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
           ErrorCode.INVALID_ASSIGNMENT,
         );
         errors.push(error);
-        return { symbols, nodeTypes, errors };
+        return { symbols, nodeTypes, bindings, errors };
       }
 
       // Type check target
@@ -46,6 +47,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
         ...context,
         nodeTypes,
         symbols,
+        bindings,
       };
       const targetResult = Ast.visit(
         context.visitor,
@@ -54,6 +56,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
       );
       nodeTypes = targetResult.nodeTypes;
       symbols = targetResult.symbols;
+      bindings = targetResult.bindings;
       errors.push(...targetResult.errors);
 
       // Type check value
@@ -61,10 +64,12 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
         ...context,
         nodeTypes,
         symbols,
+        bindings,
       };
       const valueResult = Ast.visit(context.visitor, node.value, valueContext);
       nodeTypes = valueResult.nodeTypes;
       symbols = valueResult.symbols;
+      bindings = valueResult.bindings;
       errors.push(...valueResult.errors);
 
       // Check type compatibility
@@ -86,13 +91,14 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
         errors.push(error);
       }
 
-      return { symbols, nodeTypes, errors };
+      return { symbols, nodeTypes, bindings, errors };
     }
 
     if (Ast.Statement.isControlFlow(node)) {
       const errors: TypeError[] = [];
       let nodeTypes = new Map(context.nodeTypes);
       let symbols = context.symbols;
+      let bindings = context.bindings;
 
       switch (node.kind) {
         case "statement:control-flow:if": {
@@ -102,6 +108,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
               ...context,
               nodeTypes,
               symbols,
+              bindings,
             };
             const condResult = Ast.visit(
               context.visitor,
@@ -110,6 +117,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
             );
             nodeTypes = condResult.nodeTypes;
             symbols = condResult.symbols;
+            bindings = condResult.bindings;
             errors.push(...condResult.errors);
 
             if (condResult.type && !Type.Elementary.isBool(condResult.type)) {
@@ -130,6 +138,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
               ...context,
               nodeTypes,
               symbols,
+              bindings,
             };
             const bodyResult = Ast.visit(
               context.visitor,
@@ -138,6 +147,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
             );
             nodeTypes = bodyResult.nodeTypes;
             symbols = bodyResult.symbols;
+            bindings = bodyResult.bindings;
             errors.push(...bodyResult.errors);
           }
 
@@ -147,6 +157,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
               ...context,
               nodeTypes,
               symbols,
+              bindings,
             };
             const altResult = Ast.visit(
               context.visitor,
@@ -155,10 +166,11 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
             );
             nodeTypes = altResult.nodeTypes;
             symbols = altResult.symbols;
+            bindings = altResult.bindings;
             errors.push(...altResult.errors);
           }
 
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
 
         case "statement:control-flow:for": {
@@ -171,6 +183,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
               ...context,
               nodeTypes,
               symbols,
+              bindings,
             };
             const initResult = Ast.visit(
               context.visitor,
@@ -179,6 +192,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
             );
             nodeTypes = initResult.nodeTypes;
             symbols = initResult.symbols;
+            bindings = initResult.bindings;
             errors.push(...initResult.errors);
           }
 
@@ -188,6 +202,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
               ...context,
               nodeTypes,
               symbols,
+              bindings,
             };
             const condResult = Ast.visit(
               context.visitor,
@@ -196,6 +211,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
             );
             nodeTypes = condResult.nodeTypes;
             symbols = condResult.symbols;
+            bindings = condResult.bindings;
             errors.push(...condResult.errors);
 
             if (condResult.type && !Type.Elementary.isBool(condResult.type)) {
@@ -216,6 +232,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
               ...context,
               nodeTypes,
               symbols,
+              bindings,
             };
             const updateResult = Ast.visit(
               context.visitor,
@@ -224,6 +241,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
             );
             nodeTypes = updateResult.nodeTypes;
             symbols = updateResult.symbols;
+            bindings = updateResult.bindings;
             errors.push(...updateResult.errors);
           }
 
@@ -233,6 +251,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
               ...context,
               nodeTypes,
               symbols,
+              bindings,
             };
             const bodyResult = Ast.visit(
               context.visitor,
@@ -241,13 +260,14 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
             );
             nodeTypes = bodyResult.nodeTypes;
             symbols = bodyResult.symbols;
+            bindings = bodyResult.bindings;
             errors.push(...bodyResult.errors);
           }
 
           // Exit scope (don't propagate local symbols)
           symbols = symbols.exitScope();
 
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
 
         case "statement:control-flow:return": {
@@ -257,6 +277,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
               ...context,
               nodeTypes,
               symbols,
+              bindings,
             };
             const valueResult = Ast.visit(
               context.visitor,
@@ -265,6 +286,7 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
             );
             nodeTypes = valueResult.nodeTypes;
             symbols = valueResult.symbols;
+            bindings = valueResult.bindings;
             errors.push(...valueResult.errors);
 
             if (valueResult.type && context.currentReturnType) {
@@ -302,16 +324,16 @@ export const statementChecker: Pick<Visitor<Report, Context>, "statement"> = {
             errors.push(error);
           }
 
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
         }
 
         case "statement:control-flow:break":
           // No type checking needed for break
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
 
         default:
           // Unknown control flow
-          return { symbols, nodeTypes, errors };
+          return { symbols, nodeTypes, bindings, errors };
       }
     }
 

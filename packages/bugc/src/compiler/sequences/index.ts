@@ -11,6 +11,9 @@ import evmGenerationPass from "#evmgen/pass";
 // AST-only sequence (just parsing)
 export const astSequence = [parsingPass] as const;
 
+// Types sequence (parsing through type checking)
+export const typesSequence = [parsingPass, typeCheckingPass] as const;
+
 // IR sequence (parsing through IR generation and optimization)
 // Note: phi insertion is now integrated into irGenerationPass
 export const irSequence = [
@@ -29,6 +32,7 @@ export const bytecodeSequence = [...irSequence, evmGenerationPass] as const;
 // Consolidated target sequences
 export const targetSequences = {
   ast: astSequence,
+  types: typesSequence,
   ir: irSequence,
   bytecode: bytecodeSequence,
   // debug: debugSequence,

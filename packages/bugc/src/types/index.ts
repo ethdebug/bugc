@@ -7,4 +7,7 @@
  */
 
 // Re-export all type definitions
-export { Type, type Types } from "./definitions.js";
+export { Type, type Types } from "./spec.js";
+
+// Export analysis tools
+export * as Analysis from "./analysis/index.js";

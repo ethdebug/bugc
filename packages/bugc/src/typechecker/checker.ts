@@ -3,6 +3,7 @@ import { type Types } from "#types";
 import { Result } from "#result";
 import { collectDeclarations } from "./declarations.js";
 import { buildInitialSymbols } from "./symbols.js";
+import { type Bindings, emptyBindings } from "./bindings.js";
 import { expressionChecker } from "./expressions.js";
 import { statementChecker } from "./statements.js";
 import { blockChecker } from "./blocks.js";
@@ -29,7 +30,9 @@ const typeChecker: Ast.Visitor<Report, Context> = [
  * 3. Traverse AST with composed visitor
  * 4. Return symbols and type map, or errors
  */
-export function checkProgram(program: Ast.Program): Result<Types, TypeError> {
+export function checkProgram(
+  program: Ast.Program,
+): Result<{ types: Types; bindings: Bindings }, TypeError> {
   // 1. Collect declarations (structs, functions)
   const declResult = collectDeclarations(program);
   if (!declResult.success) {
@@ -47,6 +50,7 @@ export function checkProgram(program: Ast.Program): Result<Types, TypeError> {
     symbols: symbolResult.value,
     structs: declResult.value.structs,
     nodeTypes: new Map(),
+    bindings: emptyBindings(),
     visitor: typeChecker,
   };
 
@@ -57,5 +61,5 @@ export function checkProgram(program: Ast.Program): Result<Types, TypeError> {
     return Result.err([...report.errors]); // Convert readonly to mutable
   }
 
-  return Result.ok(report.nodeTypes);
+  return Result.ok({ types: report.nodeTypes, bindings: report.bindings });
 }

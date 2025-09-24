@@ -49,6 +49,8 @@
       "#typechecker/pass": ["./src/typechecker/pass"],
 
       "#types": ["./src/types/index"],
+      "#types/analysis": ["./src/types/analysis/index"],
+      "#types/spec": ["./src/types/spec"],
 
       "#test/*": ["./test/*"]
     }

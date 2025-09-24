@@ -31,7 +31,7 @@ describe("IR generation for create blocks", () => {
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 
-    const irResult = generateModule(parseResult.value, typeResult.value);
+    const irResult = generateModule(parseResult.value, typeResult.value.types);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 
@@ -88,7 +88,7 @@ describe("IR generation for create blocks", () => {
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 
-    const irResult = generateModule(parseResult.value, typeResult.value);
+    const irResult = generateModule(parseResult.value, typeResult.value.types);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 
@@ -130,7 +130,7 @@ describe("IR generation for create blocks", () => {
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 
-    const irResult = generateModule(parseResult.value, typeResult.value);
+    const irResult = generateModule(parseResult.value, typeResult.value.types);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 
@@ -167,7 +167,7 @@ describe("IR generation for create blocks", () => {
     expect(typeResult.success).toBe(true);
     if (!typeResult.success) return;
 
-    const irResult = generateModule(parseResult.value, typeResult.value);
+    const irResult = generateModule(parseResult.value, typeResult.value.types);
     expect(irResult.success).toBe(true);
     if (!irResult.success) return;
 

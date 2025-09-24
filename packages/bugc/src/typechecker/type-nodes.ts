@@ -65,6 +65,7 @@ export const typeNodeChecker: Pick<Visitor<Report, Context>, "type"> = {
         type,
         symbols: context.symbols,
         nodeTypes,
+        bindings: context.bindings,
         errors,
       };
     }
@@ -73,6 +74,7 @@ export const typeNodeChecker: Pick<Visitor<Report, Context>, "type"> = {
       const errors: TypeError[] = [];
       let nodeTypes = new Map(context.nodeTypes);
       let symbols = context.symbols;
+      let bindings = context.bindings;
       let type: Type | undefined;
 
       if (Ast.Type.Complex.isArray(node)) {
@@ -81,6 +83,7 @@ export const typeNodeChecker: Pick<Visitor<Report, Context>, "type"> = {
           ...context,
           nodeTypes,
           symbols,
+          bindings,
         };
         const elementResult = Ast.visit(
           context.visitor,
@@ -89,6 +92,7 @@ export const typeNodeChecker: Pick<Visitor<Report, Context>, "type"> = {
         );
         nodeTypes = elementResult.nodeTypes;
         symbols = elementResult.symbols;
+        bindings = elementResult.bindings;
         errors.push(...elementResult.errors);
 
         if (elementResult.type) {
@@ -100,10 +104,12 @@ export const typeNodeChecker: Pick<Visitor<Report, Context>, "type"> = {
           ...context,
           nodeTypes,
           symbols,
+          bindings,
         };
         const keyResult = Ast.visit(context.visitor, node.key, keyContext);
         nodeTypes = keyResult.nodeTypes;
         symbols = keyResult.symbols;
+        bindings = keyResult.bindings;
         errors.push(...keyResult.errors);
 
         // Resolve value type
@@ -111,6 +117,7 @@ export const typeNodeChecker: Pick<Visitor<Report, Context>, "type"> = {
           ...context,
           nodeTypes,
           symbols,
+          bindings,
         };
         const valueResult = Ast.visit(
           context.visitor,
@@ -119,6 +126,7 @@ export const typeNodeChecker: Pick<Visitor<Report, Context>, "type"> = {
         );
         nodeTypes = valueResult.nodeTypes;
         symbols = valueResult.symbols;
+        bindings = valueResult.bindings;
         errors.push(...valueResult.errors);
 
         if (keyResult.type && valueResult.type) {
@@ -136,6 +144,7 @@ export const typeNodeChecker: Pick<Visitor<Report, Context>, "type"> = {
         type,
         symbols,
         nodeTypes,
+        bindings,
         errors,
       };
     }
@@ -167,6 +176,7 @@ export const typeNodeChecker: Pick<Visitor<Report, Context>, "type"> = {
       type,
       symbols: context.symbols,
       nodeTypes,
+      bindings: context.bindings,
       errors,
     };
   },

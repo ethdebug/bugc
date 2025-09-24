@@ -17,7 +17,8 @@ describe("checkProgram", () => {
       throw new Error(`Parse error: ${firstError?.message || "Unknown error"}`);
     }
     const ast = parseResult.value;
-    return checkProgram(ast);
+    const result = checkProgram(ast);
+    return Result.map(result, ({ types }) => types);
   }
 
   describe("Variable Declarations", () => {

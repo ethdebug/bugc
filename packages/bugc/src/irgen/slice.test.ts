@@ -21,7 +21,7 @@ describe("IR slice generation", () => {
     expect(typeResult.success).toBe(true);
 
     if (typeResult.success) {
-      const irResult = generateModule(result.value, typeResult.value);
+      const irResult = generateModule(result.value, typeResult.value.types);
       expect(irResult.success).toBe(true);
 
       if (irResult.success) {
@@ -68,7 +68,7 @@ describe("IR slice generation", () => {
     const typeResult = TypeChecker.checkProgram(result.value);
 
     if (typeResult.success) {
-      const irResult = generateModule(result.value, typeResult.value);
+      const irResult = generateModule(result.value, typeResult.value.types);
       expect(irResult.success).toBe(false);
       expect(irResult).toHaveMessage({
         severity: Severity.Error,

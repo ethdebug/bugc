@@ -52,7 +52,10 @@ describe("ReturnMergingStep", () => {
     }
 
     // Build IR
-    const irResult = Irgen.generateModule(parseResult.value, typeResult.value);
+    const irResult = Irgen.generateModule(
+      parseResult.value,
+      typeResult.value.types,
+    );
     if (!irResult.success) {
       throw new Error(
         "IR build failed: " +
@@ -156,7 +159,10 @@ describe("ReturnMergingStep", () => {
     }
 
     // Build IR
-    const irResult = Irgen.generateModule(parseResult.value, typeResult.value);
+    const irResult = Irgen.generateModule(
+      parseResult.value,
+      typeResult.value.types,
+    );
     if (!irResult.success) {
       throw new Error(
         "IR build failed: " +

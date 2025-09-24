@@ -26,7 +26,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const ir = generateModule(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value.types);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -71,7 +71,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const ir = generateModule(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value.types);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -122,7 +122,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const ir = generateModule(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value.types);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -165,7 +165,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const ir = generateModule(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value.types);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -209,7 +209,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const ir = generateModule(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value.types);
     expect(ir.success).toBe(true);
 
     if (ir.success) {
@@ -256,7 +256,7 @@ describe("IR Builder - Length Instructions", () => {
     expect(checkResult.success).toBe(true);
     if (!checkResult.success) return;
 
-    const ir = generateModule(ast.value, checkResult.value);
+    const ir = generateModule(ast.value, checkResult.value.types);
     expect(ir.success).toBe(true);
 
     if (ir.success) {

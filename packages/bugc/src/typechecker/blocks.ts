@@ -25,6 +25,7 @@ export const blockChecker: Pick<
 
     let currentSymbols = context.symbols;
     let currentNodeTypes = context.nodeTypes;
+    let currentBindings = context.bindings;
     const allErrors: TypeError[] = [];
 
     // Process storage declarations to set their types in nodeTypes
@@ -34,6 +35,7 @@ export const blockChecker: Pick<
           ...context,
           symbols: currentSymbols,
           nodeTypes: currentNodeTypes,
+          bindings: currentBindings,
           visitor: context.visitor,
         };
         const declResult = Ast.visit(
@@ -42,6 +44,7 @@ export const blockChecker: Pick<
           declContext,
         );
         currentNodeTypes = declResult.nodeTypes;
+        currentBindings = declResult.bindings;
         allErrors.push(...declResult.errors);
       }
     }
@@ -56,10 +59,12 @@ export const blockChecker: Pick<
             ...context,
             symbols: currentSymbols,
             nodeTypes: currentNodeTypes,
+            bindings: currentBindings,
             visitor: context.visitor,
           };
           const declResult = Ast.visit(declContext.visitor, decl, declContext);
           currentNodeTypes = declResult.nodeTypes;
+          currentBindings = declResult.bindings;
           allErrors.push(...declResult.errors);
         }
       }
@@ -85,6 +90,7 @@ export const blockChecker: Pick<
               symbols: funcSymbols,
               currentReturnType: funcType.return || undefined,
               nodeTypes: currentNodeTypes,
+              bindings: currentBindings,
               visitor: context.visitor,
             };
 
@@ -98,6 +104,7 @@ export const blockChecker: Pick<
             // Exit function scope - we don't propagate function-local symbols
             // so we keep currentSymbols unchanged (it still points to the pre-function scope)
             currentNodeTypes = bodyResult.nodeTypes;
+            currentBindings = bodyResult.bindings;
             allErrors.push(...bodyResult.errors);
           }
         }
@@ -110,6 +117,7 @@ export const blockChecker: Pick<
         ...context,
         symbols: currentSymbols,
         nodeTypes: currentNodeTypes,
+        bindings: currentBindings,
       };
       const createResult = Ast.visit(
         createContext.visitor,
@@ -118,6 +126,7 @@ export const blockChecker: Pick<
       );
       currentSymbols = createResult.symbols;
       currentNodeTypes = createResult.nodeTypes;
+      currentBindings = createResult.bindings;
       allErrors.push(...createResult.errors);
     }
 
@@ -127,16 +136,19 @@ export const blockChecker: Pick<
         ...context,
         symbols: currentSymbols,
         nodeTypes: currentNodeTypes,
+        bindings: currentBindings,
       };
       const bodyResult = Ast.visit(bodyContext.visitor, node.body, bodyContext);
       currentSymbols = bodyResult.symbols;
       currentNodeTypes = bodyResult.nodeTypes;
+      currentBindings = bodyResult.bindings;
       allErrors.push(...bodyResult.errors);
     }
 
     return {
       symbols: currentSymbols,
       nodeTypes: currentNodeTypes,
+      bindings: currentBindings,
       errors: allErrors,
     };
   },
@@ -147,6 +159,7 @@ export const blockChecker: Pick<
       // Enter new scope
       let currentSymbols = context.symbols.enterScope();
       let currentNodeTypes = context.nodeTypes;
+      let currentBindings = context.bindings;
       const allErrors: TypeError[] = [];
 
       // Process each item in the block
@@ -156,6 +169,7 @@ export const blockChecker: Pick<
           ...context,
           symbols: currentSymbols,
           nodeTypes: currentNodeTypes,
+          bindings: currentBindings,
         };
 
         const itemResult = Ast.visit(itemContext.visitor, item, itemContext);
@@ -163,6 +177,7 @@ export const blockChecker: Pick<
         // Thread the results to the next item
         currentSymbols = itemResult.symbols;
         currentNodeTypes = itemResult.nodeTypes;
+        currentBindings = itemResult.bindings;
         allErrors.push(...itemResult.errors);
       }
 
@@ -170,6 +185,7 @@ export const blockChecker: Pick<
       return {
         symbols: currentSymbols.exitScope(),
         nodeTypes: currentNodeTypes,
+        bindings: currentBindings,
         errors: allErrors,
       };
     }
@@ -178,6 +194,7 @@ export const blockChecker: Pick<
     if (node.kind === "block:definitions") {
       let currentSymbols = context.symbols;
       let currentNodeTypes = context.nodeTypes;
+      let currentBindings = context.bindings;
       const allErrors: TypeError[] = [];
 
       // Process each declaration in the block
@@ -187,6 +204,7 @@ export const blockChecker: Pick<
           ...context,
           symbols: currentSymbols,
           nodeTypes: currentNodeTypes,
+          bindings: currentBindings,
         };
 
         const itemResult = Ast.visit(itemContext.visitor, item, itemContext);
@@ -194,12 +212,14 @@ export const blockChecker: Pick<
         // Thread the results to the next item
         currentSymbols = itemResult.symbols;
         currentNodeTypes = itemResult.nodeTypes;
+        currentBindings = itemResult.bindings;
         allErrors.push(...itemResult.errors);
       }
 
       return {
         symbols: currentSymbols,
         nodeTypes: currentNodeTypes,
+        bindings: currentBindings,
         errors: allErrors,
       };
     }
@@ -208,6 +228,7 @@ export const blockChecker: Pick<
     return {
       symbols: context.symbols,
       nodeTypes: context.nodeTypes,
+      bindings: context.bindings,
       errors: [],
     };
   },
@@ -216,11 +237,12 @@ export const blockChecker: Pick<
     const errors: TypeError[] = [];
     let nodeTypes = new Map(context.nodeTypes);
     let symbols = context.symbols;
+    let bindings = context.bindings;
 
     switch (node.kind) {
       case "declaration:struct":
         // Already processed in collectDeclarations phase
-        return { symbols, nodeTypes, errors };
+        return { symbols, nodeTypes, bindings, errors };
 
       case "declaration:function": {
         // Function declarations are already in the symbol table from buildInitialSymbols
@@ -229,7 +251,7 @@ export const blockChecker: Pick<
         if (symbol) {
           nodeTypes.set(node.id, symbol.type);
         }
-        return { type: symbol?.type, symbols, nodeTypes, errors };
+        return { type: symbol?.type, symbols, nodeTypes, bindings, errors };
       }
 
       case "declaration:storage": {
@@ -239,7 +261,7 @@ export const blockChecker: Pick<
         if (symbol) {
           nodeTypes.set(node.id, symbol.type);
         }
-        return { type: symbol?.type, symbols, nodeTypes, errors };
+        return { type: symbol?.type, symbols, nodeTypes, bindings, errors };
       }
 
       case "declaration:variable": {
@@ -264,13 +286,14 @@ export const blockChecker: Pick<
           };
           symbols = symbols.define(symbol);
           nodeTypes.set(node.id, errorType);
-          return { type: errorType, symbols, nodeTypes, errors };
+          return { type: errorType, symbols, nodeTypes, bindings, errors };
         }
 
         // Type check the initializer
         const initContext: Context = {
           ...context,
           nodeTypes,
+          bindings,
         };
         const initResult = Ast.visit(
           initContext.visitor,
@@ -278,6 +301,7 @@ export const blockChecker: Pick<
           initContext,
         );
         nodeTypes = initResult.nodeTypes;
+        bindings = initResult.bindings;
         errors.push(...initResult.errors);
 
         // Determine the variable's type
@@ -314,15 +338,15 @@ export const blockChecker: Pick<
         };
         symbols = symbols.define(symbol);
         nodeTypes.set(node.id, type);
-        return { type, symbols, nodeTypes, errors };
+        return { type, symbols, nodeTypes, bindings, errors };
       }
 
       case "declaration:field":
         // Fields are handled as part of struct processing
-        return { symbols, nodeTypes, errors };
+        return { symbols, nodeTypes, bindings, errors };
 
       default:
-        return { symbols, nodeTypes, errors };
+        return { symbols, nodeTypes, bindings, errors };
     }
   },
 };

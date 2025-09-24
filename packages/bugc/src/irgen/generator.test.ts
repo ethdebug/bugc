@@ -24,7 +24,7 @@ describe("generateModule", () => {
       );
     }
 
-    const buildResult = generateModule(ast, typeCheckResult.value);
+    const buildResult = generateModule(ast, typeCheckResult.value.types);
 
     if (!buildResult.success) {
       throw new Error(
@@ -471,7 +471,7 @@ describe("generateModule", () => {
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
 
-      const buildResult = generateModule(ast, typeCheckResult.value);
+      const buildResult = generateModule(ast, typeCheckResult.value.types);
 
       expect(buildResult.success).toBe(true);
       if (!buildResult.success) return;
@@ -597,7 +597,7 @@ describe("generateModule", () => {
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
 
-      const buildResult = generateModule(ast, typeCheckResult.value);
+      const buildResult = generateModule(ast, typeCheckResult.value.types);
 
       expect(buildResult.success).toBe(true);
       if (!buildResult.success) return;
@@ -649,7 +649,7 @@ describe("generateModule", () => {
       expect(typeCheckResult.success).toBe(true);
       if (!typeCheckResult.success) return;
 
-      const buildResult = generateModule(ast, typeCheckResult.value);
+      const buildResult = generateModule(ast, typeCheckResult.value.types);
       expect(buildResult.success).toBe(true);
       if (!buildResult.success) return;
 
