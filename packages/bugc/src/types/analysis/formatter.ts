@@ -1,12 +1,12 @@
 import type * as Ast from "#ast";
-import { Type, type Types } from "#types/spec";
+import { Type, type Types, type Bindings } from "#types/spec";
 
 export class Formatter {
   private output: string[] = [];
   private indent = 0;
   private source?: string;
 
-  format(types: Types, source?: string): string {
+  format(types: Types, bindings: Bindings, source?: string): string {
     this.output = [];
     this.indent = 0;
     this.source = source;
@@ -20,6 +20,13 @@ export class Formatter {
     // Format each group
     for (const [kind, entries] of groupedTypes) {
       this.formatGroup(kind, entries);
+    }
+
+    // Format bindings
+    if (bindings.size > 0) {
+      this.line("=== Bindings Information ===");
+      this.line("");
+      this.formatBindings(bindings);
     }
 
     return this.output.join("\n");
@@ -206,5 +213,103 @@ export class Formatter {
   private line(text: string) {
     const indentStr = "  ".repeat(this.indent);
     this.output.push(indentStr + text);
+  }
+
+  private formatBindings(bindings: Bindings) {
+    // Group bindings by declaration
+    const byDeclaration = new Map<Ast.Declaration, Ast.Id[]>();
+    for (const [id, decl] of bindings) {
+      if (!byDeclaration.has(decl)) {
+        byDeclaration.set(decl, []);
+      }
+      byDeclaration.get(decl)!.push(id);
+    }
+
+    // Sort declarations by their position
+    const sortedDeclarations = [...byDeclaration.entries()].sort(
+      ([declA], [declB]) => {
+        const posA = this.extractPosition(declA.id);
+        const posB = this.extractPosition(declB.id);
+        if (posA.line !== posB.line) {
+          return posA.line - posB.line;
+        }
+        return posA.col - posB.col;
+      },
+    );
+
+    this.line("Identifier Bindings:");
+    this.indent++;
+
+    for (const [decl, identifierIds] of sortedDeclarations) {
+      // Format the declaration location and type
+      const declPos = this.formatPosition(decl.id);
+      const declType = this.getDeclarationType(decl);
+      const declName = this.getDeclarationName(decl);
+
+      this.line(`${declType} "${declName}" at ${declPos}:`);
+      this.indent++;
+
+      // Sort and format all references to this declaration
+      const sortedIds = identifierIds.sort((a, b) => {
+        const posA = this.extractPosition(a);
+        const posB = this.extractPosition(b);
+        if (posA.line !== posB.line) {
+          return posA.line - posB.line;
+        }
+        return posA.col - posB.col;
+      });
+
+      for (const id of sortedIds) {
+        const refPos = this.formatPosition(id);
+        this.line(`referenced at ${refPos}`);
+      }
+
+      this.indent--;
+    }
+
+    this.indent--;
+  }
+
+  private formatPosition(id: Ast.Id): string {
+    const parts = id.split("_");
+    const offset = parseInt(parts[0] || "0", 10);
+    const length = parseInt(parts[1] || "0", 10);
+
+    if (this.source) {
+      const start = this.offsetToLineCol(this.source, offset);
+      const end = this.offsetToLineCol(this.source, offset + length);
+
+      if (start.line === end.line) {
+        return `${start.line}:${start.col}-${end.col}`;
+      } else {
+        return `${start.line}:${start.col}-${end.line}:${end.col}`;
+      }
+    } else {
+      return `offset ${offset}, length ${length}`;
+    }
+  }
+
+  private getDeclarationType(decl: Ast.Declaration): string {
+    switch (decl.kind) {
+      case "declaration:variable":
+        return "Variable";
+      case "declaration:function":
+        return "Function";
+      case "declaration:storage":
+        return "Storage";
+      case "declaration:struct":
+        return "Struct";
+      case "declaration:field":
+        return "Field";
+      default:
+        return "Declaration";
+    }
+  }
+
+  private getDeclarationName(decl: Ast.Declaration): string {
+    if ("name" in decl && typeof decl.name === "string") {
+      return decl.name;
+    }
+    return "<unnamed>";
   }
 }

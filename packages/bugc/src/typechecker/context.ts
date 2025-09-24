@@ -1,8 +1,7 @@
-import { Type, type Types } from "#types";
+import { Type, type Types, type Bindings } from "#types";
 import type { Visitor } from "#ast";
 import type { Declaration } from "./declarations.js";
 import { type Symbols } from "./symbols.js";
-import { type Bindings } from "./bindings.js";
 import { type Error as TypeError } from "./errors.js";
 
 /**

@@ -1,5 +1,6 @@
 import * as Ast from "#ast";
-import { Type } from "#types";
+import { Type, recordBinding } from "#types";
+import type { Bindings } from "#types";
 import { Result } from "#result";
 import { Error as TypeError, ErrorCode, ErrorMessages } from "./errors.js";
 import { computeStructLayout } from "./layout.js";
@@ -115,7 +116,138 @@ function buildFunctionSignature(
 }
 
 /**
- * Resolves an AST type node to a Type object
+ * Resolves an AST type node to a Type object and records bindings
+ */
+export function resolveTypeWithBindings(
+  typeNode: Ast.Type,
+  structTypes: Map<string, Declaration.Struct>,
+  bindings: Bindings,
+): { type: Type; bindings: Bindings } {
+  if (Ast.Type.isElementary(typeNode)) {
+    // Map elementary types based on kind and bits
+    if (Ast.Type.Elementary.isUint(typeNode)) {
+      const typeMap: Record<number, Type> = {
+        256: Type.Elementary.uint(256),
+        128: Type.Elementary.uint(128),
+        64: Type.Elementary.uint(64),
+        32: Type.Elementary.uint(32),
+        16: Type.Elementary.uint(16),
+        8: Type.Elementary.uint(8),
+      };
+      return {
+        type:
+          typeMap[typeNode.bits || 256] ||
+          Type.failure(`Unknown uint size: ${typeNode.bits}`),
+        bindings,
+      };
+    }
+
+    if (Ast.Type.Elementary.isInt(typeNode)) {
+      const typeMap: Record<number, Type> = {
+        256: Type.Elementary.int(256),
+        128: Type.Elementary.int(128),
+        64: Type.Elementary.int(64),
+        32: Type.Elementary.int(32),
+        16: Type.Elementary.int(16),
+        8: Type.Elementary.int(8),
+      };
+      return {
+        type:
+          typeMap[typeNode.bits || 256] ||
+          Type.failure(`Unknown int size: ${typeNode.bits}`),
+        bindings,
+      };
+    }
+
+    if (Ast.Type.Elementary.isBytes(typeNode)) {
+      if (!typeNode.size) {
+        return { type: Type.Elementary.bytes(), bindings }; // Dynamic bytes
+      }
+      // typeNode.bits now contains the byte size directly (e.g., 32 for bytes32)
+      const validSizes = [4, 8, 16, 32];
+      if (validSizes.includes(typeNode.size)) {
+        return { type: Type.Elementary.bytes(typeNode.size), bindings };
+      } else {
+        return {
+          type: Type.failure(`Unknown bytes size: ${typeNode.size}`),
+          bindings,
+        };
+      }
+    }
+    if (Ast.Type.Elementary.isAddress(typeNode)) {
+      return { type: Type.Elementary.address(), bindings };
+    }
+    if (Ast.Type.Elementary.isBool(typeNode)) {
+      return { type: Type.Elementary.bool(), bindings };
+    }
+    if (Ast.Type.Elementary.isString(typeNode)) {
+      return { type: Type.Elementary.string(), bindings };
+    }
+    return {
+      type: Type.failure(`Unknown elementary type: ${typeNode.kind}`),
+      bindings,
+    };
+  }
+
+  if (Ast.Type.isComplex(typeNode)) {
+    if (Ast.Type.Complex.isArray(typeNode)) {
+      const elementResult = resolveTypeWithBindings(
+        typeNode.element,
+        structTypes,
+        bindings,
+      );
+      return {
+        type: Type.array(elementResult.type, typeNode.size),
+        bindings: elementResult.bindings,
+      };
+    }
+    if (Ast.Type.Complex.isMapping(typeNode)) {
+      const keyResult = resolveTypeWithBindings(
+        typeNode.key,
+        structTypes,
+        bindings,
+      );
+      const valueResult = resolveTypeWithBindings(
+        typeNode.value,
+        structTypes,
+        keyResult.bindings,
+      );
+      return {
+        type: Type.mapping(keyResult.type, valueResult.type),
+        bindings: valueResult.bindings,
+      };
+    }
+    return {
+      type: Type.failure(`Unsupported complex type: ${typeNode.kind}`),
+      bindings,
+    };
+  }
+
+  if (Ast.Type.isReference(typeNode)) {
+    const structType = structTypes.get(typeNode.name);
+    if (!structType) {
+      throw new TypeError(
+        ErrorMessages.UNDEFINED_TYPE(typeNode.name),
+        typeNode.loc || undefined,
+        undefined,
+        undefined,
+        ErrorCode.UNDEFINED_TYPE,
+      );
+    }
+    // Record the binding from this type reference to the struct declaration
+    const updatedBindings = recordBinding(
+      bindings,
+      typeNode.id,
+      structType.node,
+    );
+    return { type: structType.type, bindings: updatedBindings };
+  }
+
+  return { type: Type.failure("Unknown type"), bindings };
+}
+
+/**
+ * Resolves an AST type node to a Type object (legacy version without bindings)
  */
 export function resolveType(
   typeNode: Ast.Type,

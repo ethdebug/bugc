@@ -7,7 +7,14 @@
  */
 
 // Re-export all type definitions
-export { Type, type Types } from "./spec.js";
+export {
+  Type,
+  type Types,
+  type Bindings,
+  emptyBindings,
+  recordBinding,
+  mergeBindings,
+} from "./spec.js";
 
 // Export analysis tools
 export * as Analysis from "./analysis/index.js";

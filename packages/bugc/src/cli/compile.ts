@@ -17,7 +17,7 @@ import * as Ir from "#ir";
 import { EvmFormatter } from "#evm/analysis";
 import type { Program } from "#ast";
 import type { EvmGenerationOutput } from "#evmgen/pass";
-import type { Types } from "#types";
+import type { Types, Bindings } from "#types";
 import * as TypesAnalysis from "#types/analysis";
 import { compile } from "#compiler";
 import { Result } from "#result";
@@ -29,13 +29,14 @@ type Phase = "ast" | "types" | "ir" | "bytecode";
 type CompilerOutput<T extends Phase> = T extends "ast"
   ? { ast: Program }
   : T extends "types"
-    ? { ast: Program; types: Types }
+    ? { ast: Program; types: Types; bindings: Bindings }
     : T extends "ir"
-      ? { ast: Program; types: Types; ir: Ir.Module }
+      ? { ast: Program; types: Types; bindings: Bindings; ir: Ir.Module }
       : T extends "bytecode"
         ? {
             ast: Program;
             types: Types;
+            bindings: Bindings;
             ir: Ir.Module;
             bytecode: EvmGenerationOutput;
           }
@@ -241,6 +242,7 @@ function formatOutput<T extends Phase>(
     case "types":
       return formatTypes(
         (result as CompilerOutput<"types">).types,
+        (result as CompilerOutput<"types">).bindings,
         format,
         values.pretty as boolean,
         source,
@@ -284,20 +286,24 @@ function formatAst(ast: Program, format: string, pretty: boolean): string {
 
 function formatTypes(
   types: Types,
+  bindings: Bindings,
   format: string,
   pretty: boolean,
   source?: string,
 ): string {
   if (format === "json") {
-    // Convert Map to object for JSON serialization
+    // Convert Maps to objects for JSON serialization
     const typesObj = Object.fromEntries(
       Array.from(types.entries()).map(([id, type]) => [id, type]),
     );
-    return formatJson(typesObj, pretty);
+    const bindingsObj = Object.fromEntries(
+      Array.from(bindings.entries()).map(([id, decl]) => [id, decl]),
+    );
+    return formatJson({ types: typesObj, bindings: bindingsObj }, pretty);
   } else {
     // Use the formatter for text output
     const formatter = new TypesAnalysis.Formatter();
-    return formatter.format(types, source);
+    return formatter.format(types, bindings, source);
   }
 }
 

@@ -5,7 +5,7 @@ import type { Symbol as BugSymbol } from "./symbols.js";
 import type { Context, Report } from "./context.js";
 import { enterFunctionScope } from "./symbols.js";
 import { Error as TypeError, ErrorCode, ErrorMessages } from "./errors.js";
-import { resolveType } from "./declarations.js";
+import { resolveTypeWithBindings } from "./declarations.js";
 import { isAssignable } from "./assignable.js";
 
 /**
@@ -53,8 +53,12 @@ export const blockChecker: Pick<
     if (node.definitions) {
       for (let i = 0; i < node.definitions.items.length; i++) {
         const decl = node.definitions.items[i];
-        // Visit function declarations to set their types in nodeTypes
-        if (decl.kind === "declaration:function") {
+        // Visit function and struct declarations to set their types in nodeTypes
+        // and record bindings for type references
+        if (
+          decl.kind === "declaration:function" ||
+          decl.kind === "declaration:struct"
+        ) {
           const declContext: Context = {
             ...context,
             symbols: currentSymbols,
@@ -66,6 +70,18 @@ export const blockChecker: Pick<
           currentNodeTypes = declResult.nodeTypes;
           currentBindings = declResult.bindings;
           allErrors.push(...declResult.errors);
+
+          // For structs, also visit their fields to record type reference bindings
+          if (decl.kind === "declaration:struct") {
+            for (const field of decl.fields) {
+              const fieldResult = Ast.visit(declContext.visitor, field, {
+                ...declContext,
+                bindings: currentBindings,
+              });
+              currentBindings = fieldResult.bindings;
+              allErrors.push(...fieldResult.errors);
+            }
+          }
         }
       }
 
@@ -246,21 +262,55 @@ export const blockChecker: Pick<
 
       case "declaration:function": {
         // Function declarations are already in the symbol table from buildInitialSymbols
-        // We just need to set the type on the node
+        // We just need to set the type on the node and record any type reference bindings
         const symbol = symbols.lookup(node.name);
         if (symbol) {
           nodeTypes.set(node.id, symbol.type);
         }
+
+        // Process parameter types to record bindings for type references
+        for (const param of node.parameters) {
+          if (param.type) {
+            const typeResult = resolveTypeWithBindings(
+              param.type,
+              context.structs,
+              bindings,
+            );
+            bindings = typeResult.bindings;
+          }
+        }
+
+        // Process return type to record bindings for type references
+        if (node.returnType) {
+          const typeResult = resolveTypeWithBindings(
+            node.returnType,
+            context.structs,
+            bindings,
+          );
+          bindings = typeResult.bindings;
+        }
+
         return { type: symbol?.type, symbols, nodeTypes, bindings, errors };
       }
 
       case "declaration:storage": {
         // Storage declarations are already in the symbol table from buildInitialSymbols
-        // We just need to set the type on the node
+        // We just need to set the type on the node and record any type reference bindings
         const symbol = symbols.lookup(node.name);
         if (symbol) {
           nodeTypes.set(node.id, symbol.type);
         }
+
+        // Also process the type node to record bindings for type references
+        if (node.type) {
+          const typeResult = resolveTypeWithBindings(
+            node.type,
+            context.structs,
+            bindings,
+          );
+          bindings = typeResult.bindings;
+        }
+
         return { type: symbol?.type, symbols, nodeTypes, bindings, errors };
       }
 
@@ -307,8 +357,14 @@ export const blockChecker: Pick<
         // Determine the variable's type
         let type: Type;
         if (node.type) {
-          // If a type is explicitly declared, use it
-          type = resolveType(node.type, context.structs);
+          // If a type is explicitly declared, use it and record bindings
+          const typeResult = resolveTypeWithBindings(
+            node.type,
+            context.structs,
+            bindings,
+          );
+          type = typeResult.type;
+          bindings = typeResult.bindings;
 
           // Check that the initializer is compatible with the declared type
           if (initResult.type && !isAssignable(type, initResult.type)) {
@@ -342,7 +398,16 @@ export const blockChecker: Pick<
       }
 
       case "declaration:field":
-        // Fields are handled as part of struct processing
+        // Fields are handled as part of struct processing,
+        // but we still need to record bindings for type references
+        if (node.type) {
+          const typeResult = resolveTypeWithBindings(
+            node.type,
+            context.structs,
+            bindings,
+          );
+          bindings = typeResult.bindings;
+        }
         return { symbols, nodeTypes, bindings, errors };
 
       default:

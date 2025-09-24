@@ -1,8 +1,7 @@
 import * as Ast from "#ast";
-import { Type } from "#types";
+import { Type, recordBinding } from "#types";
 import type { Visitor } from "#ast";
 import type { Context, Report } from "./context.js";
-import { recordBinding } from "./bindings.js";
 import {
   Error as TypeError,
   ErrorCode,

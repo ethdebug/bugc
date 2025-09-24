@@ -1,9 +1,8 @@
 import * as Ast from "#ast";
-import { type Types } from "#types";
+import { type Types, type Bindings, emptyBindings } from "#types";
 import { Result } from "#result";
 import { collectDeclarations } from "./declarations.js";
 import { buildInitialSymbols } from "./symbols.js";
-import { type Bindings, emptyBindings } from "./bindings.js";
 import { expressionChecker } from "./expressions.js";
 import { statementChecker } from "./statements.js";
 import { blockChecker } from "./blocks.js";

@@ -1,11 +1,10 @@
 import type { Program } from "#ast";
 import { Result } from "#result";
-import type { Types } from "#types";
+import type { Types, Bindings } from "#types";
 import type { Pass } from "#compiler";
 
 import type { Error as TypeError } from "./errors.js";
 import { checkProgram } from "./checker.js";
-import type { Bindings } from "./bindings.js";
 
 /**
  * Type checking pass - validates types and builds symbol table
