@@ -29,17 +29,16 @@ describe("Function declarations", () => {
     }
 
     const program = result.value;
-    expect(program.declarations).toHaveLength(1);
+    expect(program.definitions?.items).toHaveLength(1);
 
-    const funcDecl = program.declarations[0];
-    expect(funcDecl.kind).toBe("function");
+    const funcDecl = program.definitions!.items[0];
+    expect(funcDecl.kind).toBe("declaration:function");
     expect(funcDecl.name).toBe("add");
     const func = funcDecl as Ast.Declaration.Function;
     expect(func.parameters).toHaveLength(2);
     expect(func.parameters[0].name).toBe("a");
     expect(func.parameters[1].name).toBe("b");
-    expect(func.returnType?.type).toBe("ElementaryType");
-    expect((func.returnType as Ast.Type.Elementary).kind).toBe("uint");
+    expect(func.returnType?.kind).toBe("type:elementary:uint");
   });
 
   it("parses void function without return type", () => {
@@ -63,8 +62,8 @@ describe("Function declarations", () => {
     }
 
     const program = result.value;
-    const funcDecl = program.declarations[0];
-    expect(funcDecl.kind).toBe("function");
+    const funcDecl = program.definitions!.items[0];
+    expect(funcDecl.kind).toBe("declaration:function");
     expect(funcDecl.name).toBe("doSomething");
     const func = funcDecl as Ast.Declaration.Function;
     expect(func.returnType).toBeUndefined();
@@ -96,17 +95,21 @@ describe("Function declarations", () => {
     const codeBlock = program.body;
     const letStmt = codeBlock?.items[0];
 
-    expect(letStmt?.type).toBe("DeclarationStatement");
-    if (letStmt?.type === "DeclarationStatement") {
-      const decl = letStmt.declaration as Ast.Declaration.Variable;
+    expect(letStmt?.kind).toBe("statement:declare");
+    if (letStmt?.kind === "statement:declare") {
+      const decl = (letStmt as Ast.Statement.Declare)
+        .declaration as Ast.Declaration.Variable;
       const init = decl.initializer;
-      expect(init?.type).toBe("CallExpression");
-      if (init?.type === "CallExpression") {
-        expect(init.callee.type).toBe("IdentifierExpression");
-        if (init.callee.type === "IdentifierExpression") {
-          expect(init.callee.name).toBe("multiply");
+      expect(init?.kind).toBe("expression:call");
+      if (init?.kind === "expression:call") {
+        const callExpr = init as Ast.Expression.Call;
+        expect(callExpr.callee.kind).toBe("expression:identifier");
+        if (callExpr.callee.kind === "expression:identifier") {
+          expect((callExpr.callee as Ast.Expression.Identifier).name).toBe(
+            "multiply",
+          );
         }
-        expect(init.arguments).toHaveLength(2);
+        expect(callExpr.arguments).toHaveLength(2);
       }
     }
   });

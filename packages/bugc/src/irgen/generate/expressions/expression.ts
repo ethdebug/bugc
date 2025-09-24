@@ -26,24 +26,34 @@ export function* buildExpression(
   expr: Ast.Expression,
   context: Context,
 ): Process<Ir.Value> {
-  switch (expr.type) {
-    case "IdentifierExpression":
+  switch (expr.kind) {
+    case "expression:identifier":
       return yield* buildIdentifier(expr as Ast.Expression.Identifier);
-    case "LiteralExpression":
+    case "expression:literal:number":
+    case "expression:literal:string":
+    case "expression:literal:boolean":
+    case "expression:literal:address":
+    case "expression:literal:hex":
       return yield* buildLiteral(expr as Ast.Expression.Literal);
-    case "OperatorExpression":
+    case "expression:operator":
       return yield* buildOperator(expr as Ast.Expression.Operator, context);
-    case "AccessExpression":
+    case "expression:access:member":
+    case "expression:access:slice":
+    case "expression:access:index":
       return yield* buildAccess(expr as Ast.Expression.Access, context);
-    case "CallExpression":
+    case "expression:call":
       return yield* buildCall(expr as Ast.Expression.Call, context);
-    case "CastExpression":
+    case "expression:cast":
       return yield* buildCast(expr as Ast.Expression.Cast, context);
-    case "SpecialExpression":
+    case "expression:special:msg.sender":
+    case "expression:special:msg.value":
+    case "expression:special:msg.data":
+    case "expression:special:block.timestamp":
+    case "expression:special:block.number":
       return yield* buildSpecial(expr as Ast.Expression.Special);
-    case "ArrayExpression":
+    case "expression:array":
       return yield* buildArray(expr as Ast.Expression.Array, context);
-    case "StructExpression":
+    case "expression:struct":
       // TODO: Implement struct expression generation
       throw new Error(
         "Struct expressions not yet implemented in IR generation",

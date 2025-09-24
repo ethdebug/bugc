@@ -958,11 +958,23 @@ export namespace Process {
     /**
      * Find a storage slot by name
      */
-    export function* findSlot(
-      name: string,
-    ): Process<Ir.Module.StorageSlot | null> {
+    export function* findSlot(name: string): Process<{
+      slot: number;
+      name: string;
+      declaration: Ast.Declaration.Storage;
+    } | null> {
       const state: State = yield { type: "peek" };
-      return state.module.storage.slots.find((s) => s.name === name) || null;
+      const storageDecl = state.module.storageDeclarations.find(
+        (decl) => decl.name === name,
+      );
+
+      if (!storageDecl) return null;
+
+      return {
+        slot: storageDecl.slot,
+        name: storageDecl.name,
+        declaration: storageDecl,
+      };
     }
 
     /**

@@ -157,14 +157,12 @@ code {
 
       // Check that it's parsed as a reference type
       if (result.success) {
-        const storage = result.value.declarations.find(
-          (d) => d.kind === "storage",
+        const storage = result.value.storage?.find(
+          (d) => d.kind === "declaration:storage",
         ) as Ast.Declaration.Storage;
         if (storage) {
-          expect(storage.declaredType.type).toBe("ReferenceType");
-          expect((storage.declaredType as Ast.Type.Reference).name).toBe(
-            "uint512",
-          );
+          expect(storage.type.kind).toBe("type:reference");
+          expect((storage.type as Ast.Type.Reference).name).toBe("uint512");
         }
       }
     });

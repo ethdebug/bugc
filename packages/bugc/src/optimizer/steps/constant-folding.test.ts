@@ -19,7 +19,6 @@ describe("ConstantFoldingStep", () => {
 
     return {
       name: "test",
-      storage: { slots: [] },
       functions: new Map(),
       main: {
         name: "main",

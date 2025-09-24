@@ -27,13 +27,13 @@ describe("Slice type checking", () => {
     if (typeResult.success) {
       const types = typeResult.value;
       const program = result.value;
-      const decl = program.body?.items[0];
-      if (decl?.type === "DeclarationStatement") {
-        const varDecl = decl.declaration as Ast.Declaration.Variable;
-        if (!varDecl.initializer) {
+      const statement = program.body?.items[0];
+      if (Ast.isStatement(statement) && Ast.Statement.isDeclare(statement)) {
+        const decl = statement.declaration;
+        if (!Ast.Declaration.isVariable(decl) || !decl.initializer) {
           throw new Error("Expected initializer");
         }
-        const sliceType = types.get(varDecl.initializer.id);
+        const sliceType = types.get(decl.initializer.id);
         if (!sliceType) {
           throw new Error("Unexpected missing slice type");
         }

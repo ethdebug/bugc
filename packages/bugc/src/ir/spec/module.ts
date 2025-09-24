@@ -1,6 +1,5 @@
 import type * as Ast from "#ast";
 
-import type { Type } from "./type.js";
 import type { Function as IrFunction } from "./function.js";
 
 /**
@@ -9,8 +8,6 @@ import type { Function as IrFunction } from "./function.js";
 export interface Module {
   /** Program name from 'name' declaration */
   name: string;
-  /** Storage layout information */
-  storage: Module.StorageLayout;
   /** User-defined functions */
   functions: Map<string, IrFunction>;
   /** Constructor function (optional, for contract creation) */
@@ -19,25 +16,4 @@ export interface Module {
   main: IrFunction;
   /** Source location of the program */
   loc?: Ast.SourceLocation;
-}
-
-export namespace Module {
-  /**
-   * Storage layout information
-   */
-  export interface StorageLayout {
-    /** Storage slot assignments */
-    slots: Module.StorageSlot[];
-  }
-
-  export interface StorageSlot {
-    /** Slot number */
-    slot: number;
-    /** Variable name */
-    name: string;
-    /** Type of the storage variable */
-    type: Type;
-    /** Source location */
-    loc?: Ast.SourceLocation;
-  }
 }

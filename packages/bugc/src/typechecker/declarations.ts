@@ -5,8 +5,18 @@ import { Error as TypeError, ErrorCode, ErrorMessages } from "./errors.js";
 import { computeStructLayout } from "./layout.js";
 
 export interface Declarations {
-  readonly structs: Map<string, Type.Struct>;
-  readonly functions: Map<string, Type.Function>;
+  readonly structs: Map<string, Declaration.Struct>;
+  readonly functions: Map<string, Declaration.Function>;
+}
+
+export interface Declaration<T extends Type, N extends Ast.Declaration> {
+  node: N;
+  type: T;
+}
+
+export namespace Declaration {
+  export type Struct = Declaration<Type.Struct, Ast.Declaration.Struct>;
+  export type Function = Declaration<Type.Function, Ast.Declaration.Function>;
 }
 
 /**
@@ -16,16 +26,19 @@ export interface Declarations {
 export function collectDeclarations(
   program: Ast.Program,
 ): Result<Declarations, TypeError> {
-  const structs = new Map<string, Type.Struct>();
-  const functions = new Map<string, Type.Function>();
+  const structs = new Map<string, Declaration.Struct>();
+  const functions = new Map<string, Declaration.Function>();
   const errors: TypeError[] = [];
 
   // First pass: collect all struct types
-  for (const decl of program.declarations) {
+  for (const decl of program.definitions?.items || []) {
     if (Ast.Declaration.isStruct(decl)) {
       try {
         const structType = buildStructType(decl, structs);
-        structs.set(decl.name, structType);
+        structs.set(decl.name, {
+          node: decl,
+          type: structType,
+        });
       } catch (e) {
         if (e instanceof TypeError) {
           errors.push(e);
@@ -35,11 +48,14 @@ export function collectDeclarations(
   }
 
   // Second pass: collect function signatures (may reference structs)
-  for (const decl of program.declarations) {
+  for (const decl of program.definitions?.items || []) {
     if (Ast.Declaration.isFunction(decl)) {
       try {
         const funcType = buildFunctionSignature(decl, structs);
-        functions.set(decl.name, funcType);
+        functions.set(decl.name, {
+          node: decl,
+          type: funcType,
+        });
       } catch (e) {
         if (e instanceof TypeError) {
           errors.push(e);
@@ -59,13 +75,13 @@ export function collectDeclarations(
  */
 function buildStructType(
   decl: Ast.Declaration.Struct,
-  existingStructs: Map<string, Type.Struct>,
+  existingStructs: Map<string, Declaration.Struct>,
 ): Type.Struct {
   const fields = new Map<string, Type>();
 
   for (const field of decl.fields) {
-    if (field.kind === "field" && field.declaredType) {
-      const fieldType = resolveType(field.declaredType, existingStructs);
+    if (Ast.Declaration.isField(field) && field.type) {
+      const fieldType = resolveType(field.type, existingStructs);
       fields.set(field.name, fieldType);
     }
   }
@@ -81,7 +97,7 @@ function buildStructType(
  */
 function buildFunctionSignature(
   decl: Ast.Declaration.Function,
-  structTypes: Map<string, Type.Struct>,
+  structTypes: Map<string, Declaration.Struct>,
 ): Type.Function {
   // Resolve parameter types
   const parameterTypes: Type[] = [];
@@ -103,85 +119,90 @@ function buildFunctionSignature(
  */
 export function resolveType(
   typeNode: Ast.Type,
-  structTypes: Map<string, Type.Struct>,
+  structTypes: Map<string, Declaration.Struct>,
 ): Type {
-  switch (typeNode.type) {
-    case "ElementaryType": {
-      // Map elementary types based on kind and bits
-      if (typeNode.kind === "uint") {
-        const typeMap: Record<number, Type> = {
-          256: Type.Elementary.uint(256),
-          128: Type.Elementary.uint(128),
-          64: Type.Elementary.uint(64),
-          32: Type.Elementary.uint(32),
-          16: Type.Elementary.uint(16),
-          8: Type.Elementary.uint(8),
-        };
-        return (
-          typeMap[typeNode.bits || 256] ||
-          Type.failure(`Unknown uint size: ${typeNode.bits}`)
-        );
-      } else if (typeNode.kind === "int") {
-        const typeMap: Record<number, Type> = {
-          256: Type.Elementary.int(256),
-          128: Type.Elementary.int(128),
-          64: Type.Elementary.int(64),
-          32: Type.Elementary.int(32),
-          16: Type.Elementary.int(16),
-          8: Type.Elementary.int(8),
-        };
-        return (
-          typeMap[typeNode.bits || 256] ||
-          Type.failure(`Unknown int size: ${typeNode.bits}`)
-        );
-      } else if (typeNode.kind === "bytes") {
-        if (!typeNode.bits) {
-          return Type.Elementary.bytes(); // Dynamic bytes
-        }
-        // typeNode.bits now contains the byte size directly (e.g., 32 for bytes32)
-        const validSizes = [4, 8, 16, 32];
-        if (validSizes.includes(typeNode.bits)) {
-          return Type.Elementary.bytes(typeNode.bits);
-        } else {
-          return Type.failure(`Unknown bytes size: ${typeNode.bits}`);
-        }
-      } else if (typeNode.kind === "address") {
-        return Type.Elementary.address();
-      } else if (typeNode.kind === "bool") {
-        return Type.Elementary.bool();
-      } else if (typeNode.kind === "string") {
-        return Type.Elementary.string();
-      }
-      return Type.failure(`Unknown elementary type: ${typeNode.kind}`);
+  if (Ast.Type.isElementary(typeNode)) {
+    // Map elementary types based on kind and bits
+    if (Ast.Type.Elementary.isUint(typeNode)) {
+      const typeMap: Record<number, Type> = {
+        256: Type.Elementary.uint(256),
+        128: Type.Elementary.uint(128),
+        64: Type.Elementary.uint(64),
+        32: Type.Elementary.uint(32),
+        16: Type.Elementary.uint(16),
+        8: Type.Elementary.uint(8),
+      };
+      return (
+        typeMap[typeNode.bits || 256] ||
+        Type.failure(`Unknown uint size: ${typeNode.bits}`)
+      );
     }
 
-    case "ComplexType":
-      if (typeNode.kind === "array") {
-        const elementType = resolveType(typeNode.typeArgs![0], structTypes);
-        return Type.array(elementType, typeNode.size);
-      } else if (typeNode.kind === "mapping") {
-        const keyType = resolveType(typeNode.typeArgs![0], structTypes);
-        const valueType = resolveType(typeNode.typeArgs![1], structTypes);
-        return Type.mapping(keyType, valueType);
+    if (Ast.Type.Elementary.isInt(typeNode)) {
+      const typeMap: Record<number, Type> = {
+        256: Type.Elementary.int(256),
+        128: Type.Elementary.int(128),
+        64: Type.Elementary.int(64),
+        32: Type.Elementary.int(32),
+        16: Type.Elementary.int(16),
+        8: Type.Elementary.int(8),
+      };
+      return (
+        typeMap[typeNode.bits || 256] ||
+        Type.failure(`Unknown int size: ${typeNode.bits}`)
+      );
+    }
+
+    if (Ast.Type.Elementary.isBytes(typeNode)) {
+      if (!typeNode.size) {
+        return Type.Elementary.bytes(); // Dynamic bytes
+      }
+      // typeNode.bits now contains the byte size directly (e.g., 32 for bytes32)
+      const validSizes = [4, 8, 16, 32];
+      if (validSizes.includes(typeNode.size)) {
+        return Type.Elementary.bytes(typeNode.size);
       } else {
-        return Type.failure(`Unsupported complex type: ${typeNode.kind}`);
+        return Type.failure(`Unknown bytes size: ${typeNode.size}`);
       }
-
-    case "ReferenceType": {
-      const structType = structTypes.get(typeNode.name);
-      if (!structType) {
-        throw new TypeError(
-          ErrorMessages.UNDEFINED_TYPE(typeNode.name),
-          typeNode.loc || undefined,
-          undefined,
-          undefined,
-          ErrorCode.UNDEFINED_TYPE,
-        );
-      }
-      return structType;
     }
-
-    default:
-      return Type.failure("Unknown type");
+    if (Ast.Type.Elementary.isAddress(typeNode)) {
+      return Type.Elementary.address();
+    }
+    if (Ast.Type.Elementary.isBool(typeNode)) {
+      return Type.Elementary.bool();
+    }
+    if (Ast.Type.Elementary.isString(typeNode)) {
+      return Type.Elementary.string();
+    }
+    return Type.failure(`Unknown elementary type: ${typeNode.kind}`);
   }
+
+  if (Ast.Type.isComplex(typeNode)) {
+    if (Ast.Type.Complex.isArray(typeNode)) {
+      const elementType = resolveType(typeNode.element, structTypes);
+      return Type.array(elementType, typeNode.size);
+    }
+    if (Ast.Type.Complex.isMapping(typeNode)) {
+      const keyType = resolveType(typeNode.key, structTypes);
+      const valueType = resolveType(typeNode.value, structTypes);
+      return Type.mapping(keyType, valueType);
+    }
+    return Type.failure(`Unsupported complex type: ${typeNode.kind}`);
+  }
+
+  if (Ast.Type.isReference(typeNode)) {
+    const structType = structTypes.get(typeNode.name);
+    if (!structType) {
+      throw new TypeError(
+        ErrorMessages.UNDEFINED_TYPE(typeNode.name),
+        typeNode.loc || undefined,
+        undefined,
+        undefined,
+        ErrorCode.UNDEFINED_TYPE,
+      );
+    }
+    return structType.type;
+  }
+
+  return Type.failure("Unknown type");
 }

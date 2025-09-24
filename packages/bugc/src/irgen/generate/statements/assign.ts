@@ -30,7 +30,7 @@ function* buildLValue(
   // Determine the evaluation context based on the target
   let context: Context = { kind: "rvalue" };
 
-  if (target.type === "IdentifierExpression") {
+  if (target.kind === "expression:identifier") {
     const targetName = (target as Ast.Expression.Identifier).name;
 
     // Check if it's storage
@@ -63,7 +63,7 @@ function* buildLValue(
   // expanded to storage writes, so we don't need to do anything else
   if (
     context.kind === "lvalue-storage" &&
-    valueExpr.type === "ArrayExpression"
+    valueExpr.kind === "expression:array"
   ) {
     return;
   }
@@ -76,7 +76,7 @@ function* buildLValue(
  * Assign a value to a target expression (identifier or access expression)
  */
 function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
-  if (node.type === "IdentifierExpression") {
+  if (node.kind === "expression:identifier") {
     const name = (node as Ast.Expression.Identifier).name;
 
     // Check if it's a variable
@@ -137,25 +137,35 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
     return;
   }
 
-  if (node.type === "AccessExpression") {
+  if (
+    node.kind === "expression:access:member" ||
+    node.kind === "expression:access:slice" ||
+    node.kind === "expression:access:index"
+  ) {
     const accessNode = node as Ast.Expression.Access;
 
-    if (accessNode.kind === "member") {
+    if (accessNode.kind === "expression:access:member") {
       // First check if this is a storage chain assignment
       const chain = yield* findStorageAccessChain(node);
       if (chain) {
-        yield* emitStorageChainStore(chain, value, node.loc ?? undefined);
+        yield* emitStorageChainStore(chain, value, accessNode.loc ?? undefined);
         return;
       }
 
       // Otherwise, handle regular struct field assignment
-      const object = yield* buildExpression(accessNode.object, {
-        kind: "rvalue",
-      });
-      const objectType = yield* Process.Types.nodeType(accessNode.object);
+      const object = yield* buildExpression(
+        (accessNode as Ast.Expression.Access.Member).object,
+        {
+          kind: "rvalue",
+        },
+      );
+      const objectType = yield* Process.Types.nodeType(
+        (accessNode as Ast.Expression.Access.Member).object,
+      );
 
       if (objectType && Type.isStruct(objectType)) {
-        const fieldName = accessNode.property as string;
+        const fieldName = (accessNode as Ast.Expression.Access.Member)
+          .property as string;
         const fieldType = objectType.fields.get(fieldName);
         if (fieldType) {
           // Find field index
@@ -176,7 +186,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
             field: fieldName,
             fieldOffset,
             dest: offsetTemp,
-            loc: node.loc ?? undefined,
+            loc: accessNode.loc ?? undefined,
           } as Ir.Instruction.ComputeOffset);
 
           // Then write to that offset
@@ -186,12 +196,12 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
             offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
             length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
             value,
-            loc: node.loc ?? undefined,
+            loc: accessNode.loc ?? undefined,
           } as Ir.Instruction.Write);
           return;
         }
       }
-    } else if (Ast.Expression.Access.isIndex(accessNode)) {
+    } else if (accessNode.kind === "expression:access:index") {
       // Array/mapping/bytes assignment
       // First check if we're assigning to bytes
       const objectType = yield* Process.Types.nodeType(accessNode.object);
@@ -235,7 +245,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
       // For non-bytes types, try to find a complete storage access chain
       const chain = yield* findStorageAccessChain(node);
       if (chain) {
-        yield* emitStorageChainStore(chain, value, node.loc ?? undefined);
+        yield* emitStorageChainStore(chain, value, accessNode.loc ?? undefined);
         return;
       }
 

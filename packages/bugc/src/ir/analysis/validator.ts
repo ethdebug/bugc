@@ -37,34 +37,11 @@ export class Validator {
       this.error("Module must have a name");
     }
 
-    // Validate storage layout
-    this.validateStorageLayout(module.storage);
-
     // Validate main function
     if (!module.main) {
       this.error("Module must have a main function");
     } else {
       this.validateFunction(module.main);
-    }
-  }
-
-  private validateStorageLayout(storage: Ir.Module["storage"]): void {
-    const usedSlots = new Set<number>();
-
-    for (const slot of storage.slots) {
-      // Check for duplicate slot numbers
-      if (usedSlots.has(slot.slot)) {
-        this.error(`Duplicate storage slot ${slot.slot}`);
-      }
-      usedSlots.add(slot.slot);
-
-      // Check slot number is non-negative
-      if (slot.slot < 0) {
-        this.error(`Storage slot ${slot.slot} must be non-negative`);
-      }
-
-      // Validate type
-      this.validateType(slot.type);
     }
   }
 

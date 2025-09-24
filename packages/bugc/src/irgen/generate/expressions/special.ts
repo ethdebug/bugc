@@ -2,7 +2,7 @@ import type * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Severity } from "#result";
 
-import { Error as IrgenError } from "#irgen/errors";
+import { Error as IrgenError, assertExhausted } from "#irgen/errors";
 import { fromBugType } from "#irgen/type";
 import { Process } from "../process.js";
 /**
@@ -29,30 +29,23 @@ export function* buildSpecial(expr: Ast.Expression.Special): Process<Ir.Value> {
 
   let op: Ir.Instruction.Env["op"];
   switch (expr.kind) {
-    case "msg.sender":
+    case "expression:special:msg.sender":
       op = "msg_sender";
       break;
-    case "msg.value":
+    case "expression:special:msg.value":
       op = "msg_value";
       break;
-    case "msg.data":
+    case "expression:special:msg.data":
       op = "msg_data";
       break;
-    case "block.timestamp":
+    case "expression:special:block.timestamp":
       op = "block_timestamp";
       break;
-    case "block.number":
+    case "expression:special:block.number":
       op = "block_number";
       break;
     default:
-      yield* Process.Errors.report(
-        new IrgenError(
-          `Unknown special expression: ${expr.kind}`,
-          expr.loc || undefined,
-          Severity.Error,
-        ),
-      );
-      return Ir.Value.constant(0n, Ir.Type.Scalar.uint256);
+      assertExhausted(expr);
   }
 
   yield* Process.Instructions.emit({

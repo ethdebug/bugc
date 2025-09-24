@@ -1,6 +1,6 @@
 import * as Ast from "#ast";
 import * as Ir from "#ir";
-import { Error as IrgenError } from "#irgen/errors";
+import { Error as IrgenError, assertExhausted } from "#irgen/errors";
 import { Severity } from "#result";
 import { buildExpression } from "../expressions/index.js";
 
@@ -23,26 +23,28 @@ export const makeBuildControlFlowStatement = (
     stmt: Ast.Statement.ControlFlow,
   ): Process<void> {
     switch (stmt.kind) {
-      case "if":
-        return yield* buildIfStatement(stmt);
-      case "while":
-        return yield* buildWhileStatement(stmt);
-      case "for":
-        return yield* buildForStatement(stmt);
-      case "return":
-        return yield* buildReturnStatement(stmt);
-      case "break":
-        return yield* buildBreakStatement(stmt);
-      case "continue":
-        return yield* buildContinueStatement(stmt);
-      default:
-        return yield* Process.Errors.report(
-          new IrgenError(
-            `Unsupported control flow: ${stmt.kind}`,
-            stmt.loc ?? undefined,
-            Severity.Error,
-          ),
+      case "statement:control-flow:if":
+        return yield* buildIfStatement(stmt as Ast.Statement.ControlFlow.If);
+      case "statement:control-flow:while":
+        return yield* buildWhileStatement(
+          stmt as Ast.Statement.ControlFlow.While,
         );
+      case "statement:control-flow:for":
+        return yield* buildForStatement(stmt as Ast.Statement.ControlFlow.For);
+      case "statement:control-flow:return":
+        return yield* buildReturnStatement(
+          stmt as Ast.Statement.ControlFlow.Return,
+        );
+      case "statement:control-flow:break":
+        return yield* buildBreakStatement(
+          stmt as Ast.Statement.ControlFlow.Break,
+        );
+      case "statement:control-flow:continue":
+        return yield* buildContinueStatement(
+          stmt as Ast.Statement.ControlFlow.Continue,
+        );
+      default:
+        assertExhausted(stmt);
     }
   };
 };
@@ -55,7 +57,7 @@ export const makeBuildIfStatement = (
 ) => {
   const buildBlock = makeBuildBlock(buildStatement);
   return function* buildIfStatement(
-    stmt: Ast.Statement.ControlFlow,
+    stmt: Ast.Statement.ControlFlow.If,
   ): Process<void> {
     const thenBlock = yield* Process.Blocks.create("then");
     const elseBlock = stmt.alternate
@@ -232,11 +234,11 @@ export const makeBuildWhileStatement = (
 ) => {
   const buildLoop = makeBuildLoop(buildStatement);
   return function* buildWhileStatement(
-    stmt: Ast.Statement.ControlFlow,
+    stmt: Ast.Statement.ControlFlow.While,
   ): Process<void> {
     yield* buildLoop({
       condition: stmt.condition,
-      body: stmt.body!,
+      body: stmt.body,
       prefix: "while",
     });
   };
@@ -250,13 +252,13 @@ export const makeBuildForStatement = (
 ) => {
   const buildLoop = makeBuildLoop(buildStatement);
   return function* buildForStatement(
-    stmt: Ast.Statement.ControlFlow,
+    stmt: Ast.Statement.ControlFlow.For,
   ): Process<void> {
     yield* buildLoop({
       init: stmt.init,
       condition: stmt.condition,
       update: stmt.update,
-      body: stmt.body!,
+      body: stmt.body,
       prefix: "for",
     });
   };
@@ -265,7 +267,9 @@ export const makeBuildForStatement = (
 /**
  * Build a return statement
  */
-function* buildReturnStatement(stmt: Ast.Statement.ControlFlow): Process<void> {
+function* buildReturnStatement(
+  stmt: Ast.Statement.ControlFlow.Return,
+): Process<void> {
   const value = stmt.value
     ? yield* buildExpression(stmt.value, { kind: "rvalue" })
     : undefined;
@@ -279,7 +283,9 @@ function* buildReturnStatement(stmt: Ast.Statement.ControlFlow): Process<void> {
 /**
  * Build a break statement
  */
-function* buildBreakStatement(stmt: Ast.Statement.ControlFlow): Process<void> {
+function* buildBreakStatement(
+  stmt: Ast.Statement.ControlFlow.Break,
+): Process<void> {
   const loop = yield* Process.ControlFlow.currentLoop();
 
   if (!loop) {
@@ -304,7 +310,7 @@ function* buildBreakStatement(stmt: Ast.Statement.ControlFlow): Process<void> {
  * Build a continue statement
  */
 function* buildContinueStatement(
-  stmt: Ast.Statement.ControlFlow,
+  stmt: Ast.Statement.ControlFlow.Continue,
 ): Process<void> {
   const loop = yield* Process.ControlFlow.currentLoop();
 

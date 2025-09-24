@@ -27,64 +27,79 @@ export const blockChecker: Pick<
     let currentNodeTypes = context.nodeTypes;
     const allErrors: TypeError[] = [];
 
-    // Visit all declarations to ensure they get types in nodeTypes map
-    for (const decl of node.declarations) {
-      // Visit storage and function declarations to set their types in nodeTypes
-      if (decl.kind === "storage" || decl.kind === "function") {
+    // Process storage declarations to set their types in nodeTypes
+    if (node.storage) {
+      for (const storageDecl of node.storage) {
         const declContext: Context = {
           ...context,
           symbols: currentSymbols,
           nodeTypes: currentNodeTypes,
-          pointer:
-            context.pointer +
-            "/declarations/" +
-            node.declarations.indexOf(decl),
           visitor: context.visitor,
         };
-        const declResult = Ast.visit(declContext.visitor, decl, declContext);
+        const declResult = Ast.visit(
+          declContext.visitor,
+          storageDecl,
+          declContext,
+        );
         currentNodeTypes = declResult.nodeTypes;
         allErrors.push(...declResult.errors);
       }
     }
 
-    // Third pass: type check function bodies
-    for (const decl of node.declarations) {
-      if (Ast.Declaration.isFunction(decl)) {
-        // Look up the function type
-        const funcType = currentSymbols.lookup(decl.name)
-          ?.type as Type.Function;
-        if (funcType) {
-          // Create a new scope with function parameters
-          const funcSymbols = enterFunctionScope(
-            currentSymbols,
-            decl,
-            funcType,
-          );
-
-          // Create context for function body with return type set
-          const funcContext: Context = {
+    // Visit all definitions to ensure they get types in nodeTypes map
+    if (node.definitions) {
+      for (let i = 0; i < node.definitions.items.length; i++) {
+        const decl = node.definitions.items[i];
+        // Visit function declarations to set their types in nodeTypes
+        if (decl.kind === "declaration:function") {
+          const declContext: Context = {
             ...context,
-            symbols: funcSymbols,
-            currentReturnType: funcType.return || undefined,
+            symbols: currentSymbols,
             nodeTypes: currentNodeTypes,
-            pointer:
-              context.pointer +
-              "/declarations/" +
-              node.declarations.indexOf(decl),
             visitor: context.visitor,
           };
+          const declResult = Ast.visit(declContext.visitor, decl, declContext);
+          currentNodeTypes = declResult.nodeTypes;
+          allErrors.push(...declResult.errors);
+        }
+      }
 
-          // Type check the function body
-          const bodyResult = Ast.visit(
-            funcContext.visitor,
-            decl.body,
-            funcContext,
-          );
+      // Third pass: type check function bodies
+      for (let i = 0; i < node.definitions.items.length; i++) {
+        const decl = node.definitions.items[i];
+        if (Ast.Declaration.isFunction(decl)) {
+          // Look up the function type
+          const funcType = currentSymbols.lookup(decl.name)
+            ?.type as Type.Function;
+          if (funcType) {
+            // Create a new scope with function parameters
+            const funcSymbols = enterFunctionScope(
+              currentSymbols,
+              decl,
+              funcType,
+            );
 
-          // Exit function scope - we don't propagate function-local symbols
-          // so we keep currentSymbols unchanged (it still points to the pre-function scope)
-          currentNodeTypes = bodyResult.nodeTypes;
-          allErrors.push(...bodyResult.errors);
+            // Create context for function body with return type set
+            const funcContext: Context = {
+              ...context,
+              symbols: funcSymbols,
+              currentReturnType: funcType.return || undefined,
+              nodeTypes: currentNodeTypes,
+              visitor: context.visitor,
+            };
+
+            // Type check the function body
+            const bodyResult = Ast.visit(
+              funcContext.visitor,
+              decl.body,
+              funcContext,
+            );
+
+            // Exit function scope - we don't propagate function-local symbols
+            // so we keep currentSymbols unchanged (it still points to the pre-function scope)
+            currentNodeTypes = bodyResult.nodeTypes;
+            allErrors.push(...bodyResult.errors);
+          }
         }
       }
     }
@@ -95,7 +110,6 @@ export const blockChecker: Pick<
         ...context,
         symbols: currentSymbols,
         nodeTypes: currentNodeTypes,
-        pointer: context.pointer + "/create",
       };
       const createResult = Ast.visit(
         createContext.visitor,
@@ -108,27 +122,28 @@ export const blockChecker: Pick<
     }
 
     // Process main code block
-    const bodyContext: Context = {
-      ...context,
-      symbols: currentSymbols,
-      nodeTypes: currentNodeTypes,
-      pointer: context.pointer + "/body",
-    };
-    const bodyResult = node.body
-      ? Ast.visit(bodyContext.visitor, node.body, bodyContext)
-      : undefined;
+    if (node.body) {
+      const bodyContext: Context = {
+        ...context,
+        symbols: currentSymbols,
+        nodeTypes: currentNodeTypes,
+      };
+      const bodyResult = Ast.visit(bodyContext.visitor, node.body, bodyContext);
+      currentSymbols = bodyResult.symbols;
+      currentNodeTypes = bodyResult.nodeTypes;
+      allErrors.push(...bodyResult.errors);
+    }
 
     return {
-      symbols: bodyResult?.symbols || currentSymbols,
-      nodeTypes: bodyResult?.nodeTypes || currentNodeTypes,
-      errors: bodyResult ? [...allErrors, ...bodyResult.errors] : allErrors,
+      symbols: currentSymbols,
+      nodeTypes: currentNodeTypes,
+      errors: allErrors,
     };
   },
 
   block(node: Ast.Block, context: Context): Report {
-    // Only statement blocks need scope management
-    // (program and statements kinds, not create kind)
-    if (node.kind === "program" || node.kind === "statements") {
+    // Statement blocks need scope management
+    if (node.kind === "block:statements") {
       // Enter new scope
       let currentSymbols = context.symbols.enterScope();
       let currentNodeTypes = context.nodeTypes;
@@ -141,7 +156,6 @@ export const blockChecker: Pick<
           ...context,
           symbols: currentSymbols,
           nodeTypes: currentNodeTypes,
-          pointer: context.pointer + "/" + i,
         };
 
         const itemResult = Ast.visit(itemContext.visitor, item, itemContext);
@@ -160,7 +174,37 @@ export const blockChecker: Pick<
       };
     }
 
-    // For other block kinds (like "create"), just return unchanged
+    // Definition blocks don't need scope management, just process items
+    if (node.kind === "block:definitions") {
+      let currentSymbols = context.symbols;
+      let currentNodeTypes = context.nodeTypes;
+      const allErrors: TypeError[] = [];
+
+      // Process each declaration in the block
+      for (let i = 0; i < node.items.length; i++) {
+        const item = node.items[i];
+        const itemContext: Context = {
+          ...context,
+          symbols: currentSymbols,
+          nodeTypes: currentNodeTypes,
+        };
+
+        const itemResult = Ast.visit(itemContext.visitor, item, itemContext);
+
+        // Thread the results to the next item
+        currentSymbols = itemResult.symbols;
+        currentNodeTypes = itemResult.nodeTypes;
+        allErrors.push(...itemResult.errors);
+      }
+
+      return {
+        symbols: currentSymbols,
+        nodeTypes: currentNodeTypes,
+        errors: allErrors,
+      };
+    }
+
+    // Should not reach here, but return unchanged if we do
     return {
       symbols: context.symbols,
       nodeTypes: context.nodeTypes,
@@ -174,11 +218,11 @@ export const blockChecker: Pick<
     let symbols = context.symbols;
 
     switch (node.kind) {
-      case "struct":
+      case "declaration:struct":
         // Already processed in collectDeclarations phase
         return { symbols, nodeTypes, errors };
 
-      case "function": {
+      case "declaration:function": {
         // Function declarations are already in the symbol table from buildInitialSymbols
         // We just need to set the type on the node
         const symbol = symbols.lookup(node.name);
@@ -188,7 +232,7 @@ export const blockChecker: Pick<
         return { type: symbol?.type, symbols, nodeTypes, errors };
       }
 
-      case "storage": {
+      case "declaration:storage": {
         // Storage declarations are already in the symbol table from buildInitialSymbols
         // We just need to set the type on the node
         const symbol = symbols.lookup(node.name);
@@ -198,7 +242,7 @@ export const blockChecker: Pick<
         return { type: symbol?.type, symbols, nodeTypes, errors };
       }
 
-      case "variable": {
+      case "declaration:variable": {
         if (!node.initializer) {
           const error = new TypeError(
             `Variable ${node.name} must have an initializer`,
@@ -216,6 +260,7 @@ export const blockChecker: Pick<
             type: errorType,
             mutable: true,
             location: "memory",
+            declaration: node,
           };
           symbols = symbols.define(symbol);
           nodeTypes.set(node.id, errorType);
@@ -226,7 +271,6 @@ export const blockChecker: Pick<
         const initContext: Context = {
           ...context,
           nodeTypes,
-          pointer: context.pointer + "/initializer",
         };
         const initResult = Ast.visit(
           initContext.visitor,
@@ -238,9 +282,9 @@ export const blockChecker: Pick<
 
         // Determine the variable's type
         let type: Type;
-        if (node.declaredType) {
+        if (node.type) {
           // If a type is explicitly declared, use it
-          type = resolveType(node.declaredType, context.structs);
+          type = resolveType(node.type, context.structs);
 
           // Check that the initializer is compatible with the declared type
           if (initResult.type && !isAssignable(type, initResult.type)) {
@@ -266,13 +310,14 @@ export const blockChecker: Pick<
           type,
           mutable: true,
           location: "memory",
+          declaration: node,
         };
         symbols = symbols.define(symbol);
         nodeTypes.set(node.id, type);
         return { type, symbols, nodeTypes, errors };
       }
 
-      case "field":
+      case "declaration:field":
         // Fields are handled as part of struct processing
         return { symbols, nodeTypes, errors };
 

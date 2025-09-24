@@ -4,7 +4,6 @@ import type { Types } from "#types";
 import { Result, Severity } from "#result";
 
 import { Error as IrgenError } from "#irgen/errors";
-import { fromBugType } from "#irgen/type";
 
 import type { State } from "./generate/state.js";
 import { Process } from "./generate/process.js";
@@ -60,14 +59,11 @@ function createInitialState(program: Ast.Program, types: Types): State {
   // Create errors array to collect any type resolution errors
   const errors: IrgenError[] = [];
 
-  // Build storage layout with types
-  const storage = buildStorageLayout(program, types, errors);
-
   // Create initial module
   const module: State.Module = {
     name: program.name,
-    storage,
     functions: new Map(),
+    storageDeclarations: program.storage ?? [],
   };
 
   // Create empty function context (will be replaced when building functions)
@@ -113,44 +109,4 @@ function createInitialState(program: Ast.Program, types: Types): State {
     errors,
     warnings: [],
   };
-}
-
-/**
- * Build storage layout from declarations
- */
-function buildStorageLayout(
-  program: Ast.Program,
-  types: Types,
-  errors: IrgenError[],
-): Ir.Module.StorageLayout {
-  const slots: Ir.Module.StorageSlot[] = [];
-  let nextSlot = 0;
-
-  for (const decl of program.declarations) {
-    if (decl.kind === "storage") {
-      const storageDecl = decl as Ast.Declaration.Storage;
-
-      // Get the type from the type checker for this storage declaration
-      const storageType = types.get(storageDecl.id);
-
-      if (!storageType) {
-        errors.push(
-          new IrgenError(
-            `Missing type information for storage variable: ${storageDecl.name}`,
-            storageDecl.loc ?? undefined,
-            Severity.Error,
-          ),
-        );
-        continue;
-      }
-
-      slots.push({
-        name: storageDecl.name,
-        slot: storageDecl.slot ?? nextSlot++,
-        type: fromBugType(storageType),
-      });
-    }
-  }
-
-  return { slots };
 }

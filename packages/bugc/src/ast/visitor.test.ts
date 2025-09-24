@@ -17,53 +17,49 @@ describe("Visitor Pattern", () => {
     block(node: Ast.Block): string {
       return `Block(${node.kind})`;
     }
-    elementaryType(node: { kind: string; bits?: number }): string {
-      return `ElementaryType(${node.kind}${node.bits ? node.bits : ""})`;
+    type(node: Ast.Type): string {
+      if (node.kind.startsWith("type:elementary:")) {
+        return `ElementaryType(${node.kind}${"bits" in node ? node.bits : ""})`;
+      } else if (node.kind.startsWith("type:complex:")) {
+        return `ComplexType(${node.kind})`;
+      } else if (node.kind === "type:reference") {
+        return `ReferenceType(${(node as Ast.Type.Reference).name})`;
+      }
+      return `Type(${node.kind})`;
     }
-    complexType(node: { kind: string }): string {
-      return `ComplexType(${node.kind})`;
+    statement(node: Ast.Statement): string {
+      if (node.kind === "statement:declare") {
+        return "DeclarationStatement";
+      } else if (node.kind === "statement:assign") {
+        return "AssignmentStatement";
+      } else if (node.kind.startsWith("statement:control-flow:")) {
+        return `ControlFlowStatement(${node.kind})`;
+      } else if (node.kind === "statement:express") {
+        return "ExpressionStatement";
+      }
+      return `Statement(${node.kind})`;
     }
-    referenceType(node: { name: string }): string {
-      return `ReferenceType(${node.name})`;
-    }
-    declarationStatement(_node: Ast.Statement): string {
-      return "DeclarationStatement";
-    }
-    assignmentStatement(_node: Ast.Statement): string {
-      return "AssignmentStatement";
-    }
-    controlFlowStatement(node: { kind: string }): string {
-      return `ControlFlowStatement(${node.kind})`;
-    }
-    expressionStatement(_node: Ast.Statement): string {
-      return "ExpressionStatement";
-    }
-    identifierExpression(node: { name: string }): string {
-      return `Identifier(${node.name})`;
-    }
-    literalExpression(node: { kind: string; value: string }): string {
-      return `Literal(${node.kind}:${node.value})`;
-    }
-    arrayExpression(node: { elements: readonly unknown[] }): string {
-      return `Array(${node.elements.length} elements)`;
-    }
-    structExpression(node: { fields: readonly unknown[] }): string {
-      return `Struct(${node.fields.length} fields)`;
-    }
-    operatorExpression(node: { operator: string }): string {
-      return `Operator(${node.operator})`;
-    }
-    accessExpression(node: { kind: string }): string {
-      return `Access(${node.kind})`;
-    }
-    callExpression(_node: Ast.Expression): string {
-      return "Call";
-    }
-    specialExpression(node: { kind: string }): string {
-      return `Special(${node.kind})`;
-    }
-    castExpression(_node: Ast.Expression): string {
-      return "Cast";
+    expression(node: Ast.Expression): string {
+      if (node.kind === "expression:identifier") {
+        return `Identifier(${(node as Ast.Expression.Identifier).name})`;
+      } else if (node.kind.startsWith("expression:literal:")) {
+        return `Literal(${node.kind}:${(node as Ast.Expression.Literal).value})`;
+      } else if (node.kind === "expression:array") {
+        return `Array(${(node as Ast.Expression.Array).elements.length} elements)`;
+      } else if (node.kind === "expression:struct") {
+        return `Struct(${(node as Ast.Expression.Struct).fields.length} fields)`;
+      } else if (node.kind === "expression:operator") {
+        return `Operator(${(node as Ast.Expression.Operator).operator})`;
+      } else if (node.kind.startsWith("expression:access:")) {
+        return `Access(${node.kind})`;
+      } else if (node.kind === "expression:call") {
+        return "Call";
+      } else if (node.kind.startsWith("expression:special:")) {
+        return `Special(${node.kind})`;
+      } else if (node.kind === "expression:cast") {
+        return "Cast";
+      }
+      return `Expression(${node.kind})`;
     }
   }
 
@@ -76,9 +72,10 @@ describe("Visitor Pattern", () => {
         Ast.program(
           createId(),
           "Test",
-          [],
-          Ast.block(createId(), "program", []),
-          Ast.block(createId(), "program", []),
+          undefined,
+          Ast.Block.definitions(createId(), []),
+          Ast.Block.statements(createId(), []),
+          Ast.Block.statements(createId(), []),
         ),
         undefined as never,
       ),
@@ -89,28 +86,31 @@ describe("Visitor Pattern", () => {
         Ast.Declaration.variable(createId(), "x"),
         undefined as never,
       ),
-    ).toBe("Declaration(variable:x)");
+    ).toBe("Declaration(declaration:variable:x)");
     expect(
       Ast.visit(
         visitor,
-        Ast.block(createId(), "statements", []),
+        Ast.Block.statements(createId(), []),
         undefined as never,
       ),
-    ).toBe("Block(statements)");
+    ).toBe("Block(block:statements)");
     expect(
       Ast.visit(
         visitor,
-        Ast.Type.elementary(createId(), "uint", 256),
+        Ast.Type.Elementary.uint(createId(), 256),
         undefined as never,
       ),
-    ).toBe("ElementaryType(uint256)");
+    ).toBe("ElementaryType(type:elementary:uint256)");
     expect(
       Ast.visit(
         visitor,
-        Ast.Type.complex(createId(), "array", {}),
+        Ast.Type.Complex.array(
+          createId(),
+          Ast.Type.Elementary.uint(createId(), 256),
+        ),
         undefined as never,
       ),
-    ).toBe("ComplexType(array)");
+    ).toBe("ComplexType(type:complex:array)");
     expect(
       Ast.visit(
         visitor,
@@ -128,16 +128,16 @@ describe("Visitor Pattern", () => {
     expect(
       Ast.visit(
         visitor,
-        Ast.Expression.literal(createId(), "number", "42"),
+        Ast.Expression.Literal.number(createId(), "42"),
         undefined as never,
       ),
-    ).toBe("Literal(number:42)");
+    ).toBe("Literal(expression:literal:number:42)");
     expect(
       Ast.visit(
         visitor,
         Ast.Expression.operator(createId(), "+", [
-          Ast.Expression.literal(createId(), "number", "1"),
-          Ast.Expression.literal(createId(), "number", "2"),
+          Ast.Expression.Literal.number(createId(), "1"),
+          Ast.Expression.Literal.number(createId(), "2"),
         ]),
         undefined as never,
       ),
@@ -152,7 +152,7 @@ describe("Visitor Pattern", () => {
         ),
         undefined as never,
       ),
-    ).toBe("Access(member)");
+    ).toBe("Access(expression:access:member)");
     expect(
       Ast.visit(
         visitor,
@@ -167,25 +167,29 @@ describe("Visitor Pattern", () => {
     expect(
       Ast.visit(
         visitor,
-        Ast.Expression.special(createId(), "msg.sender"),
+        Ast.Expression.Special.msgSender(createId()),
         undefined as never,
       ),
-    ).toBe("Special(msg.sender)");
+    ).toBe("Special(expression:special:msg.sender)");
     expect(
       Ast.visit(
         visitor,
-        Ast.Statement.controlFlow(createId(), "if", {}),
+        Ast.Statement.ControlFlow.if_(
+          createId(),
+          Ast.Expression.Literal.boolean(createId(), "true"),
+          Ast.Block.statements(createId(), []),
+        ),
         undefined as never,
       ),
-    ).toBe("ControlFlowStatement(if)");
+    ).toBe("ControlFlowStatement(statement:control-flow:if)");
   });
 
   it("should throw on unknown node type", () => {
     const visitor = new TestVisitor();
-    const badNode = { type: "Unknown", loc: null } as unknown as Ast.Node;
+    const badNode = { kind: "Unknown", loc: null } as unknown as Ast.Node;
 
     expect(() => Ast.visit(visitor, badNode, undefined as never)).toThrow(
-      "Unknown node type: Unknown",
+      "Unknown node kind: Unknown",
     );
   });
 });

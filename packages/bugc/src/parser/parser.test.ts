@@ -17,11 +17,10 @@ describe("Normalized Parser", () => {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.type).toBe("Program");
+      expect(result.kind).toBe("program");
       expect(result.name).toBe("Test");
-      expect(result.declarations).toEqual([]);
-      expect(result.body?.type).toBe("Block");
-      expect(result.body?.kind).toBe("program");
+      expect(result.storage ?? []).toEqual([]);
+      expect(result.body?.kind).toBe("block:statements");
       expect(result.body?.items).toEqual([]);
     });
 
@@ -51,9 +50,9 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      expect(result.type).toBe("Program");
+      expect(result.kind).toBe("program");
       expect(result.name).toBe("NoStorage");
-      expect(result.declarations).toEqual([]);
+      expect(result.storage ?? []).toEqual([]);
       expect(result.body?.items).toHaveLength(1);
     });
   });
@@ -75,18 +74,18 @@ code {}`;
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
       const [balance, owner, flag] =
-        result.declarations as Ast.Declaration.Storage[];
+        result.storage as Ast.Declaration.Storage[];
 
-      expect(balance.declaredType.type).toBe("ElementaryType");
-      const balanceType = balance.declaredType as Ast.Type.Elementary;
-      expect(balanceType.kind).toBe("uint");
+      expect(balance.type.kind).toBe("type:elementary:uint");
+      const balanceType = balance.type as Ast.Type.Elementary.Uint;
+      expect(balanceType.kind).toBe("type:elementary:uint");
       expect(balanceType.bits).toBe(256);
 
-      const ownerType = owner.declaredType as Ast.Type.Elementary;
-      expect(ownerType.kind).toBe("address");
+      const ownerType = owner.type as Ast.Type.Elementary.Address;
+      expect(ownerType.kind).toBe("type:elementary:address");
 
-      const flagType = flag.declaredType as Ast.Type.Elementary;
-      expect(flagType.kind).toBe("bool");
+      const flagType = flag.type as Ast.Type.Elementary.Bool;
+      expect(flagType.kind).toBe("type:elementary:bool");
     });
 
     it("should parse array types", () => {
@@ -103,16 +102,16 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const [nums, fixed] = result.declarations as Ast.Declaration.Storage[];
+      const [nums, fixed] = result.storage as Ast.Declaration.Storage[];
 
-      expect(nums.declaredType.type).toBe("ComplexType");
-      const numsType = nums.declaredType as Ast.Type.Complex;
-      expect(numsType.kind).toBe("array");
+      expect(nums.type.kind).toBe("type:complex:array");
+      const numsType = nums.type as Ast.Type.Complex.Array;
+      expect(numsType.kind).toBe("type:complex:array");
       expect(numsType.size).toBeUndefined();
-      expect(numsType.typeArgs).toHaveLength(1);
+      expect(numsType.element).toBeDefined();
 
-      const fixedType = fixed.declaredType as Ast.Type.Complex;
-      expect(fixedType.kind).toBe("array");
+      const fixedType = fixed.type as Ast.Type.Complex.Array;
+      expect(fixedType.kind).toBe("type:complex:array");
       expect(fixedType.size).toBe(10);
     });
 
@@ -129,18 +128,18 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const mapping = result.declarations[0] as Ast.Declaration.Storage;
+      const mapping = result.storage![0] as Ast.Declaration.Storage;
 
-      const mapType = mapping.declaredType as Ast.Type.Complex;
-      expect(mapType.type).toBe("ComplexType");
-      expect(mapType.kind).toBe("mapping");
-      expect(mapType.typeArgs).toHaveLength(2);
+      const mapType = mapping.type as Ast.Type.Complex.Mapping;
+      expect(mapType.kind).toBe("type:complex:mapping");
+      expect(mapType.key).toBeDefined();
+      expect(mapType.value).toBeDefined();
 
-      const keyType = mapType.typeArgs![0] as Ast.Type.Elementary;
-      expect(keyType.kind).toBe("address");
+      const keyType = mapType.key as Ast.Type.Elementary.Address;
+      expect(keyType.kind).toBe("type:elementary:address");
 
-      const valueType = mapType.typeArgs![1] as Ast.Type.Elementary;
-      expect(valueType.kind).toBe("uint");
+      const valueType = mapType.value as Ast.Type.Elementary.Uint;
+      expect(valueType.kind).toBe("type:elementary:uint");
       expect(valueType.bits).toBe(256);
     });
 
@@ -160,12 +159,12 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const position = result.declarations.find(
-        (d) => d.name === "position",
+      const position = result.storage?.find(
+        (d: Ast.Declaration.Storage) => d.name === "position",
       ) as Ast.Declaration.Storage;
 
-      expect(position?.declaredType.type).toBe("ReferenceType");
-      expect((position?.declaredType as Ast.Type.Reference).name).toBe("Point");
+      expect(position?.type.kind).toBe("type:reference");
+      expect((position?.type as Ast.Type.Reference).name).toBe("Point");
     });
   });
 
@@ -187,16 +186,15 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const struct = result.declarations[0];
+      const struct = result.definitions?.items[0];
 
-      expect(struct.type).toBe("Declaration");
-      expect(struct.kind).toBe("struct");
-      expect(struct.name).toBe("Point");
+      expect(struct?.kind).toBe("declaration:struct");
+      expect(struct?.name).toBe("Point");
       const structDecl = struct as Ast.Declaration.Struct;
       expect(structDecl.fields).toHaveLength(2);
 
       const [x, y] = structDecl.fields;
-      expect(x.kind).toBe("field");
+      expect(x.kind).toBe("declaration:field");
       expect(x.name).toBe("x");
       expect(y.name).toBe("y");
     });
@@ -215,9 +213,9 @@ code {}`;
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const result = parseResult.value;
-      const [balance, data] = result.declarations as Ast.Declaration.Storage[];
+      const [balance, data] = result.storage as Ast.Declaration.Storage[];
 
-      expect(balance.kind).toBe("storage");
+      expect(balance.kind).toBe("declaration:storage");
       expect(balance.slot).toBe(0);
       expect(data.slot).toBe(42);
     });
@@ -238,19 +236,18 @@ code {}`;
       const result = parseResult.value;
       const [letX, letFlag] = result.body?.items as Ast.Statement.Declare[];
 
-      expect(letX.type).toBe("DeclarationStatement");
-      expect(letX.declaration.kind).toBe("variable");
+      expect(letX.kind).toBe("statement:declare");
+      expect(letX.declaration.kind).toBe("declaration:variable");
       expect(letX.declaration.name).toBe("x");
 
       const xDecl = letX.declaration as Ast.Declaration.Variable;
       const xInit = xDecl.initializer as Ast.Expression.Literal;
-      expect(xInit.type).toBe("LiteralExpression");
-      expect(xInit.kind).toBe("number");
+      expect(xInit.kind).toBe("expression:literal:number");
       expect(xInit.value).toBe("42");
 
       const flagDecl = letFlag.declaration as Ast.Declaration.Variable;
       const flagInit = flagDecl.initializer as Ast.Expression.Literal;
-      expect(flagInit.kind).toBe("boolean");
+      expect(flagInit.kind).toBe("expression:literal:boolean");
       expect(flagInit.value).toBe("true");
     });
   });
@@ -278,27 +275,27 @@ code {}`;
       const stmts = result.body?.items as Ast.Statement.Express[];
       const exprs = stmts.map((s) => s.expression as Ast.Expression.Literal);
 
-      expect(exprs[0].kind).toBe("number");
+      expect(exprs[0].kind).toBe("expression:literal:number");
       expect(exprs[0].value).toBe("42");
 
-      expect(exprs[1].kind).toBe("hex");
+      expect(exprs[1].kind).toBe("expression:literal:hex");
       expect(exprs[1].value).toBe("0x1234");
 
-      expect(exprs[2].kind).toBe("string");
+      expect(exprs[2].kind).toBe("expression:literal:string");
       expect(exprs[2].value).toBe("hello");
 
-      expect(exprs[3].kind).toBe("boolean");
+      expect(exprs[3].kind).toBe("expression:literal:boolean");
       expect(exprs[3].value).toBe("true");
 
-      expect(exprs[4].kind).toBe("boolean");
+      expect(exprs[4].kind).toBe("expression:literal:boolean");
       expect(exprs[4].value).toBe("false");
 
-      expect(exprs[5].kind).toBe("address");
+      expect(exprs[5].kind).toBe("expression:literal:address");
       expect(exprs[5].value).toBe("0x1234567890123456789012345678901234567890");
 
-      expect(exprs[6].kind).toBe("number");
+      expect(exprs[6].kind).toBe("expression:literal:number");
       expect(exprs[6].value).toBe("100");
-      expect(exprs[6].unit).toBe("ether");
+      expect((exprs[6] as Ast.Expression.Literal.Number).unit).toBe("ether");
     });
 
     it("should parse identifier expressions", () => {
@@ -320,7 +317,7 @@ code {}`;
         (s) => s.expression as Ast.Expression.Identifier,
       );
 
-      expect(x.type).toBe("IdentifierExpression");
+      expect(x.kind).toBe("expression:identifier");
       expect(x.name).toBe("x");
       expect(balance.name).toBe("balance");
     });
@@ -402,12 +399,12 @@ code {}`;
       ) {
         throw new Error("expected member access");
       }
-      expect(nestedObj.kind).toBe("member");
+      expect(nestedObj.kind).toBe("expression:access:member");
       expect(nestedObj.property).toBe("field");
 
       // matrix[i][j] is two index accesses
       const matrix = exprs[3];
-      expect(matrix.kind).toBe("index");
+      expect(matrix.kind).toBe("expression:access:index");
     });
 
     it("should parse special expressions", () => {
@@ -430,14 +427,11 @@ code {}`;
         (s) => s.expression as Ast.Expression.Special,
       );
 
-      expect(sender.type).toBe("SpecialExpression");
-      expect(sender.kind).toBe("msg.sender");
+      expect(sender.kind).toBe("expression:special:msg.sender");
 
-      expect(value.type).toBe("SpecialExpression");
-      expect(value.kind).toBe("msg.value");
+      expect(value.kind).toBe("expression:special:msg.value");
 
-      expect(data.type).toBe("SpecialExpression");
-      expect(data.kind).toBe("msg.data");
+      expect(data.kind).toBe("expression:special:msg.data");
     });
 
     it("should parse complex expressions with correct precedence", () => {
@@ -491,12 +485,16 @@ code {}`;
       const result = parseResult.value;
       const stmts = result.body?.items as Ast.Statement.Assign[];
 
-      expect(stmts[0].type).toBe("AssignmentStatement");
+      expect(stmts[0].kind).toBe("statement:assign");
       expect((stmts[0].target as Ast.Expression.Identifier).name).toBe("x");
       expect((stmts[0].value as Ast.Expression.Literal).value).toBe("42");
 
-      expect((stmts[1].target as Ast.Expression.Access).kind).toBe("member");
-      expect((stmts[2].target as Ast.Expression.Access).kind).toBe("index");
+      expect((stmts[1].target as Ast.Expression.Access).kind).toBe(
+        "expression:access:member",
+      );
+      expect((stmts[2].target as Ast.Expression.Access).kind).toBe(
+        "expression:access:index",
+      );
     });
 
     it("should parse control flow statements", () => {
@@ -527,23 +525,23 @@ code {}`;
       const [if1, if2, forLoop] = result.body
         ?.items as Ast.Statement.ControlFlow[];
 
-      expect(if1.kind).toBe("if");
-      expect(if1.condition).toBeDefined();
-      expect(if1.body?.items).toHaveLength(1);
-      expect(if1.alternate).toBeUndefined();
+      expect(if1.kind).toBe("statement:control-flow:if");
+      const if1Cast = if1 as Ast.Statement.ControlFlow.If;
+      expect(if1Cast.condition).toBeDefined();
+      expect(if1Cast.body.items).toHaveLength(1);
+      expect(if1Cast.alternate).toBeUndefined();
 
-      expect(if2.kind).toBe("if");
-      expect(if2.body?.items[0].type).toBe("ControlFlowStatement");
-      expect((if2.body?.items[0] as Ast.Statement.ControlFlow).kind).toBe(
-        "break",
-      );
-      expect(if2.alternate).toBeDefined();
+      expect(if2.kind).toBe("statement:control-flow:if");
+      const if2Cast = if2 as Ast.Statement.ControlFlow.If;
+      expect(if2Cast.body.items[0].kind).toBe("statement:control-flow:break");
+      expect(if2Cast.alternate).toBeDefined();
 
-      expect(forLoop.kind).toBe("for");
-      expect(forLoop.init?.type).toBe("DeclarationStatement");
-      expect(forLoop.condition).toBeDefined();
-      expect(forLoop.update?.type).toBe("AssignmentStatement");
-      expect(forLoop.body?.items).toHaveLength(1);
+      expect(forLoop.kind).toBe("statement:control-flow:for");
+      const forLoopCast = forLoop as Ast.Statement.ControlFlow.For;
+      expect(forLoopCast.init?.kind).toBe("statement:declare");
+      expect(forLoopCast.condition).toBeDefined();
+      expect(forLoopCast.update?.kind).toBe("statement:assign");
+      expect(forLoopCast.body.items).toHaveLength(1);
     });
 
     it("should parse return statements", () => {
@@ -563,14 +561,26 @@ code {}`;
       const result = parseResult.value;
       const stmts = result.body?.items as Ast.Statement.ControlFlow[];
 
-      expect(stmts[0].kind).toBe("return");
-      expect(stmts[0].value).toBeUndefined();
+      expect(stmts[0].kind).toBe("statement:control-flow:return");
+      expect(
+        (stmts[0] as Ast.Statement.ControlFlow.Return).value,
+      ).toBeUndefined();
 
-      expect(stmts[1].kind).toBe("return");
-      expect((stmts[1].value as Ast.Expression.Literal).value).toBe("42");
+      expect(stmts[1].kind).toBe("statement:control-flow:return");
+      expect(
+        (
+          (stmts[1] as Ast.Statement.ControlFlow.Return)
+            .value as Ast.Expression.Literal
+        ).value,
+      ).toBe("42");
 
-      expect(stmts[2].kind).toBe("return");
-      expect((stmts[2].value as Ast.Expression.Operator).operator).toBe("+");
+      expect(stmts[2].kind).toBe("statement:control-flow:return");
+      expect(
+        (
+          (stmts[2] as Ast.Statement.ControlFlow.Return)
+            .value as Ast.Expression.Operator
+        ).operator,
+      ).toBe("+");
     });
   });
 
@@ -612,17 +622,18 @@ code {}`;
       const result = parseResult.value;
 
       expect(result.name).toBe("SimpleStorage");
-      expect(result.declarations).toHaveLength(4); // 1 struct + 3 storage
+      expect(result.storage ?? []).toHaveLength(3); // 3 storage
+      expect(result.definitions?.items ?? []).toHaveLength(1); // 1 struct
 
-      const struct = result.declarations[0];
-      expect(struct.kind).toBe("struct");
+      const struct = result.definitions?.items[0];
+      expect(struct?.kind).toBe("declaration:struct");
       expect((struct as Ast.Declaration.Struct).fields).toHaveLength(2);
 
       const codeStmts = result.body?.items;
       expect(codeStmts).toHaveLength(3); // let, if, return
 
-      const ifStmt = codeStmts?.[1] as Ast.Statement.ControlFlow;
-      expect(ifStmt.body?.items).toHaveLength(2); // two assignments
+      const ifStmt = codeStmts?.[1] as Ast.Statement.ControlFlow.If;
+      expect(ifStmt.body.items).toHaveLength(2); // two assignments
       expect(ifStmt.alternate?.items).toHaveLength(1); // one return
     });
   });

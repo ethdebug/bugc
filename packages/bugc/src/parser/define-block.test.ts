@@ -24,7 +24,7 @@ describe("Define Block Parser", () => {
       expect(result.success).toBe(true);
       if (!result.success) throw new Error("Parse failed");
 
-      expect(result.value.declarations).toHaveLength(0);
+      expect(result.value.definitions?.items ?? []).toHaveLength(0);
     });
 
     it("should parse define block with single struct", () => {
@@ -50,20 +50,20 @@ describe("Define Block Parser", () => {
       expect(result.success).toBe(true);
       if (!result.success) throw new Error("Parse failed");
 
-      // Should have 2 declarations: 1 struct from define, 1 storage
-      expect(result.value.declarations).toHaveLength(2);
+      // Should have 1 struct from define block, and 1 storage declaration
+      expect(result.value.definitions?.items ?? []).toHaveLength(1);
+      expect(result.value.storage ?? []).toHaveLength(1);
 
-      const structDecl = result.value.declarations[0];
+      const structDecl = result.value.definitions!.items[0];
       if (!Ast.Declaration.isStruct(structDecl)) {
         throw new Error("Should receive a struct declaration");
       }
-      expect(structDecl.type).toBe("Declaration");
-      expect(structDecl.kind).toBe("struct");
+      expect(structDecl.kind).toBe("declaration:struct");
       expect(structDecl.name).toBe("User");
       expect(structDecl.fields).toHaveLength(2);
 
-      const storageDecl = result.value.declarations[1];
-      expect(storageDecl.kind).toBe("storage");
+      const storageDecl = result.value.storage![0];
+      expect(storageDecl.kind).toBe("declaration:storage");
       expect(storageDecl.name).toBe("owner");
     });
 
@@ -97,15 +97,16 @@ describe("Define Block Parser", () => {
       expect(result.success).toBe(true);
       if (!result.success) throw new Error("Parse failed");
 
-      // Should have 4 declarations: 2 structs from define, 2 storage
-      expect(result.value.declarations).toHaveLength(4);
+      // Should have 2 structs from define block, and 2 storage declarations
+      expect(result.value.definitions?.items ?? []).toHaveLength(2);
+      expect(result.value.storage ?? []).toHaveLength(2);
 
-      const userStruct = result.value.declarations[0];
-      expect(userStruct.kind).toBe("struct");
+      const userStruct = result.value.definitions!.items[0];
+      expect(userStruct.kind).toBe("declaration:struct");
       expect(userStruct.name).toBe("User");
 
-      const txStruct = result.value.declarations[1];
-      expect(txStruct.kind).toBe("struct");
+      const txStruct = result.value.definitions!.items[1];
+      expect(txStruct.kind).toBe("declaration:struct");
       expect(txStruct.name).toBe("Transaction");
     });
 
@@ -126,9 +127,10 @@ describe("Define Block Parser", () => {
       expect(result.success).toBe(true);
       if (!result.success) throw new Error("Parse failed");
 
-      // Should only have storage declaration
-      expect(result.value.declarations).toHaveLength(1);
-      expect(result.value.declarations[0].kind).toBe("storage");
+      // Should only have storage declaration, no definitions
+      expect(result.value.definitions?.items ?? []).toHaveLength(0);
+      expect(result.value.storage ?? []).toHaveLength(1);
+      expect(result.value.storage![0].kind).toBe("declaration:storage");
     });
   });
 
@@ -228,7 +230,8 @@ describe("Define Block Parser", () => {
       expect(result.success).toBe(true);
       if (!result.success) throw new Error("Parse failed");
 
-      expect(result.value.declarations).toHaveLength(3); // 2 structs + 1 storage
+      expect(result.value.definitions?.items ?? []).toHaveLength(2); // 2 structs from define
+      expect(result.value.storage ?? []).toHaveLength(1); // 1 storage
     });
 
     it("should parse define block with empty structs", () => {
@@ -251,7 +254,7 @@ describe("Define Block Parser", () => {
       expect(result.success).toBe(true);
       if (!result.success) throw new Error("Parse failed");
 
-      const { declarations } = result.value;
+      const declarations = result.value.definitions?.items ?? [];
 
       expect(declarations).toHaveLength(2);
       if (!declarations.every(Ast.Declaration.isStruct)) {
@@ -289,7 +292,7 @@ describe("Define Block Parser", () => {
       expect(result.success).toBe(true);
       if (!result.success) throw new Error("Parse failed");
 
-      expect(result.value.declarations).toHaveLength(2);
+      expect(result.value.definitions?.items ?? []).toHaveLength(2);
     });
   });
 
@@ -310,7 +313,7 @@ code {}`;
       expect(result.success).toBe(true);
       if (!result.success) throw new Error("Parse failed");
 
-      const structDecl = result.value.declarations[0];
+      const structDecl = result.value.definitions!.items[0];
       expect(structDecl.loc).not.toBeNull();
       expect(structDecl.loc?.offset).toBeGreaterThan(0);
       expect(structDecl.loc?.length).toBeGreaterThan(0);

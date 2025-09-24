@@ -8,7 +8,6 @@ describe("Module.generate", () => {
   it("should generate runtime bytecode for module without constructor", () => {
     const module: Ir.Module = {
       name: "Test",
-      storage: { slots: [] },
       functions: new Map(),
       main: {
         name: "main",
@@ -58,7 +57,6 @@ describe("Module.generate", () => {
   it("should generate deployment bytecode with constructor", () => {
     const module: Ir.Module = {
       name: "Test",
-      storage: { slots: [] },
       functions: new Map(),
       create: {
         name: "create",
@@ -141,7 +139,6 @@ describe("Module.generate", () => {
     it("should use optimal PUSH opcodes based on value size", () => {
       const module: Ir.Module = {
         name: "Test",
-        storage: { slots: [] },
         functions: new Map(),
         main: {
           name: "main",
@@ -225,7 +222,6 @@ describe("Module.generate", () => {
 
       const module: Ir.Module = {
         name: "LargeContract",
-        storage: { slots: [] },
         functions: new Map(),
         main: {
           name: "main",
@@ -314,7 +310,6 @@ describe("Module.generate", () => {
     it("should calculate deployment size correctly with optimal PUSH opcodes", () => {
       const module: Ir.Module = {
         name: "Test",
-        storage: { slots: [] },
         functions: new Map(),
         main: {
           name: "main",
@@ -400,7 +395,6 @@ describe("Module.generate", () => {
       for (const { value, expectedPushSize } of testCases) {
         const module: Ir.Module = {
           name: "Test",
-          storage: { slots: [] },
           functions: new Map(),
           main: {
             name: "main",

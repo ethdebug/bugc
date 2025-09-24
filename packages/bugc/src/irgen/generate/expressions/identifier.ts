@@ -3,6 +3,7 @@ import * as Ir from "#ir";
 import { Severity } from "#result";
 
 import { Error as IrgenError, ErrorMessages } from "#irgen/errors";
+import { fromBugType } from "#irgen/type";
 
 import { Process } from "../process.js";
 
@@ -32,6 +33,12 @@ export function* buildIdentifier(
   const storageSlot = yield* Process.Storage.findSlot(expr.name);
 
   if (storageSlot) {
+    // Get the type from the type checker
+    const storageType = yield* Process.Types.nodeType(storageSlot.declaration);
+    const irType = storageType
+      ? fromBugType(storageType)
+      : Ir.Type.Scalar.uint256;
+
     // Build storage load using new unified read instruction
     const tempId = yield* Process.Variables.newTemp();
     yield* Process.Instructions.emit({
@@ -40,11 +47,11 @@ export function* buildIdentifier(
       slot: Ir.Value.constant(BigInt(storageSlot.slot), Ir.Type.Scalar.uint256),
       offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
       length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256), // 32 bytes for uint256
-      type: storageSlot.type,
+      type: irType,
       dest: tempId,
       loc: expr.loc ?? undefined,
     } as Ir.Instruction.Read);
-    return Ir.Value.temp(tempId, storageSlot.type);
+    return Ir.Value.temp(tempId, irType);
   }
 
   // Unknown identifier - add error and return default value

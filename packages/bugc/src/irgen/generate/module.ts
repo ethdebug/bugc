@@ -39,8 +39,8 @@ export function* buildModule(
   }
 
   // Build user-defined functions
-  for (const decl of program.declarations) {
-    if (decl.kind === "function") {
+  for (const decl of program.definitions?.items ?? []) {
+    if (decl.kind === "declaration:function") {
       const funcDecl = decl as Ast.Declaration.Function;
 
       // Map parameters to include their resolved types
@@ -82,10 +82,18 @@ export function* buildModule(
   // Get module state to build final IR module
   const module_ = yield* Process.Modules.current();
 
-  return {
-    ...module_,
+  // Return the module, ensuring main exists
+  const result: Ir.Module = {
+    name: module_.name,
+    functions: module_.functions,
     main: module_.main || createEmptyFunction("main"),
   };
+
+  if (module_.create) {
+    result.create = module_.create;
+  }
+
+  return result;
 }
 
 /**

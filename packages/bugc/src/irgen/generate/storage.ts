@@ -9,8 +9,17 @@ import { Process } from "./process.js";
 import { buildExpression } from "./expressions/index.js";
 import type { Context } from "./expressions/context.js";
 
+/**
+ * Local storage information for IR generation
+ */
+interface StorageInfo {
+  slot: number;
+  name: string;
+  declaration: Ast.Declaration.Storage;
+}
+
 export interface StorageAccessChain {
-  slot: Ir.Module.StorageSlot;
+  slot: StorageInfo;
   accesses: Array<{
     kind: "index" | "member";
     key?: Ir.Value;
@@ -83,10 +92,14 @@ export function* emitStorageChainAccess(
   const chain = yield* findStorageAccessChain(expr);
   if (!chain) return undefined;
 
+  // Get the type of the expression from the type checker
+  const exprType = yield* Process.Types.nodeType(expr);
+  const irType = exprType ? fromBugType(exprType) : Ir.Type.Scalar.uint256;
+
   // Build the expression to load from storage
   const value = yield* emitStorageChainLoad(
     chain,
-    chain.slot.type, // Use the final type from the chain
+    irType,
     expr.loc ?? undefined,
   );
 
@@ -127,13 +140,16 @@ export function* emitStorageChainLoad(
   valueType: Ir.Type,
   loc: Ast.SourceLocation | undefined,
 ): Process<Ir.Value> {
+  // Get the Bug type from the type checker
+  const bugType = yield* Process.Types.nodeType(chain.slot.declaration);
+
   let currentSlot = Ir.Value.constant(
     BigInt(chain.slot.slot),
     Ir.Type.Scalar.uint256,
   );
-  let currentType = chain.slot.type;
-  // Track the Bug type origin for semantic information
-  let currentOrigin = currentType.origin;
+
+  // Track the Bug type for semantic information
+  let currentOrigin = bugType;
 
   // Process each access in the chain
   for (const access of chain.accesses) {
@@ -142,7 +158,7 @@ export function* emitStorageChainLoad(
       const tempId = yield* Process.Variables.newTemp();
 
       // Check the origin to determine if it's a mapping or array
-      if (currentOrigin !== "synthetic" && Type.isMapping(currentOrigin)) {
+      if (currentOrigin && Type.isMapping(currentOrigin)) {
         // Mapping access - get key and value types from Bug type
         const keyIrType = fromBugType(currentOrigin.key);
         yield* Process.Instructions.emit(
@@ -156,8 +172,7 @@ export function* emitStorageChainLoad(
         );
         // Update to the value type
         currentOrigin = currentOrigin.value;
-        currentType = fromBugType(currentOrigin);
-      } else if (currentOrigin !== "synthetic" && Type.isArray(currentOrigin)) {
+      } else if (currentOrigin && Type.isArray(currentOrigin)) {
         // Array access - compute array slot with index
         yield* Process.Instructions.emit(
           Ir.Instruction.ComputeSlot.array(
@@ -169,13 +184,12 @@ export function* emitStorageChainLoad(
         );
         // Update to the element type
         currentOrigin = currentOrigin.element;
-        currentType = fromBugType(currentOrigin);
       }
 
       currentSlot = Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
     } else if (access.kind === "member" && access.fieldName) {
       // For struct field access
-      if (currentOrigin !== "synthetic" && Type.isStruct(currentOrigin)) {
+      if (currentOrigin && Type.isStruct(currentOrigin)) {
         // Access struct information from the Bug type origin
         const fieldType = currentOrigin.fields.get(access.fieldName);
         const layout = currentOrigin.layout.get(access.fieldName);
@@ -209,7 +223,6 @@ export function* emitStorageChainLoad(
         // Store the field type so we know the correct size
         access.fieldType = fromBugType(fieldType);
         currentOrigin = fieldType;
-        currentType = fromBugType(fieldType);
       }
     }
   }
@@ -271,19 +284,21 @@ export function* emitStorageChainStore(
     return;
   }
 
+  // Get the Bug type from the type checker
+  const bugType = yield* Process.Types.nodeType(chain.slot.declaration);
+
   // Compute the final storage slot through the chain
   let currentSlot: Ir.Value = Ir.Value.constant(
     BigInt(chain.slot.slot),
     Ir.Type.Scalar.uint256,
   );
-  let currentType = chain.slot.type;
-  let currentOrigin = currentType.origin;
+  let currentOrigin = bugType;
 
   // Process each access in the chain
   for (const access of chain.accesses) {
     if (access.kind === "index" && access.key) {
       // For mapping/array access
-      if (currentOrigin !== "synthetic" && Type.isMapping(currentOrigin)) {
+      if (currentOrigin && Type.isMapping(currentOrigin)) {
         // Mapping access
         const slotTemp = yield* Process.Variables.newTemp();
         const keyIrType = fromBugType(currentOrigin.key);
@@ -298,8 +313,7 @@ export function* emitStorageChainStore(
         );
         currentSlot = Ir.Value.temp(slotTemp, Ir.Type.Scalar.uint256);
         currentOrigin = currentOrigin.value;
-        currentType = fromBugType(currentOrigin);
-      } else if (currentOrigin !== "synthetic" && Type.isArray(currentOrigin)) {
+      } else if (currentOrigin && Type.isArray(currentOrigin)) {
         // Array access - compute array slot with index
         const slotTemp = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit(
@@ -312,11 +326,10 @@ export function* emitStorageChainStore(
         );
         currentSlot = Ir.Value.temp(slotTemp, Ir.Type.Scalar.uint256);
         currentOrigin = currentOrigin.element;
-        currentType = fromBugType(currentOrigin);
       }
     } else if (access.kind === "member" && access.fieldName) {
       // For struct field access
-      if (currentOrigin !== "synthetic" && Type.isStruct(currentOrigin)) {
+      if (currentOrigin && Type.isStruct(currentOrigin)) {
         const fieldType = currentOrigin.fields.get(access.fieldName);
         const layout = currentOrigin.layout.get(access.fieldName);
 
@@ -343,7 +356,6 @@ export function* emitStorageChainStore(
           // Store the field type so we know the correct size
           access.fieldType = fromBugType(fieldType);
           currentOrigin = fieldType;
-          currentType = fromBugType(fieldType);
         } else {
           yield* Process.Errors.report(
             new IrgenError(

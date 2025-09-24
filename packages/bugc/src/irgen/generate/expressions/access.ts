@@ -39,14 +39,23 @@ export const makeBuildAccess = (
     context: Context,
   ): Process<Ir.Value> {
     switch (expr.kind) {
-      case "member":
-        return yield* buildMemberAccess(expr, context);
+      case "expression:access:member":
+        return yield* buildMemberAccess(
+          expr as Ast.Expression.Access.Member,
+          context,
+        );
 
-      case "slice":
-        return yield* buildSliceAccess(expr, context);
+      case "expression:access:slice":
+        return yield* buildSliceAccess(
+          expr as Ast.Expression.Access.Slice,
+          context,
+        );
 
-      case "index":
-        return yield* buildIndexAccess(expr, context);
+      case "expression:access:index":
+        return yield* buildIndexAccess(
+          expr as Ast.Expression.Access.Index,
+          context,
+        );
 
       default:
         assertExhausted(expr);

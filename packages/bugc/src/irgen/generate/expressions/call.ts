@@ -23,7 +23,7 @@ export const makeBuildCall = (
   ): Process<Ir.Value> {
     // Check if this is a built-in function call
     if (
-      expr.callee.type === "IdentifierExpression" &&
+      expr.callee.kind === "expression:identifier" &&
       (expr.callee as Ast.Expression.Identifier).name === "keccak256"
     ) {
       // keccak256 built-in function
@@ -58,7 +58,7 @@ export const makeBuildCall = (
     }
 
     // Handle user-defined function calls
-    if (expr.callee.type === "IdentifierExpression") {
+    if (expr.callee.kind === "expression:identifier") {
       const functionName = (expr.callee as Ast.Expression.Identifier).name;
 
       // Get the function type from the type checker

@@ -30,9 +30,9 @@ describe("Create block parsing", () => {
     const ast = result.value;
     expect(ast.name).toBe("TokenContract");
     expect(ast.create).toBeDefined();
-    expect(ast.create?.kind).toBe("program");
+    expect(ast.create?.kind).toBe("block:statements");
     expect(ast.create?.items).toHaveLength(2);
-    expect(ast.body?.kind).toBe("program");
+    expect(ast.body?.kind).toBe("block:statements");
     expect(ast.body?.items).toHaveLength(1);
   });
 
@@ -51,8 +51,8 @@ describe("Create block parsing", () => {
 
     const ast = result.value;
     expect(ast.name).toBe("SimpleProgram");
-    expect(ast).not.toHaveProperty("create");
-    expect(ast.body?.kind).toBe("program");
+    expect(ast.create).toBeUndefined();
+    expect(ast.body?.kind).toBe("block:statements");
     expect(ast.body?.items).toHaveLength(1);
   });
 

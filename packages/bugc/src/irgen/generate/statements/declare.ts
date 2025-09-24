@@ -1,4 +1,4 @@
-import type * as Ast from "#ast";
+import * as Ast from "#ast";
 import * as Ir from "#ir";
 import { Severity } from "#result";
 
@@ -17,15 +17,18 @@ export function* buildDeclarationStatement(
   const decl = stmt.declaration;
 
   switch (decl.kind) {
-    case "variable":
+    case "declaration:variable":
       return yield* buildVariableDeclaration(decl as Ast.Declaration.Variable);
-    case "function":
+    case "declaration:function":
       // Function declarations are handled at module level
       return;
-    case "struct":
+    case "declaration:parameter":
+      // Parameter declarations are part of function handling
+      return;
+    case "declaration:struct":
       // Struct declarations are handled at module level
       return;
-    case "storage":
+    case "declaration:storage":
       // Storage declarations are handled at module level
       return;
     default:
@@ -62,8 +65,8 @@ function* buildVariableDeclaration(
     if (decl.initializer) {
       // For hex literals, calculate actual size needed
       if (
-        decl.initializer.type === "LiteralExpression" &&
-        (decl.initializer as Ast.Expression.Literal).kind === "hex"
+        Ast.Expression.isLiteral(decl.initializer) &&
+        Ast.Expression.Literal.isHex(decl.initializer)
       ) {
         const hexLiteral = decl.initializer as Ast.Expression.Literal;
         const hexValue = hexLiteral.value.startsWith("0x")
@@ -109,9 +112,9 @@ function* buildVariableDeclaration(
 
       // For reference types, we need to handle initialization
       // Check the initializer type to determine how to store it
-      if (decl.initializer.type === "LiteralExpression") {
+      if (Ast.Expression.isLiteral(decl.initializer)) {
         const hexLiteral = decl.initializer as Ast.Expression.Literal;
-        if (hexLiteral.kind === "hex") {
+        if (Ast.Expression.Literal.isHex(hexLiteral)) {
           const hexValue = hexLiteral.value.startsWith("0x")
             ? hexLiteral.value.slice(2)
             : hexLiteral.value;

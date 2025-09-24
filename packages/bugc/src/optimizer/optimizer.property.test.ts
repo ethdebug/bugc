@@ -293,7 +293,6 @@ function createModuleWithBinaryOp(a: bigint, b: bigint, op: string): Ir.Module {
         ],
       ]),
     },
-    storage: { slots: [] },
     functions: new Map(),
   };
 }
@@ -348,7 +347,6 @@ function createModuleWithDeadCode(useFlags: boolean[]): Ir.Module {
         ],
       ]),
     },
-    storage: { slots: [] },
     functions: new Map(),
   };
 }
@@ -437,7 +435,6 @@ function createModuleWithDuplicateExpressions(a: bigint, b: bigint): Ir.Module {
         ],
       ]),
     },
-    storage: { slots: [] },
     functions: new Map(),
   };
 }
@@ -498,7 +495,6 @@ function createModuleWithMergeableBlocks(
   return {
     name: "Test",
     main: { name: "main", parameters: [], entry: "entry", blocks },
-    storage: { slots: [] },
     functions: new Map(),
   };
 }
@@ -508,7 +504,6 @@ function generateRandomModule(): fc.Arbitrary<Ir.Module> {
   return fc.record({
     name: fc.constant("Test"),
     main: generateRandomFunction(),
-    storage: fc.constant({ slots: [] }),
     functions: fc.constant(new Map()),
   });
 }

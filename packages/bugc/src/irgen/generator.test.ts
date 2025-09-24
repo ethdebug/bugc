@@ -47,42 +47,8 @@ describe("generateModule", () => {
       const ir = buildIR(source);
 
       expect(ir.name).toBe("Empty");
-      expect(ir.storage.slots).toHaveLength(0);
       expect(ir.main.blocks.size).toBe(1);
       expect(ir.main.blocks.get("entry")).toBeDefined();
-    });
-
-    it("should build IR for storage variables", () => {
-      const source = `
-        name Storage;
-        storage {
-          [0] count: uint256;
-          [1] owner: address;
-        }
-        code {}
-      `;
-
-      const ir = buildIR(source);
-
-      expect(ir.storage.slots).toHaveLength(2);
-      expect(ir.storage.slots[0]).toMatchObject({
-        slot: 0,
-        name: "count",
-        type: {
-          kind: "scalar",
-          size: 32,
-          // origin will be the Bug type
-        },
-      });
-      expect(ir.storage.slots[1]).toMatchObject({
-        slot: 1,
-        name: "owner",
-        type: {
-          kind: "scalar",
-          size: 20,
-          // origin will be the Bug type
-        },
-      });
     });
   });
 

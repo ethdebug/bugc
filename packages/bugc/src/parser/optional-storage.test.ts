@@ -18,7 +18,7 @@ describe("Optional Storage Block", () => {
     if (!result.success) throw new Error("Parse failed");
 
     expect(result.value.name).toBe("NoStorage");
-    expect(result.value.declarations).toHaveLength(0);
+    expect(result.value.storage ?? []).toHaveLength(0);
     expect(result.value.body?.items).toHaveLength(2);
   });
 
@@ -42,9 +42,9 @@ describe("Optional Storage Block", () => {
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Parse failed");
 
-    expect(result.value.declarations).toHaveLength(1);
-    expect(result.value.declarations[0].kind).toBe("struct");
-    expect(result.value.declarations[0].name).toBe("Point");
+    expect(result.value.storage ?? []).toHaveLength(0);
+    expect(result.value.definitions!.items[0].kind).toBe("declaration:struct");
+    expect(result.value.definitions!.items[0].name).toBe("Point");
   });
 
   it("should still parse program with storage block", () => {
@@ -64,8 +64,8 @@ describe("Optional Storage Block", () => {
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Parse failed");
 
-    expect(result.value.declarations).toHaveLength(1);
-    expect(result.value.declarations[0].kind).toBe("storage");
+    expect(result.value.storage ?? []).toHaveLength(1);
+    expect(result.value.storage![0].kind).toBe("declaration:storage");
   });
 
   it("should parse empty storage block", () => {
@@ -83,7 +83,7 @@ describe("Optional Storage Block", () => {
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Parse failed");
 
-    expect(result.value.declarations).toHaveLength(0);
+    expect(result.value.storage ?? []).toHaveLength(0);
   });
 
   it("should parse minimal program without storage", () => {
@@ -97,7 +97,7 @@ describe("Optional Storage Block", () => {
     if (!result.success) throw new Error("Parse failed");
 
     expect(result.value.name).toBe("Minimal");
-    expect(result.value.declarations).toHaveLength(0);
+    expect(result.value.storage ?? []).toHaveLength(0);
     expect(result.value.body?.items).toHaveLength(0);
   });
 
@@ -124,9 +124,9 @@ describe("Optional Storage Block", () => {
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Parse failed");
 
-    expect(result.value.declarations).toHaveLength(2);
-    expect(result.value.declarations[0].kind).toBe("struct");
-    expect(result.value.declarations[1].kind).toBe("storage");
+    expect(result.value.storage ?? []).toHaveLength(1);
+    expect(result.value.definitions!.items).toHaveLength(1);
+    expect(result.value.definitions!.items[0].kind).toBe("declaration:struct");
   });
 
   it("should handle whitespace and comments correctly", () => {
@@ -147,6 +147,6 @@ describe("Optional Storage Block", () => {
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Parse failed");
 
-    expect(result.value.declarations).toHaveLength(0);
+    expect(result.value.storage ?? []).toHaveLength(0);
   });
 });

@@ -11,7 +11,7 @@ export const makeBuildBlock = (
     yield* Process.Variables.enterScope();
 
     for (const item of block.items) {
-      if ("type" in item && Ast.isStatement(item)) {
+      if (Ast.isStatement(item)) {
         yield* buildStatement(item);
       }
     }

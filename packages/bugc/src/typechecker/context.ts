@@ -1,26 +1,19 @@
 import { Type, type Types } from "#types";
 import type { Visitor } from "#ast";
+import type { Declaration } from "./declarations.js";
 import { type Symbols } from "./symbols.js";
 import { type Error as TypeError } from "./errors.js";
-
-/**
- * JSON Pointer path for tracking location in the AST
- */
-export type JsonPointer = string;
 
 /**
  * Context passed DOWN the tree during type checking.
  * Contains environment information needed to type check a node.
  */
 export interface Context {
-  /** Current position in the AST for error reporting */
-  readonly pointer: JsonPointer;
-
   /** Symbol table with all visible symbols at this point */
   readonly symbols: Symbols;
 
   /** All struct type definitions */
-  readonly structs: Map<string, Type.Struct>;
+  readonly structs: Map<string, Declaration.Struct>;
 
   /** Return type of the current function (if inside one) */
   readonly currentReturnType?: Type;

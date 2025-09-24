@@ -64,6 +64,7 @@ interface BugSymbol {
   mutable: boolean;
   location: "storage" | "memory" | "builtin";
   slot?: number; // For storage variables
+  declaration: Ast.Declaration;
 }
 
 export { type BugSymbol as Symbol };
@@ -85,34 +86,34 @@ export function buildInitialSymbols(
   const errors: TypeError[] = [];
 
   // Add all function signatures to global scope
-  for (const [name, functionType] of functions) {
+  for (const [name, function_] of functions) {
     const symbol: BugSymbol = {
       name,
-      type: functionType,
+      type: function_.type,
       mutable: false,
       location: "memory",
+      declaration: function_.node,
     };
 
     symbols = symbols.define(symbol);
   }
 
   // Add all storage variables to global scope
-  for (const decl of program.declarations) {
-    if (Ast.Declaration.isStorage(decl)) {
-      const type = decl.declaredType
-        ? resolveType(decl.declaredType, structs)
-        : Type.failure("missing type");
+  for (const decl of program.storage || []) {
+    const type = decl.type
+      ? resolveType(decl.type, structs)
+      : Type.failure("missing type");
 
-      const symbol: BugSymbol = {
-        name: decl.name,
-        type,
-        mutable: true,
-        location: "storage",
-        slot: decl.slot,
-      };
+    const symbol: BugSymbol = {
+      name: decl.name,
+      type,
+      mutable: true,
+      location: "storage",
+      slot: decl.slot,
+      declaration: decl,
+    };
 
-      symbols = symbols.define(symbol);
-    }
+    symbols = symbols.define(symbol);
   }
 
   if (errors.length > 0) {
@@ -141,6 +142,7 @@ export function enterFunctionScope(
       type: funcType.parameters[i],
       mutable: true,
       location: "memory",
+      declaration: param,
     };
     newSymbols = newSymbols.define(symbol);
   }

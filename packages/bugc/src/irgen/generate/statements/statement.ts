@@ -18,16 +18,21 @@ export const buildBlock = makeBuildBlock(buildStatement);
  * Build a statement
  */
 export function* buildStatement(stmt: Ast.Statement): Process<void> {
-  switch (stmt.type) {
-    case "DeclarationStatement":
-      return yield* buildDeclarationStatement(stmt);
-    case "AssignmentStatement":
-      return yield* buildAssignmentStatement(stmt);
-    case "ControlFlowStatement":
+  switch (stmt.kind) {
+    case "statement:declare":
+      return yield* buildDeclarationStatement(stmt as Ast.Statement.Declare);
+    case "statement:assign":
+      return yield* buildAssignmentStatement(stmt as Ast.Statement.Assign);
+    case "statement:control-flow:if":
+    case "statement:control-flow:for":
+    case "statement:control-flow:while":
+    case "statement:control-flow:return":
+    case "statement:control-flow:break":
+    case "statement:control-flow:continue":
       return yield* buildControlFlowStatement(
         stmt as Ast.Statement.ControlFlow,
       );
-    case "ExpressionStatement":
+    case "statement:express":
       return yield* buildExpressionStatement(stmt as Ast.Statement.Express);
     default:
       assertExhausted(stmt);

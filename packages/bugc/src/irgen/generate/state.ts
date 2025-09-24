@@ -35,10 +35,10 @@ export namespace State {
    */
   export interface Module {
     readonly name: string;
-    readonly storage: Ir.Module.StorageLayout;
     readonly functions: Map<string, Ir.Function>;
     readonly main?: Ir.Function;
     readonly create?: Ir.Function;
+    readonly storageDeclarations: Ast.Declaration.Storage[];
   }
 
   export namespace Module {

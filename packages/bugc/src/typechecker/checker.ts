@@ -44,7 +44,6 @@ export function checkProgram(program: Ast.Program): Result<Types, TypeError> {
 
   // 3. Type check with visitor traversal
   const context: Context = {
-    pointer: "", // Root JSON pointer
     symbols: symbolResult.value,
     structs: declResult.value.structs,
     nodeTypes: new Map(),

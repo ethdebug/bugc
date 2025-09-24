@@ -17,18 +17,6 @@ export class Formatter {
     this.line(`module ${module.name} {`);
     this.indent++;
 
-    // Storage layout as first-class declaration
-    if (module.storage.slots.length > 0) {
-      this.line("storage {");
-      this.indent++;
-      for (const slot of module.storage.slots) {
-        this.line(`[${slot.slot}] ${slot.name}: ${this.formatType(slot.type)}`);
-      }
-      this.indent--;
-      this.line("}");
-      this.line("");
-    }
-
     // Format create function first if present
     if (module.create) {
       this.line("@create");

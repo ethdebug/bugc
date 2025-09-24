@@ -27,14 +27,13 @@ code {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const ast = parseResult.value;
-      expect(ast.type).toBe("Program");
+      expect(ast.kind).toBe("program");
       expect(ast.name).toBe("Counter");
-      expect(ast.declarations).toHaveLength(2);
+      expect(ast.storage).toHaveLength(2);
       expect(ast.body?.items).toHaveLength(2);
 
       const ifStmt = ast.body?.items[0] as Ast.Statement.ControlFlow;
-      expect(ifStmt.type).toBe("ControlFlowStatement");
-      expect(ifStmt.kind).toBe("if");
+      expect(ifStmt.kind).toBe("statement:control-flow:if");
     });
 
     it("should parse simple-storage.bug example", () => {
@@ -70,13 +69,14 @@ code {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const ast = parseResult.value;
-      expect(ast.type).toBe("Program");
+      expect(ast.kind).toBe("program");
       expect(ast.name).toBe("SimpleStorage");
-      expect(ast.declarations).toHaveLength(4); // 1 struct + 3 storage
+      expect(ast.storage ?? []).toHaveLength(3); // 3 storage
+      expect(ast.definitions?.items ?? []).toHaveLength(1); // 1 struct
 
-      const struct = ast.declarations[0];
-      expect(struct.kind).toBe("struct");
-      expect(struct.name).toBe("User");
+      const struct = ast.definitions?.items[0];
+      expect(struct?.kind).toBe("declaration:struct");
+      expect(struct?.name).toBe("User");
       expect((struct as Ast.Declaration.Struct).fields).toHaveLength(3);
     });
 
@@ -119,8 +119,9 @@ code {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const ast = parseResult.value;
-      expect(ast.type).toBe("Program");
-      expect(ast.declarations).toHaveLength(5); // 1 struct + 4 storage
+      expect(ast.kind).toBe("program");
+      expect(ast.storage ?? []).toHaveLength(4); // 4 storage
+      expect(ast.definitions?.items ?? []).toHaveLength(1); // 1 struct
       expect(ast.body?.items).toHaveLength(4); // if, let, if, return
     });
   });
@@ -146,10 +147,10 @@ code {
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const ast = parseResult.value;
-      expect(ast.declarations).toHaveLength(1);
+      expect(ast.storage ?? []).toHaveLength(1);
 
-      const balances = ast.declarations[0] as Ast.Declaration.Storage;
-      expect(balances.declaredType.type).toBe("ComplexType");
+      const balances = ast.storage![0] as Ast.Declaration.Storage;
+      expect(balances.type.kind.startsWith("type:complex:")).toBe(true);
     });
 
     it("should parse complex arithmetic expressions", () => {
@@ -212,7 +213,7 @@ code {}
       if (!parseResult.success) throw new Error("Parse failed");
       const ast = parseResult.value;
       expect(ast.name).toBe("Empty");
-      expect(ast.declarations).toEqual([]);
+      expect(ast.storage ?? []).toEqual([]);
       expect(ast.body?.items).toEqual([]);
     });
 
@@ -232,7 +233,7 @@ code {}
       expect(parseResult.success).toBe(true);
       if (!parseResult.success) throw new Error("Parse failed");
       const ast = parseResult.value;
-      expect(ast.declarations).toHaveLength(2);
+      expect(ast.storage ?? []).toHaveLength(2);
       expect(ast.body?.items).toEqual([]);
     });
 
@@ -265,8 +266,10 @@ code {
       if (!parseResult.success) throw new Error("Parse failed");
       const ast = parseResult.value;
       const forLoop = ast.body?.items[0] as Ast.Statement.ControlFlow;
-      expect(forLoop.kind).toBe("for");
-      expect(forLoop.body?.items).toHaveLength(2);
+      expect(forLoop.kind).toBe("statement:control-flow:for");
+      expect(
+        (forLoop as Ast.Statement.ControlFlow.For).body.items,
+      ).toHaveLength(2);
     });
   });
 });
