@@ -248,7 +248,7 @@ function formatOutput<T extends Phase>(
         source,
       );
     case "ir":
-      return formatIr((result as CompilerOutput<"ir">).ir, format);
+      return formatIr((result as CompilerOutput<"ir">).ir, format, source);
     case "bytecode":
       return formatBytecode(
         (result as CompilerOutput<"bytecode">).bytecode,
@@ -307,11 +307,11 @@ function formatTypes(
   }
 }
 
-function formatIr(ir: Ir.Module, format: string): string {
+function formatIr(ir: Ir.Module, format: string, source?: string): string {
   if (format === "json") {
     return formatJson(ir, false);
   } else {
-    return formatIrText(ir);
+    return formatIrText(ir, source);
   }
 }
 
@@ -453,7 +453,7 @@ async function showBothVersions(
       console.log(JSON.stringify(unoptIr, null, 2));
     } else {
       const formatter = new Ir.Analysis.Formatter();
-      console.log(formatter.format(unoptIr));
+      console.log(formatter.format(unoptIr, source));
     }
     console.log("\n=== Optimized IR (Level " + optimizationLevel + ") ===");
   }

@@ -1,4 +1,5 @@
 import type * as Ast from "#ast";
+import { Analysis as AstAnalysis } from "#ast";
 import { Type, type Types, type Bindings } from "#types/spec";
 
 export class Formatter {
@@ -85,31 +86,15 @@ export class Formatter {
 
     // Convert byte offset to line/column if we have source
     if (this.source) {
-      const { line, col } = this.offsetToLineCol(this.source, byteOffset);
+      const { line, col } = AstAnalysis.offsetToLineCol(
+        this.source,
+        byteOffset,
+      );
       return { line, col };
     }
 
     // Fallback: just use byte offset as line for sorting
     return { line: byteOffset, col: 0 };
-  }
-
-  private offsetToLineCol(
-    source: string,
-    offset: number,
-  ): { line: number; col: number } {
-    let line = 1;
-    let col = 1;
-
-    for (let i = 0; i < Math.min(offset, source.length); i++) {
-      if (source[i] === "\n") {
-        line++;
-        col = 1;
-      } else {
-        col++;
-      }
-    }
-
-    return { line, col };
   }
 
   private formatEntry(id: Ast.Id, type: Type) {
@@ -120,8 +105,8 @@ export class Formatter {
 
     let position: string;
     if (this.source) {
-      const start = this.offsetToLineCol(this.source, offset);
-      const end = this.offsetToLineCol(this.source, offset + length);
+      const start = AstAnalysis.offsetToLineCol(this.source, offset);
+      const end = AstAnalysis.offsetToLineCol(this.source, offset + length);
 
       if (start.line === end.line) {
         // Same line: show as line:col1-col2
@@ -276,8 +261,8 @@ export class Formatter {
     const length = parseInt(parts[1] || "0", 10);
 
     if (this.source) {
-      const start = this.offsetToLineCol(this.source, offset);
-      const end = this.offsetToLineCol(this.source, offset + length);
+      const start = AstAnalysis.offsetToLineCol(this.source, offset);
+      const end = AstAnalysis.offsetToLineCol(this.source, offset + length);
 
       if (start.line === end.line) {
         return `${start.line}:${start.col}-${end.col}`;

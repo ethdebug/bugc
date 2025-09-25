@@ -27,6 +27,11 @@ export type Instruction =
   | Instruction.Length;
 
 export namespace Instruction {
+  export interface Base {
+    kind: string;
+    loc?: Ast.SourceLocation;
+  }
+
   // Location types for unified read/write
   export type Location =
     | "storage"
@@ -38,7 +43,7 @@ export namespace Instruction {
     | "local";
 
   // NEW: Unified Read instruction
-  export interface Read {
+  export interface Read extends Instruction.Base {
     kind: "read";
     location: Location;
     // For storage/transient (segment-based)
@@ -52,11 +57,10 @@ export namespace Instruction {
     // Destination and type
     dest: string;
     type: Type;
-    loc?: Ast.SourceLocation;
   }
 
   // NEW: Unified Write instruction
-  export interface Write {
+  export interface Write extends Instruction.Base {
     kind: "write";
     location: Exclude<Location, "calldata" | "returndata" | "code">; // No writes to read-only locations
     // For storage/transient (segment-based)
@@ -69,7 +73,6 @@ export namespace Instruction {
     name?: string;
     // Value to write
     value: Value;
-    loc?: Ast.SourceLocation;
   }
 
   // NEW: Unified compute offset instruction
@@ -79,16 +82,15 @@ export namespace Instruction {
     | ComputeOffset.Byte;
 
   export namespace ComputeOffset {
-    export interface Base {
+    export interface Base extends Instruction.Base {
       kind: "compute_offset";
       offsetKind: "array" | "field" | "byte";
       location: "memory" | "calldata" | "returndata" | "code";
       base: Value;
       dest: string;
-      loc?: Ast.SourceLocation;
     }
 
-    export interface Array extends Base {
+    export interface Array extends ComputeOffset.Base {
       offsetKind: "array";
       index: Value;
       stride: number;
@@ -115,7 +117,7 @@ export namespace Instruction {
       loc,
     });
 
-    export interface Field extends Base {
+    export interface Field extends ComputeOffset.Base {
       offsetKind: "field";
       field: string;
       fieldOffset: number;
@@ -142,7 +144,7 @@ export namespace Instruction {
       loc,
     });
 
-    export interface Byte extends Base {
+    export interface Byte extends ComputeOffset.Base {
       offsetKind: "byte";
       offset: Value;
     }
@@ -167,21 +169,19 @@ export namespace Instruction {
     });
   }
 
-  export interface Const {
+  export interface Const extends Instruction.Base {
     kind: "const";
     value: bigint | string | boolean;
     type: Type;
     dest: string;
-    loc?: Ast.SourceLocation;
   }
 
   // Memory allocation instruction
-  export interface Allocate {
+  export interface Allocate extends Instruction.Base {
     kind: "allocate";
     location: "memory"; // For now, only memory allocation
     size: Value; // Size in bytes to allocate
     dest: string; // Destination temp for the allocated pointer
-    loc?: Ast.SourceLocation;
   }
 
   export type ComputeSlot =
@@ -190,15 +190,14 @@ export namespace Instruction {
     | ComputeSlot.Field;
 
   export namespace ComputeSlot {
-    export interface Base {
+    export interface Base extends Instruction.Base {
       kind: "compute_slot";
       slotKind: "mapping" | "array" | "field";
       base: Value;
       dest: string;
-      loc?: Ast.SourceLocation;
     }
 
-    export interface Mapping extends Base {
+    export interface Mapping extends ComputeSlot.Base {
       slotKind: "mapping";
       key: Value;
       keyType: Type;
@@ -223,7 +222,7 @@ export namespace Instruction {
       loc,
     });
 
-    export interface Array extends Base {
+    export interface Array extends ComputeSlot.Base {
       slotKind: "array";
       index: Value;
     }
@@ -245,7 +244,7 @@ export namespace Instruction {
       loc,
     });
 
-    export interface Field extends Base {
+    export interface Field extends ComputeSlot.Base {
       slotKind: "field";
       fieldOffset: number; // Byte offset from struct base
     }
@@ -268,7 +267,7 @@ export namespace Instruction {
     });
   }
 
-  export interface BinaryOp {
+  export interface BinaryOp extends Instruction.Base {
     kind: "binary";
     op: // Arithmetic
     | "add"
@@ -289,18 +288,16 @@ export namespace Instruction {
     left: Value;
     right: Value;
     dest: string;
-    loc?: Ast.SourceLocation;
   }
 
-  export interface UnaryOp {
+  export interface UnaryOp extends Instruction.Base {
     kind: "unary";
     op: "not" | "neg";
     operand: Value;
     dest: string;
-    loc?: Ast.SourceLocation;
   }
 
-  export interface Env {
+  export interface Env extends Instruction.Base {
     kind: "env";
     op:
       | "msg_sender"
@@ -310,30 +307,26 @@ export namespace Instruction {
       | "block_timestamp";
 
     dest: string;
-    loc?: Ast.SourceLocation;
   }
 
-  export interface Hash {
+  export interface Hash extends Instruction.Base {
     kind: "hash";
     value: Value;
     dest: string;
-    loc?: Ast.SourceLocation;
   }
 
-  export interface Cast {
+  export interface Cast extends Instruction.Base {
     kind: "cast";
     value: Value;
     targetType: Type;
     dest: string;
-    loc?: Ast.SourceLocation;
   }
 
   // Call instruction removed - calls are now block terminators
 
-  export interface Length {
+  export interface Length extends Instruction.Base {
     kind: "length";
     object: Value;
     dest: string;
-    loc?: Ast.SourceLocation;
   }
 }

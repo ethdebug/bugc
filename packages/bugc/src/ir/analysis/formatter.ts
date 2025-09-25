@@ -3,15 +3,18 @@
  */
 
 import * as Ir from "#ir/spec";
+import { Analysis as AstAnalysis } from "#ast";
 
 export class Formatter {
   private indent = 0;
   private output: string[] = [];
   private commentedValues: Set<string> = new Set();
+  private source?: string;
 
-  format(module: Ir.Module): string {
+  format(module: Ir.Module, source?: string): string {
     this.output = [];
     this.indent = 0;
+    this.source = source;
 
     // Module declaration with name (no quotes)
     this.line(`module ${module.name} {`);
@@ -90,10 +93,20 @@ export class Formatter {
 
     // Instructions
     for (const inst of block.instructions) {
+      const sourceComment = this.formatSourceComment(inst.loc);
+      if (sourceComment) {
+        this.line(sourceComment);
+      }
       this.line(this.formatInstruction(inst));
     }
 
     // Terminator
+    const terminatorSourceComment = this.formatSourceComment(
+      block.terminator.loc,
+    );
+    if (terminatorSourceComment) {
+      this.line(terminatorSourceComment);
+    }
     this.line(this.formatTerminator(block.terminator));
 
     this.indent--;
@@ -494,5 +507,18 @@ export class Formatter {
       default:
         return [];
     }
+  }
+
+  private formatSourceComment(loc?: any): string {
+    if (!loc || !this.source) {
+      return "";
+    }
+
+    // Source location should have offset and length properties
+    if (typeof loc === "object" && "offset" in loc && "length" in loc) {
+      return AstAnalysis.formatSourceComment(loc, this.source);
+    }
+
+    return "";
   }
 }

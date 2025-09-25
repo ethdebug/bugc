@@ -16,6 +16,7 @@
     "#ast": "./dist/src/ast/index.js",
     "#ast/spec": "./dist/src/ast/spec.js",
     "#ast/visitor": "./dist/src/ast/visitor.js",
+    "#ast/analysis": "./dist/src/ast/analysis/index.js",
 
     "#cli": "./dist/src/cli/index.js",
 

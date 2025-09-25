@@ -76,7 +76,7 @@ function removeKeys(obj: unknown, keysToRemove: string[]): unknown {
   return obj;
 }
 
-export function formatIrText(ir: Ir.Module): string {
+export function formatIrText(ir: Ir.Module, source?: string): string {
   const formatter = new Ir.Analysis.Formatter();
-  return formatter.format(ir);
+  return formatter.format(ir, source);
 }
