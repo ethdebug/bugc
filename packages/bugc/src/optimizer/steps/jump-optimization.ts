@@ -45,8 +45,8 @@ export class JumpOptimizationStep extends BaseOptimizationStep {
             context.trackTransformation({
               type: "replace",
               pass: this.name,
-              original: block.loc ? [block.loc] : [],
-              result: block.loc ? [block.loc] : [],
+              original: Ir.Utils.extractContexts(block),
+              result: Ir.Utils.extractContexts(block),
               reason: `Optimized jump chain: ${originalTarget} -> ${finalTarget}`,
             });
             block.terminator.target = finalTarget;
@@ -67,8 +67,8 @@ export class JumpOptimizationStep extends BaseOptimizationStep {
             context.trackTransformation({
               type: "replace",
               pass: this.name,
-              original: block.loc ? [block.loc] : [],
-              result: block.loc ? [block.loc] : [],
+              original: Ir.Utils.extractContexts(block),
+              result: Ir.Utils.extractContexts(block),
               reason: `Optimized true branch jump chain: ${originalTrue} -> ${trueFinal}`,
             });
             block.terminator.trueTarget = trueFinal;
@@ -83,8 +83,8 @@ export class JumpOptimizationStep extends BaseOptimizationStep {
             context.trackTransformation({
               type: "replace",
               pass: this.name,
-              original: block.loc ? [block.loc] : [],
-              result: block.loc ? [block.loc] : [],
+              original: Ir.Utils.extractContexts(block),
+              result: Ir.Utils.extractContexts(block),
               reason: `Optimized false branch jump chain: ${originalFalse} -> ${falseFinal}`,
             });
             block.terminator.falseTarget = falseFinal;
@@ -106,7 +106,7 @@ export class JumpOptimizationStep extends BaseOptimizationStep {
           context.trackTransformation({
             type: "delete",
             pass: this.name,
-            original: block.loc ? [block.loc] : [],
+            original: Ir.Utils.extractContexts(block),
             result: [],
             reason: `Removed unreachable block ${blockId}`,
           });

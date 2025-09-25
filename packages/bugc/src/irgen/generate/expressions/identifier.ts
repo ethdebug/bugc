@@ -49,7 +49,7 @@ export function* buildIdentifier(
       length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256), // 32 bytes for uint256
       type: irType,
       dest: tempId,
-      loc: expr.loc ?? undefined,
+      debug: yield* Process.Debug.forAstNode(expr),
     } as Ir.Instruction.Read);
     return Ir.Value.temp(tempId, irType);
   }

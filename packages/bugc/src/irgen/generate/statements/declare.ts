@@ -94,7 +94,7 @@ function* buildVariableDeclaration(
       location: "memory",
       size: sizeValue,
       dest: allocTemp,
-      loc: decl.loc ?? undefined,
+      debug: yield* Process.Debug.forAstNode(decl),
     } as Ir.Instruction);
 
     // Declare the SSA variable and directly use the allocTemp as its value
@@ -127,7 +127,7 @@ function* buildVariableDeclaration(
             offset: Ir.Value.temp(allocTemp, Ir.Type.Scalar.uint256),
             length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
             value: Ir.Value.constant(BigInt(byteSize), Ir.Type.Scalar.uint256),
-            loc: decl.loc ?? undefined,
+            debug: yield* Process.Debug.forAstNode(decl),
           } as Ir.Instruction.Write);
 
           // Store the actual bytes data after the length
@@ -138,7 +138,7 @@ function* buildVariableDeclaration(
             left: Ir.Value.temp(allocTemp, Ir.Type.Scalar.uint256),
             right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
             dest: dataOffsetTemp,
-            loc: decl.loc ?? undefined,
+            debug: yield* Process.Debug.forAstNode(decl),
           } as Ir.Instruction.BinaryOp);
 
           yield* Process.Instructions.emit({
@@ -147,7 +147,7 @@ function* buildVariableDeclaration(
             offset: Ir.Value.temp(dataOffsetTemp, Ir.Type.Scalar.uint256),
             length: Ir.Value.constant(BigInt(byteSize), Ir.Type.Scalar.uint256),
             value: value,
-            loc: decl.loc ?? undefined,
+            debug: yield* Process.Debug.forAstNode(decl),
           } as Ir.Instruction.Write);
         }
       } else {
@@ -172,7 +172,7 @@ function* buildVariableDeclaration(
             left: value,
             right: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
             dest: allocTemp,
-            loc: decl.loc ?? undefined,
+            debug: yield* Process.Debug.forAstNode(decl),
           } as Ir.Instruction.BinaryOp);
         }
       }
@@ -202,7 +202,7 @@ function* buildVariableDeclaration(
           value: value.value,
           type: irType,
           dest: ssaVar.currentTempId,
-          loc: decl.loc ?? undefined,
+          debug: yield* Process.Debug.forAstNode(decl),
         } as Ir.Instruction.Const);
       }
     } else {
@@ -213,7 +213,7 @@ function* buildVariableDeclaration(
         value: 0n,
         type: irType,
         dest: ssaVar.currentTempId,
-        loc: decl.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(decl),
       } as Ir.Instruction.Const);
     }
   }

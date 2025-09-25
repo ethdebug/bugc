@@ -52,8 +52,8 @@ export class ReturnMergingStep extends BaseOptimizationStep {
                   context.trackTransformation({
                     type: "replace",
                     pass: this.name,
-                    original: block.loc ? [block.loc] : [],
-                    result: block.loc ? [block.loc] : [],
+                    original: Ir.Utils.extractContexts(block),
+                    result: Ir.Utils.extractContexts(block),
                     reason: `Redirected jump from ${sourceBlockId} to ${targetBlockId} (return merging)`,
                   });
                 } else if (block.terminator.kind === "branch") {
@@ -63,8 +63,8 @@ export class ReturnMergingStep extends BaseOptimizationStep {
                     context.trackTransformation({
                       type: "replace",
                       pass: this.name,
-                      original: block.loc ? [block.loc] : [],
-                      result: block.loc ? [block.loc] : [],
+                      original: Ir.Utils.extractContexts(block),
+                      result: Ir.Utils.extractContexts(block),
                       reason: `Redirected true branch from ${sourceBlockId} to ${targetBlockId} (return merging)`,
                     });
                   }
@@ -74,8 +74,8 @@ export class ReturnMergingStep extends BaseOptimizationStep {
                     context.trackTransformation({
                       type: "replace",
                       pass: this.name,
-                      original: block.loc ? [block.loc] : [],
-                      result: block.loc ? [block.loc] : [],
+                      original: Ir.Utils.extractContexts(block),
+                      result: Ir.Utils.extractContexts(block),
                       reason: `Redirected false branch from ${sourceBlockId} to ${targetBlockId} (return merging)`,
                     });
                   }
@@ -102,7 +102,7 @@ export class ReturnMergingStep extends BaseOptimizationStep {
               context.trackTransformation({
                 type: "delete",
                 pass: this.name,
-                original: sourceBlock.loc ? [sourceBlock.loc] : [],
+                original: Ir.Utils.extractContexts(sourceBlock),
                 result: [],
                 reason: `Merged return block ${sourceBlockId} into ${targetBlockId}`,
               });

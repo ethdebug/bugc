@@ -96,7 +96,7 @@ const makeBuildMemberAccess = (
           kind: "length",
           object,
           dest: tempId,
-          loc: expr.loc ?? undefined,
+          debug: yield* Process.Debug.forAstNode(expr),
         } as Ir.Instruction);
 
         return Ir.Value.temp(tempId, resultType);
@@ -109,11 +109,7 @@ const makeBuildMemberAccess = (
       const nodeType = yield* Process.Types.nodeType(expr);
       if (nodeType) {
         const valueType = fromBugType(nodeType);
-        return yield* emitStorageChainLoad(
-          chain,
-          valueType,
-          expr.loc ?? undefined,
-        );
+        return yield* emitStorageChainLoad(chain, valueType, expr);
       }
     }
 
@@ -142,7 +138,7 @@ const makeBuildMemberAccess = (
             expr.property,
             fieldOffset,
             offsetTemp,
-            expr.loc ?? undefined,
+            yield* Process.Debug.forAstNode(expr),
           ),
         );
 
@@ -155,7 +151,7 @@ const makeBuildMemberAccess = (
           length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           type: irFieldType,
           dest: tempId,
-          loc: expr.loc ?? undefined,
+          debug: yield* Process.Debug.forAstNode(expr),
         } as Ir.Instruction.Read);
 
         return Ir.Value.temp(tempId, irFieldType);
@@ -201,7 +197,7 @@ const makeBuildSliceAccess = (
         left: end,
         right: start,
         dest: lengthTemp,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction);
       const length = Ir.Value.temp(lengthTemp, Ir.Type.Scalar.uint256);
 
@@ -213,7 +209,7 @@ const makeBuildSliceAccess = (
         left: length,
         right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         dest: allocSizeTemp,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction);
 
       const destTemp = yield* Process.Variables.newTemp();
@@ -222,7 +218,7 @@ const makeBuildSliceAccess = (
         location: "memory",
         size: Ir.Value.temp(allocSizeTemp, Ir.Type.Scalar.uint256),
         dest: destTemp,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction);
 
       // Store the length at the beginning of the allocated memory
@@ -232,7 +228,7 @@ const makeBuildSliceAccess = (
         offset: Ir.Value.temp(destTemp, Ir.Type.Scalar.uint256),
         length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         value: length,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction.Write);
 
       // Compute source offset (skip length prefix + start offset)
@@ -243,7 +239,7 @@ const makeBuildSliceAccess = (
         left: object,
         right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         dest: sourceOffsetTemp,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction);
 
       const adjustedSourceTemp = yield* Process.Variables.newTemp();
@@ -253,7 +249,7 @@ const makeBuildSliceAccess = (
         left: Ir.Value.temp(sourceOffsetTemp, Ir.Type.Scalar.uint256),
         right: start,
         dest: adjustedSourceTemp,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction);
 
       // Read the slice data from source
@@ -265,7 +261,7 @@ const makeBuildSliceAccess = (
         length,
         type: resultType,
         dest: dataTemp,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction.Read);
 
       // Calculate destination offset (skip length prefix)
@@ -276,7 +272,7 @@ const makeBuildSliceAccess = (
         left: Ir.Value.temp(destTemp, Ir.Type.Scalar.uint256),
         right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         dest: destDataOffsetTemp,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction);
 
       // Write the slice data to destination
@@ -286,7 +282,7 @@ const makeBuildSliceAccess = (
         offset: Ir.Value.temp(destDataOffsetTemp, Ir.Type.Scalar.uint256),
         length,
         value: Ir.Value.temp(dataTemp, resultType),
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction.Write);
 
       return Ir.Value.temp(destTemp, resultType);
@@ -345,7 +341,7 @@ const makeBuildIndexAccess = (
           object,
           index,
           offsetTemp,
-          expr.loc ?? undefined,
+          yield* Process.Debug.forAstNode(expr),
         ),
       );
 
@@ -358,7 +354,7 @@ const makeBuildIndexAccess = (
         length: Ir.Value.constant(1n, Ir.Type.Scalar.uint256),
         type: elementType,
         dest: tempId,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction.Read);
 
       return Ir.Value.temp(tempId, elementType);
@@ -386,7 +382,7 @@ const makeBuildIndexAccess = (
             left: object,
             right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
             dest: elementsBaseTemp,
-            loc: expr.loc ?? undefined,
+            debug: yield* Process.Debug.forAstNode(expr),
           } as Ir.Instruction);
 
           // Compute offset for array element
@@ -398,7 +394,7 @@ const makeBuildIndexAccess = (
               index,
               32, // array elements are 32 bytes each
               offsetTemp,
-              expr.loc ?? undefined,
+              yield* Process.Debug.forAstNode(expr),
             ),
           );
 
@@ -411,7 +407,7 @@ const makeBuildIndexAccess = (
             length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
             type: elementType,
             dest: tempId,
-            loc: expr.loc ?? undefined,
+            debug: yield* Process.Debug.forAstNode(expr),
           } as Ir.Instruction.Read);
 
           return Ir.Value.temp(tempId, elementType);
@@ -423,11 +419,7 @@ const makeBuildIndexAccess = (
     const chain = yield* findStorageAccessChain(expr);
     if (chain && nodeType) {
       const valueType = fromBugType(nodeType);
-      return yield* emitStorageChainLoad(
-        chain,
-        valueType,
-        expr.loc ?? undefined,
-      );
+      return yield* emitStorageChainLoad(chain, valueType, expr);
     }
 
     // If no storage chain, handle remaining cases
@@ -448,7 +440,7 @@ const makeBuildIndexAccess = (
           index,
           32, // array elements are 32 bytes each
           offsetTemp,
-          expr.loc ?? undefined,
+          yield* Process.Debug.forAstNode(expr),
         ),
       );
 
@@ -461,7 +453,7 @@ const makeBuildIndexAccess = (
         length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         type: elementType,
         dest: tempId,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction.Read);
 
       return Ir.Value.temp(tempId, elementType);
@@ -489,7 +481,7 @@ const makeBuildIndexAccess = (
           key: index,
           keyType: fromBugType(objectType.key),
           dest: slotTempId,
-          loc: expr.loc ?? undefined,
+          debug: yield* Process.Debug.forAstNode(expr),
         } as Ir.Instruction.ComputeSlot);
 
         // Then read from that computed slot
@@ -502,7 +494,7 @@ const makeBuildIndexAccess = (
           length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           type: valueType,
           dest: tempId,
-          loc: expr.loc ?? undefined,
+          debug: yield* Process.Debug.forAstNode(expr),
         } as Ir.Instruction.Read);
 
         return Ir.Value.temp(tempId, valueType);

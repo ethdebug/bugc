@@ -1,4 +1,4 @@
-import type * as Ast from "#ast";
+import * as Format from "@ethdebug/format";
 
 import type { Type } from "./type.js";
 import { Value } from "./value.js";
@@ -29,7 +29,11 @@ export type Instruction =
 export namespace Instruction {
   export interface Base {
     kind: string;
-    loc?: Ast.SourceLocation;
+    debug: Instruction.Debug;
+  }
+
+  export interface Debug {
+    context?: Format.Program.Context;
   }
 
   // Location types for unified read/write
@@ -105,7 +109,7 @@ export namespace Instruction {
       index: Value,
       stride: number,
       dest: string,
-      loc?: Ast.SourceLocation,
+      debug: Instruction.Debug,
     ): ComputeOffset.Array => ({
       kind: "compute_offset",
       offsetKind: "array",
@@ -114,7 +118,7 @@ export namespace Instruction {
       index,
       stride,
       dest,
-      loc,
+      debug,
     });
 
     export interface Field extends ComputeOffset.Base {
@@ -132,7 +136,7 @@ export namespace Instruction {
       field: string,
       fieldOffset: number,
       dest: string,
-      loc?: Ast.SourceLocation,
+      debug: Instruction.Debug,
     ): ComputeOffset.Field => ({
       kind: "compute_offset",
       offsetKind: "field",
@@ -141,7 +145,7 @@ export namespace Instruction {
       field,
       fieldOffset,
       dest,
-      loc,
+      debug,
     });
 
     export interface Byte extends ComputeOffset.Base {
@@ -157,7 +161,7 @@ export namespace Instruction {
       base: Value,
       offset: Value,
       dest: string,
-      loc?: Ast.SourceLocation,
+      debug: Instruction.Debug,
     ): ComputeOffset.Byte => ({
       kind: "compute_offset",
       offsetKind: "byte",
@@ -165,7 +169,7 @@ export namespace Instruction {
       base,
       offset,
       dest,
-      loc,
+      debug,
     });
   }
 
@@ -211,7 +215,7 @@ export namespace Instruction {
       key: Value,
       keyType: Type,
       dest: string,
-      loc?: Ast.SourceLocation,
+      debug: Instruction.Debug,
     ): ComputeSlot.Mapping => ({
       kind: "compute_slot",
       slotKind: "mapping",
@@ -219,7 +223,7 @@ export namespace Instruction {
       key,
       keyType,
       dest,
-      loc,
+      debug,
     });
 
     export interface Array extends ComputeSlot.Base {
@@ -234,14 +238,14 @@ export namespace Instruction {
       base: Value,
       index: Value,
       dest: string,
-      loc?: Ast.SourceLocation,
+      debug: Instruction.Debug,
     ): ComputeSlot.Array => ({
       kind: "compute_slot",
       slotKind: "array",
       base,
       index,
       dest,
-      loc,
+      debug,
     });
 
     export interface Field extends ComputeSlot.Base {
@@ -256,14 +260,14 @@ export namespace Instruction {
       base: Value,
       fieldOffset: number,
       dest: string,
-      loc?: Ast.SourceLocation,
+      debug: Instruction.Debug,
     ): ComputeSlot.Field => ({
       kind: "compute_slot",
       slotKind: "field",
       base,
       fieldOffset,
       dest,
-      loc,
+      debug,
     });
   }
 

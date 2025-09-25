@@ -87,25 +87,38 @@ export class Formatter {
     // Phi nodes
     if (block.phis && block.phis.length > 0) {
       for (const phi of block.phis) {
+        const phiSourceComment = this.formatSourceComment(phi.debug);
+        if (phiSourceComment) {
+          // Handle multi-line comments for pick contexts
+          for (const line of phiSourceComment.split("\n")) {
+            this.line(line);
+          }
+        }
         this.line(this.formatPhiInstruction(phi));
       }
     }
 
     // Instructions
     for (const inst of block.instructions) {
-      const sourceComment = this.formatSourceComment(inst.loc);
+      const sourceComment = this.formatSourceComment(inst.debug);
       if (sourceComment) {
-        this.line(sourceComment);
+        // Handle multi-line comments for pick contexts
+        for (const line of sourceComment.split("\n")) {
+          this.line(line);
+        }
       }
       this.line(this.formatInstruction(inst));
     }
 
     // Terminator
     const terminatorSourceComment = this.formatSourceComment(
-      block.terminator.loc,
+      block.terminator.debug,
     );
     if (terminatorSourceComment) {
-      this.line(terminatorSourceComment);
+      // Handle multi-line comments for pick contexts
+      for (const line of terminatorSourceComment.split("\n")) {
+        this.line(line);
+      }
     }
     this.line(this.formatTerminator(block.terminator));
 
@@ -509,16 +522,82 @@ export class Formatter {
     }
   }
 
-  private formatSourceComment(loc?: any): string {
-    if (!loc || !this.source) {
+  private formatSourceComment(
+    debug?: Ir.Instruction.Debug | Ir.Block.Debug,
+  ): string {
+    if (!debug?.context || !this.source) {
       return "";
     }
 
-    // Source location should have offset and length properties
-    if (typeof loc === "object" && "offset" in loc && "length" in loc) {
-      return AstAnalysis.formatSourceComment(loc, this.source);
+    const context = debug.context;
+
+    // Handle pick context - show all source locations on one line
+    if ("pick" in context && Array.isArray(context.pick)) {
+      const locations: string[] = [];
+      for (const pickContext of context.pick) {
+        const location = this.extractSourceLocation(pickContext);
+        if (location) {
+          locations.push(location);
+        }
+      }
+      if (locations.length > 0) {
+        return `; source: ${locations.join(" or ")}`;
+      }
+      return "";
+    }
+
+    // Handle direct code context
+    return this.formatContextSourceComment(context);
+  }
+
+  private formatContextSourceComment(context: any): string {
+    if (!context || !this.source) {
+      return "";
+    }
+
+    // Check for code.range (correct path according to ethdebug format)
+    if (context.code?.range) {
+      const range = context.code.range;
+      if (
+        typeof range.offset === "number" &&
+        typeof range.length === "number"
+      ) {
+        // Convert to AST SourceLocation format for the existing formatter
+        const loc = {
+          offset: range.offset,
+          length: range.length,
+        };
+        return AstAnalysis.formatSourceComment(loc, this.source);
+      }
     }
 
     return "";
+  }
+
+  private extractSourceLocation(context: any): string | null {
+    if (!context || !this.source) {
+      return null;
+    }
+
+    // Check for code.range (correct path according to ethdebug format)
+    if (context.code?.range) {
+      const range = context.code.range;
+      if (
+        typeof range.offset === "number" &&
+        typeof range.length === "number"
+      ) {
+        // Convert to AST SourceLocation format and extract just the location part
+        const loc = {
+          offset: range.offset,
+          length: range.length,
+        };
+        const fullComment = AstAnalysis.formatSourceComment(loc, this.source);
+        // Extract just the location part (e.g., "16:3-11" from "; source: 16:3-11")
+        const match = fullComment.match(/; source: (.+)/);
+        return match ? match[1] : null;
+      }
+    }
+
+    return null;
   }
 }

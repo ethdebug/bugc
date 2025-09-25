@@ -97,11 +97,7 @@ export function* emitStorageChainAccess(
   const irType = exprType ? fromBugType(exprType) : Ir.Type.Scalar.uint256;
 
   // Build the expression to load from storage
-  const value = yield* emitStorageChainLoad(
-    chain,
-    irType,
-    expr.loc ?? undefined,
-  );
+  const value = yield* emitStorageChainLoad(chain, irType, expr);
 
   return value;
 }
@@ -138,7 +134,7 @@ function getFieldSize(type: Ir.Type): number {
 export function* emitStorageChainLoad(
   chain: StorageAccessChain,
   valueType: Ir.Type,
-  loc: Ast.SourceLocation | undefined,
+  node: Ast.Node | undefined,
 ): Process<Ir.Value> {
   // Get the Bug type from the type checker
   const bugType = yield* Process.Types.nodeType(chain.slot.declaration);
@@ -161,27 +157,27 @@ export function* emitStorageChainLoad(
       if (currentOrigin && Type.isMapping(currentOrigin)) {
         // Mapping access - get key and value types from Bug type
         const keyIrType = fromBugType(currentOrigin.key);
-        yield* Process.Instructions.emit(
-          Ir.Instruction.ComputeSlot.mapping(
-            currentSlot,
-            access.key,
-            keyIrType,
-            tempId,
-            loc,
-          ),
-        );
+        yield* Process.Instructions.emit({
+          kind: "compute_slot",
+          slotKind: "mapping",
+          base: currentSlot,
+          key: access.key,
+          keyType: keyIrType,
+          dest: tempId,
+          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+        } as Ir.Instruction.ComputeSlot);
         // Update to the value type
         currentOrigin = currentOrigin.value;
       } else if (currentOrigin && Type.isArray(currentOrigin)) {
         // Array access - compute array slot with index
-        yield* Process.Instructions.emit(
-          Ir.Instruction.ComputeSlot.array(
-            currentSlot,
-            access.key,
-            tempId,
-            loc,
-          ),
-        );
+        yield* Process.Instructions.emit({
+          kind: "compute_slot",
+          slotKind: "array",
+          base: currentSlot,
+          index: access.key,
+          dest: tempId,
+          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+        } as Ir.Instruction.ComputeSlot);
         // Update to the element type
         currentOrigin = currentOrigin.element;
       }
@@ -207,14 +203,14 @@ export function* emitStorageChainLoad(
         if (fieldSlotOffset > 0) {
           // Field is in a different slot, generate compute_slot.field
           const tempId = yield* Process.Variables.newTemp();
-          yield* Process.Instructions.emit(
-            Ir.Instruction.ComputeSlot.field(
-              currentSlot,
-              fieldSlotOffset,
-              tempId,
-              loc,
-            ),
-          );
+          yield* Process.Instructions.emit({
+            kind: "compute_slot",
+            slotKind: "field",
+            base: currentSlot,
+            fieldOffset: fieldSlotOffset,
+            dest: tempId,
+            debug: node ? yield* Process.Debug.forAstNode(node) : {},
+          });
           currentSlot = Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
         }
 
@@ -255,7 +251,7 @@ export function* emitStorageChainLoad(
     length: Ir.Value.constant(BigInt(fieldSize), Ir.Type.Scalar.uint256),
     type: valueType,
     dest: loadTempId,
-    loc,
+    debug: node ? yield* Process.Debug.forAstNode(node) : {},
   } as Ir.Instruction.Read);
 
   return Ir.Value.temp(loadTempId, valueType);
@@ -267,7 +263,7 @@ export function* emitStorageChainLoad(
 export function* emitStorageChainStore(
   chain: StorageAccessChain,
   value: Ir.Value,
-  loc: Ast.SourceLocation | undefined,
+  node: Ast.Node | undefined,
 ): Process<void> {
   // Handle direct storage variable assignment (no accesses)
   if (chain.accesses.length === 0) {
@@ -279,7 +275,7 @@ export function* emitStorageChainStore(
       offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
       length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
       value,
-      loc,
+      debug: node ? yield* Process.Debug.forAstNode(node) : {},
     } as Ir.Instruction.Write);
     return;
   }
@@ -302,28 +298,28 @@ export function* emitStorageChainStore(
         // Mapping access
         const slotTemp = yield* Process.Variables.newTemp();
         const keyIrType = fromBugType(currentOrigin.key);
-        yield* Process.Instructions.emit(
-          Ir.Instruction.ComputeSlot.mapping(
-            currentSlot,
-            access.key,
-            keyIrType,
-            slotTemp,
-            loc,
-          ),
-        );
+        yield* Process.Instructions.emit({
+          kind: "compute_slot",
+          slotKind: "mapping",
+          base: currentSlot,
+          key: access.key,
+          keyType: keyIrType,
+          dest: slotTemp,
+          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+        } as Ir.Instruction.ComputeSlot);
         currentSlot = Ir.Value.temp(slotTemp, Ir.Type.Scalar.uint256);
         currentOrigin = currentOrigin.value;
       } else if (currentOrigin && Type.isArray(currentOrigin)) {
         // Array access - compute array slot with index
         const slotTemp = yield* Process.Variables.newTemp();
-        yield* Process.Instructions.emit(
-          Ir.Instruction.ComputeSlot.array(
-            currentSlot,
-            access.key,
-            slotTemp,
-            loc,
-          ),
-        );
+        yield* Process.Instructions.emit({
+          kind: "compute_slot",
+          slotKind: "array",
+          base: currentSlot,
+          index: access.key,
+          dest: slotTemp,
+          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+        });
         currentSlot = Ir.Value.temp(slotTemp, Ir.Type.Scalar.uint256);
         currentOrigin = currentOrigin.element;
       }
@@ -340,14 +336,14 @@ export function* emitStorageChainStore(
           if (fieldSlotOffset > 0) {
             // Field is in a different slot
             const tempId = yield* Process.Variables.newTemp();
-            yield* Process.Instructions.emit(
-              Ir.Instruction.ComputeSlot.field(
-                currentSlot,
-                fieldSlotOffset,
-                tempId,
-                loc,
-              ),
-            );
+            yield* Process.Instructions.emit({
+              kind: "compute_slot",
+              slotKind: "field",
+              base: currentSlot,
+              fieldOffset: fieldSlotOffset,
+              dest: tempId,
+              debug: node ? yield* Process.Debug.forAstNode(node) : {},
+            });
             currentSlot = Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
           }
 
@@ -360,7 +356,7 @@ export function* emitStorageChainStore(
           yield* Process.Errors.report(
             new IrgenError(
               `Field ${access.fieldName} not found in struct`,
-              loc,
+              node?.loc ?? undefined,
               Severity.Error,
             ),
           );
@@ -398,7 +394,7 @@ export function* emitStorageChainStore(
     offset: Ir.Value.constant(BigInt(byteOffset), Ir.Type.Scalar.uint256),
     length: Ir.Value.constant(BigInt(actualFieldSize), Ir.Type.Scalar.uint256),
     value,
-    loc,
+    debug: node ? yield* Process.Debug.forAstNode(node) : {},
   } as Ir.Instruction.Write);
 }
 

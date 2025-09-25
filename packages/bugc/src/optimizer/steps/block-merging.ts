@@ -42,15 +42,18 @@ export class BlockMergingStep extends BaseOptimizationStep {
         targetBlock.instructions.push(...sourceBlock.instructions);
         targetBlock.terminator = sourceBlock.terminator;
 
+        // Combine debug contexts from both blocks
+        targetBlock.debug = Ir.Utils.combineDebugContexts(
+          targetBlock.debug,
+          sourceBlock.debug,
+        );
+
         // Track the merge transformation
         context.trackTransformation({
           type: "merge",
           pass: this.name,
-          original: [
-            ...(targetBlock.loc ? [targetBlock.loc] : []),
-            ...(sourceBlock.loc ? [sourceBlock.loc] : []),
-          ],
-          result: targetBlock.loc ? [targetBlock.loc] : [],
+          original: Ir.Utils.extractContexts(targetBlock, sourceBlock),
+          result: Ir.Utils.extractContexts(targetBlock),
           reason: `Merged block ${toMerge} into ${mergeInto}`,
         });
 

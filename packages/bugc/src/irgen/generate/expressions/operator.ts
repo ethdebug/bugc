@@ -97,7 +97,7 @@ const makeBuildUnaryOperator = (
       op,
       operand: operandVal,
       dest: tempId,
-      loc: expr.loc ?? undefined,
+      debug: yield* Process.Debug.forAstNode(expr),
     } as Ir.Instruction.UnaryOp);
 
     return Ir.Value.temp(tempId, resultType);
@@ -150,7 +150,7 @@ const makeBuildBinaryOperator = (
       left: leftVal,
       right: rightVal,
       dest: tempId,
-      loc: expr.loc ?? undefined,
+      debug: yield* Process.Debug.forAstNode(expr),
     } as Ir.Instruction.BinaryOp);
 
     return Ir.Value.temp(tempId, resultType);

@@ -1,5 +1,5 @@
 import * as Ir from "#ir";
-import { type SourceLocation } from "#ast";
+import type * as Format from "@ethdebug/format";
 
 export type OptimizationLevel = 0 | 1 | 2 | 3;
 
@@ -27,8 +27,8 @@ export type TransformationType =
 export interface SourceTransform {
   type: TransformationType;
   pass: string;
-  original: SourceLocation[];
-  result: SourceLocation[];
+  original: Format.Program.Context[];
+  result: Format.Program.Context[];
   reason: string;
 }
 
@@ -220,7 +220,7 @@ export abstract class BaseOptimizationStep implements OptimizationStep {
         instructions: [...block.instructions],
         terminator: { ...block.terminator },
         predecessors: new Set(block.predecessors),
-        loc: block.loc,
+        debug: block.debug,
       });
     }
 
@@ -248,7 +248,7 @@ export abstract class BaseOptimizationStep implements OptimizationStep {
       context.trackTransformation({
         type: "delete",
         pass: this.name,
-        original: original.loc ? [original.loc] : [],
+        original: Ir.Utils.extractContexts(original),
         result: [],
         reason,
       });
@@ -258,8 +258,8 @@ export abstract class BaseOptimizationStep implements OptimizationStep {
       context.trackTransformation({
         type: "replace",
         pass: this.name,
-        original: original.loc ? [original.loc] : [],
-        result: newInstruction.loc ? [newInstruction.loc] : [],
+        original: Ir.Utils.extractContexts(original),
+        result: Ir.Utils.extractContexts(newInstruction),
         reason,
       });
     }

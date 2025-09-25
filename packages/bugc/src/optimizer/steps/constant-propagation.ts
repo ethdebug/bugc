@@ -12,8 +12,9 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
 
     // Process each function separately
     this.processAllFunctions(optimized, (func) => {
-      // Track known constant values across the function
+      // Track known constant values and their debug info across the function
       const constants = new Map<string, bigint | boolean | string>();
+      const constantDebug = new Map<string, Ir.Instruction.Debug>();
 
       for (const block of func.blocks.values()) {
         const newInstructions: Ir.Instruction[] = [];
@@ -21,14 +22,18 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
         for (const inst of block.instructions) {
           let newInst = inst;
 
-          // Track constant assignments
+          // Track constant assignments and their debug info
           if (inst.kind === "const" && "dest" in inst) {
             constants.set(inst.dest, inst.value);
+            if (inst.debug) {
+              constantDebug.set(inst.dest, inst.debug);
+            }
           } else {
             // Try to propagate constants into instruction operands
             const propagated = this.propagateConstantsIntoInstruction(
               inst,
               constants,
+              constantDebug,
             );
             if (propagated !== inst) {
               newInst = propagated;
@@ -36,8 +41,8 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
               context.trackTransformation({
                 type: "replace",
                 pass: this.name,
-                original: inst.loc ? [inst.loc] : [],
-                result: newInst.loc ? [newInst.loc] : [],
+                original: Ir.Utils.extractContexts(inst),
+                result: Ir.Utils.extractContexts(newInst),
                 reason: "Propagated constants into instruction operands",
               });
             }
@@ -47,6 +52,7 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
               // Conservative: clear all constant info
               // A more sophisticated analysis would track what's invalidated
               constants.clear();
+              constantDebug.clear();
             }
           }
 
@@ -63,14 +69,21 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
   private propagateConstantsIntoInstruction(
     inst: Ir.Instruction,
     constants: Map<string, bigint | boolean | string>,
+    constantDebug: Map<string, Ir.Instruction.Debug>,
   ): Ir.Instruction {
     // Clone instruction and replace temp operands with constants where possible
     const result = { ...inst };
+    const propagatedDebugContexts: Ir.Instruction.Debug[] = [];
 
     const propagateValue = (value: Ir.Value): Ir.Value => {
       if (value.kind === "temp") {
         const constValue = constants.get(value.id);
         if (constValue !== undefined) {
+          // Track debug info from the constant definition
+          const debug = constantDebug.get(value.id);
+          if (debug) {
+            propagatedDebugContexts.push(debug);
+          }
           return {
             kind: "const",
             value: constValue,
@@ -132,17 +145,15 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
         break;
     }
 
-    // Check if we actually changed anything by comparing each field
-    // Can't use JSON.stringify because it doesn't support BigInt
-    let changed = false;
+    // Check if we actually changed anything
+    let changed = propagatedDebugContexts.length > 0;
 
-    // Compare based on instruction type
-    if (result.kind !== inst.kind) {
-      changed = true;
-    } else {
-      // For now, assume any propagation means a change
-      // A more sophisticated check would compare all fields
-      changed = true;
+    // If we propagated constants, combine debug contexts
+    if (changed) {
+      result.debug = Ir.Utils.combineDebugContexts(
+        inst.debug,
+        ...propagatedDebugContexts,
+      );
     }
 
     return changed ? result : inst;

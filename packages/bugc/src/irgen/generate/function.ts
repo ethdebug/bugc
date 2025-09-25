@@ -29,6 +29,7 @@ export function* buildFunction(
       yield* Process.Blocks.terminate({
         kind: "return",
         value: undefined,
+        debug: {},
       });
     }
   }

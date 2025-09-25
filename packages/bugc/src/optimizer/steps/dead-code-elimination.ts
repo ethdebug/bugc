@@ -53,7 +53,7 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
               context.trackTransformation({
                 type: "delete",
                 pass: this.name,
-                original: phi.loc ? [phi.loc] : [],
+                original: Ir.Utils.extractContexts(phi),
                 result: [],
                 reason: `Removed unused phi node: ${phi.dest}`,
               });
@@ -79,7 +79,7 @@ export class DeadCodeEliminationStep extends BaseOptimizationStep {
             context.trackTransformation({
               type: "delete",
               pass: this.name,
-              original: inst.loc ? [inst.loc] : [],
+              original: Ir.Utils.extractContexts(inst),
               result: [],
               reason: `Removed unused instruction: ${inst.kind} -> ${inst.dest}`,
             });

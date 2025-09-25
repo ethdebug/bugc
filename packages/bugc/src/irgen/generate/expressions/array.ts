@@ -31,7 +31,7 @@ export function* buildArray(
         offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
         length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         value: lengthValue,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction.Write);
 
       // Then write each element
@@ -51,7 +51,7 @@ export function* buildArray(
             Ir.Value.constant(BigInt(context.slot), Ir.Type.Scalar.uint256),
             indexValue,
             slotTemp,
-            expr.loc ?? undefined,
+            yield* Process.Debug.forAstNode(expr),
           ),
         );
 
@@ -63,7 +63,7 @@ export function* buildArray(
           offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
           length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           value: elementValue,
-          loc: expr.loc ?? undefined,
+          debug: yield* Process.Debug.forAstNode(expr.elements[i]),
         } as Ir.Instruction.Write);
       }
 
@@ -90,7 +90,7 @@ export function* buildArray(
           location: "memory",
           size: Ir.Value.constant(totalSize, Ir.Type.Scalar.uint256),
           dest: basePtr,
-          loc: expr.loc ?? undefined,
+          debug: yield* Process.Debug.forAstNode(expr),
         } as Ir.Instruction.Allocate);
 
         // Store length
@@ -100,7 +100,7 @@ export function* buildArray(
           offset: Ir.Value.temp(basePtr, Ir.Type.Scalar.uint256),
           length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           value: Ir.Value.constant(elementCount, Ir.Type.Scalar.uint256),
-          loc: expr.loc ?? undefined,
+          debug: yield* Process.Debug.forAstNode(expr),
         } as Ir.Instruction.Write);
 
         // Calculate elements base (skip length field)
@@ -111,7 +111,7 @@ export function* buildArray(
           left: Ir.Value.temp(basePtr, Ir.Type.Scalar.uint256),
           right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           dest: elementsBaseTemp,
-          loc: expr.loc ?? undefined,
+          debug: yield* Process.Debug.forAstNode(expr),
         } as Ir.Instruction);
 
         // Store each element
@@ -128,7 +128,7 @@ export function* buildArray(
               Ir.Value.constant(BigInt(i), Ir.Type.Scalar.uint256),
               32,
               offsetTemp,
-              expr.loc ?? undefined,
+              yield* Process.Debug.forAstNode(expr.elements[i]),
             ),
           );
 
@@ -138,7 +138,7 @@ export function* buildArray(
             offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
             length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
             value: elementValue,
-            loc: expr.loc ?? undefined,
+            debug: yield* Process.Debug.forAstNode(expr.elements[i]),
           } as Ir.Instruction.Write);
         }
 
@@ -155,7 +155,7 @@ export function* buildArray(
         location: "memory",
         size: Ir.Value.constant(totalSize, Ir.Type.Scalar.uint256),
         dest: basePtr,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction.Allocate);
 
       // Store length
@@ -165,7 +165,7 @@ export function* buildArray(
         offset: Ir.Value.temp(basePtr, Ir.Type.Scalar.uint256),
         length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         value: Ir.Value.constant(elementCount, Ir.Type.Scalar.uint256),
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction.Write);
 
       // Calculate elements base
@@ -176,7 +176,7 @@ export function* buildArray(
         left: Ir.Value.temp(basePtr, Ir.Type.Scalar.uint256),
         right: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         dest: elementsBaseTemp,
-        loc: expr.loc ?? undefined,
+        debug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction);
 
       // Store each element
@@ -193,7 +193,7 @@ export function* buildArray(
             Ir.Value.constant(BigInt(i), Ir.Type.Scalar.uint256),
             32,
             offsetTemp,
-            expr.loc ?? undefined,
+            yield* Process.Debug.forAstNode(expr.elements[i]),
           ),
         );
 
@@ -203,7 +203,7 @@ export function* buildArray(
           offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
           length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           value: elementValue,
-          loc: expr.loc ?? undefined,
+          debug: yield* Process.Debug.forAstNode(expr.elements[i]),
         } as Ir.Instruction.Write);
       }
 

@@ -97,9 +97,10 @@ export namespace Process {
         const placeholderBlock: Ir.Block = {
           id: targetBlockId,
           instructions: [],
-          terminator: { kind: "jump", target: targetBlockId }, // Placeholder terminator
+          terminator: { kind: "jump", target: targetBlockId, debug: {} }, // Placeholder terminator
           predecessors: new Set([predId]),
           phis: [],
+          debug: {},
         };
 
         // Add the new block to the function
@@ -198,6 +199,7 @@ export namespace Process {
           terminator: block.terminator,
           predecessors: block.predecessors,
           phis: block.phis,
+          debug: {},
         };
 
         yield* lift(State.Function.addBlock)(block.id, completeBlock);
@@ -479,6 +481,7 @@ export namespace Process {
         dest: phiDest,
         sources,
         type: ssaVar.type,
+        debug: {},
       };
 
       yield* lift(State.Block.addPhi)(phi);
@@ -752,6 +755,7 @@ export namespace Process {
               dest: phiTemp,
               sources,
               type: loopPhi.type,
+              debug: {},
             };
 
             // Add the phi to the header block
@@ -951,6 +955,26 @@ export namespace Process {
     }
   }
 
+  export namespace Debug {
+    export function* forAstNode(node: Ast.Node): Process<Ir.Instruction.Debug> {
+      if (!node.loc) {
+        return {};
+      }
+
+      const { offset, length } = node.loc;
+
+      const id = (yield* Process.Modules.current()).name;
+      return {
+        context: {
+          code: {
+            source: { id },
+            range: { offset, length },
+          },
+        },
+      };
+    }
+  }
+
   /**
    * Storage operations
    */
@@ -983,7 +1007,7 @@ export namespace Process {
     export function* computeSlot(
       baseSlot: Ir.Value,
       key: Ir.Value,
-      loc?: Ast.SourceLocation,
+      node?: Ast.Node,
     ): Process<Ir.Value> {
       const tempId = yield* Variables.newTemp();
       yield* Process.Instructions.emit({
@@ -992,7 +1016,7 @@ export namespace Process {
         base: baseSlot,
         key,
         dest: tempId,
-        loc,
+        debug: node ? yield* Process.Debug.forAstNode(node) : {},
       } as Ir.Instruction.ComputeSlot);
       return Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
     }
@@ -1003,7 +1027,7 @@ export namespace Process {
     export function* load(
       slot: Ir.Value,
       type: Ir.Type,
-      loc?: Ast.SourceLocation,
+      node?: Ast.Node,
     ): Process<Ir.Value> {
       const tempId = yield* Variables.newTemp();
       yield* Process.Instructions.emit({
@@ -1014,7 +1038,7 @@ export namespace Process {
         length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         type,
         dest: tempId,
-        loc,
+        debug: node ? yield* Process.Debug.forAstNode(node) : {},
       } as Ir.Instruction.Read);
       return Ir.Value.temp(tempId, type);
     }
@@ -1025,7 +1049,7 @@ export namespace Process {
     export function* store(
       slot: Ir.Value,
       value: Ir.Value,
-      loc?: Ast.SourceLocation,
+      node?: Ast.Node,
     ): Process<void> {
       yield* Process.Instructions.emit({
         kind: "write",
@@ -1034,7 +1058,7 @@ export namespace Process {
         offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
         length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         value,
-        loc,
+        debug: node ? yield* Process.Debug.forAstNode(node) : {},
       } as Ir.Instruction.Write);
     }
   }

@@ -76,6 +76,7 @@ export const makeBuildIfStatement = (
       condition: condVal,
       trueTarget: thenBlock,
       falseTarget: elseBlock,
+      debug: yield* Process.Debug.forAstNode(stmt),
     });
 
     // Build then block
@@ -89,6 +90,7 @@ export const makeBuildIfStatement = (
         yield* Process.Blocks.terminate({
           kind: "jump",
           target: mergeBlock,
+          debug: yield* Process.Debug.forAstNode(stmt),
         });
       }
     }
@@ -103,6 +105,7 @@ export const makeBuildIfStatement = (
         yield* Process.Blocks.terminate({
           kind: "jump",
           target: mergeBlock,
+          debug: yield* Process.Debug.forAstNode(stmt),
         });
       }
     }
@@ -124,6 +127,7 @@ const makeBuildLoop = (
     update?: Ast.Statement;
     body: Ast.Block;
     prefix: string;
+    node?: Ast.Node;
   }): Process<void> {
     const buildBlock = makeBuildBlock(buildStatement);
 
@@ -149,6 +153,7 @@ const makeBuildLoop = (
     yield* Process.Blocks.terminate({
       kind: "jump",
       target: headerBlock,
+      debug: config.node ? yield* Process.Debug.forAstNode(config.node) : {},
     });
 
     // Header: evaluate condition and branch
@@ -167,6 +172,7 @@ const makeBuildLoop = (
       condition: condVal,
       trueTarget: bodyBlock,
       falseTarget: exitBlock,
+      debug: config.node ? yield* Process.Debug.forAstNode(config.node) : {},
     });
 
     // Body: execute loop body
@@ -187,6 +193,9 @@ const makeBuildLoop = (
         yield* Process.Blocks.terminate({
           kind: "jump",
           target: continueTarget,
+          debug: config.node
+            ? yield* Process.Debug.forAstNode(config.node)
+            : {},
         });
       }
     }
@@ -208,6 +217,9 @@ const makeBuildLoop = (
         yield* Process.Blocks.terminate({
           kind: "jump",
           target: headerBlock,
+          debug: config.node
+            ? yield* Process.Debug.forAstNode(config.node)
+            : {},
         });
       }
     } else if (!config.update) {
@@ -240,6 +252,7 @@ export const makeBuildWhileStatement = (
       condition: stmt.condition,
       body: stmt.body,
       prefix: "while",
+      node: stmt,
     });
   };
 };
@@ -260,6 +273,7 @@ export const makeBuildForStatement = (
       update: stmt.update,
       body: stmt.body,
       prefix: "for",
+      node: stmt,
     });
   };
 };
@@ -277,6 +291,7 @@ function* buildReturnStatement(
   yield* Process.Blocks.terminate({
     kind: "return",
     value,
+    debug: yield* Process.Debug.forAstNode(stmt),
   });
 }
 
@@ -303,6 +318,7 @@ function* buildBreakStatement(
   yield* Process.Blocks.terminate({
     kind: "jump",
     target: loop.breakTarget,
+    debug: yield* Process.Debug.forAstNode(stmt),
   });
 }
 
@@ -329,5 +345,6 @@ function* buildContinueStatement(
   yield* Process.Blocks.terminate({
     kind: "jump",
     target: loop.continueTarget,
+    debug: yield* Process.Debug.forAstNode(stmt),
   });
 }

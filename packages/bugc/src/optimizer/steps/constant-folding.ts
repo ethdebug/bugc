@@ -45,8 +45,8 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
               context.trackTransformation({
                 type: "replace",
                 pass: this.name,
-                original: inst.loc ? [inst.loc] : [],
-                result: folded.loc ? [folded.loc] : [],
+                original: Ir.Utils.extractContexts(inst),
+                result: Ir.Utils.extractContexts(folded),
                 reason: `Folded ${inst.op} operation on constants`,
               });
             } else {
@@ -67,8 +67,8 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
               context.trackTransformation({
                 type: "replace",
                 pass: this.name,
-                original: inst.loc ? [inst.loc] : [],
-                result: folded.loc ? [folded.loc] : [],
+                original: Ir.Utils.extractContexts(inst),
+                result: Ir.Utils.extractContexts(folded),
                 reason: `Evaluated keccak256 on constant`,
               });
             } else {
@@ -86,8 +86,8 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
               context.trackTransformation({
                 type: "replace",
                 pass: this.name,
-                original: inst.loc ? [inst.loc] : [],
-                result: folded.loc ? [folded.loc] : [],
+                original: Ir.Utils.extractContexts(inst),
+                result: Ir.Utils.extractContexts(folded),
                 reason: `Evaluated length of fixed-size array`,
               });
             } else {
@@ -134,7 +134,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
       value: result,
       type: this.getResultType(inst.op, typeof result),
       dest: inst.dest,
-      loc: inst.loc,
+      debug: Ir.Utils.preserveDebug(inst),
     };
   }
 
@@ -244,7 +244,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
       value: hashValue,
       type: Ir.Type.Scalar.bytes32,
       dest: inst.dest,
-      loc: inst.loc,
+      debug: Ir.Utils.preserveDebug(inst),
     };
   }
 

@@ -13,8 +13,9 @@ describe("ConstantFoldingStep", () => {
       id: "entry",
       phis: [],
       instructions,
-      terminator: { kind: "return" },
+      terminator: { kind: "return", debug: {} },
       predecessors: new Set<string>(),
+      debug: {},
     };
 
     return {
@@ -36,11 +37,13 @@ describe("ConstantFoldingStep", () => {
         value: "transfer(address,uint256)",
         type: Ir.Type.Scalar.uint256,
         dest: "t0",
+        debug: {},
       },
       {
         kind: "hash",
         value: { kind: "temp", id: "t0", type: Ir.Type.Scalar.uint256 },
         dest: "t1",
+        debug: {},
       },
     ]);
 
@@ -72,11 +75,13 @@ describe("ConstantFoldingStep", () => {
         value: 123n,
         type: Ir.Type.Scalar.uint256,
         dest: "t0",
+        debug: {},
       },
       {
         kind: "hash",
         value: { kind: "temp", id: "t0", type: Ir.Type.Scalar.uint256 },
         dest: "t1",
+        debug: {},
       },
     ]);
 
@@ -105,22 +110,26 @@ describe("ConstantFoldingStep", () => {
         value: "pause()",
         type: Ir.Type.Scalar.uint256,
         dest: "t0",
+        debug: {},
       },
       {
         kind: "hash",
         value: { kind: "temp", id: "t0", type: Ir.Type.Scalar.uint256 },
         dest: "t1",
+        debug: {},
       },
       {
         kind: "const",
         value: "unpause()",
         type: Ir.Type.Scalar.uint256,
         dest: "t2",
+        debug: {},
       },
       {
         kind: "hash",
         value: { kind: "temp", id: "t2", type: Ir.Type.Scalar.uint256 },
         dest: "t3",
+        debug: {},
       },
     ]);
 

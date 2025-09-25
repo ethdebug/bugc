@@ -53,7 +53,7 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
               context.trackTransformation({
                 type: "delete",
                 pass: this.name,
-                original: processedInst.loc ? [processedInst.loc] : [],
+                original: Ir.Utils.extractContexts(processedInst),
                 result: [],
                 reason: `Eliminated duplicate computation: ${exprKey}`,
               });
