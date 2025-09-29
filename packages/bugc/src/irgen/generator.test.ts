@@ -687,8 +687,8 @@ describe("generateModule", () => {
       expect(hasMappingSlot).toBe(true);
       // Both fixed and dynamic arrays now use compute_slot with kind="array" for proper storage layout
       expect(hasArraySlot).toBe(true);
-      // We no longer generate unnecessary "add" instructions
-      expect(hasBinaryAdd).toBe(false);
+      // We now generate "add" instructions to compute array element slots
+      expect(hasBinaryAdd).toBe(true);
       expect(hasStorageDynamic).toBe(true);
     });
   });

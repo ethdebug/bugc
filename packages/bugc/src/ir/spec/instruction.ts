@@ -228,7 +228,7 @@ export namespace Instruction {
 
     export interface Array extends ComputeSlot.Base {
       slotKind: "array";
-      index: Value;
+      // No index - just computes the first slot of the array
     }
 
     export const isArray = (inst: ComputeSlot): inst is ComputeSlot.Array =>
@@ -236,14 +236,12 @@ export namespace Instruction {
 
     export const array = (
       base: Value,
-      index: Value,
       dest: string,
       debug: Instruction.Debug,
     ): ComputeSlot.Array => ({
       kind: "compute_slot",
       slotKind: "array",
       base,
-      index,
       dest,
       debug,
     });

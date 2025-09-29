@@ -38,7 +38,8 @@ export function generateComputeSlot<S extends Stack>(
   }
 
   if (Ir.Instruction.ComputeSlot.isArray(inst)) {
-    // For arrays: keccak256(base) + index
+    // For arrays: just compute keccak256(base) - the first slot
+    // The index will be added separately by the IR generator
     return (
       pipe<S>()
         // Store base at memory offset 0
@@ -49,11 +50,7 @@ export function generateComputeSlot<S extends Stack>(
         // Hash 32 bytes starting at offset 0
         .then(PUSHn(32n), { as: "size" })
         .then(PUSHn(0n), { as: "offset" })
-        .then(KECCAK256(), { as: "b" })
-
-        // Add the index to get the final slot
-        .then(loadValue(inst.index), { as: "a" })
-        .then(ADD(), { as: "value" })
+        .then(KECCAK256(), { as: "value" })
         .then(storeValueIfNeeded(inst.dest))
         .done()
     );

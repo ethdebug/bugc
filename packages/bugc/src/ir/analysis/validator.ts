@@ -246,11 +246,7 @@ export class Validator {
         this.validateType(inst.keyType);
       }
     } else if (Ir.Instruction.ComputeSlot.isArray(inst)) {
-      if (!inst.index) {
-        this.error("Array compute_slot must have an index");
-      } else {
-        this.validateValue(inst.index);
-      }
+      // Array compute_slot now only computes the first slot (no index needed)
     } else if (Ir.Instruction.ComputeSlot.isField(inst)) {
       if (inst.fieldOffset === undefined) {
         this.error("Field compute_slot must have a fieldOffset");

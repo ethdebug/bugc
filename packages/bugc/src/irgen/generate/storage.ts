@@ -169,15 +169,25 @@ export function* emitStorageChainLoad(
         // Update to the value type
         currentOrigin = currentOrigin.value;
       } else if (currentOrigin && Type.isArray(currentOrigin)) {
-        // Array access - compute array slot with index
+        // Array access - first compute the array's first slot (hash of base)
+        const firstSlotTempId = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit({
           kind: "compute_slot",
           slotKind: "array",
           base: currentSlot,
-          index: access.key,
-          dest: tempId,
+          dest: firstSlotTempId,
           debug: node ? yield* Process.Debug.forAstNode(node) : {},
         } as Ir.Instruction.ComputeSlot);
+
+        // Then add the index to get the actual element slot
+        yield* Process.Instructions.emit({
+          kind: "binary",
+          op: "add",
+          left: Ir.Value.temp(firstSlotTempId, Ir.Type.Scalar.uint256),
+          right: access.key,
+          dest: tempId,
+          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+        } as Ir.Instruction.BinaryOp);
         // Update to the element type
         currentOrigin = currentOrigin.element;
       }
@@ -310,13 +320,23 @@ export function* emitStorageChainStore(
         currentSlot = Ir.Value.temp(slotTemp, Ir.Type.Scalar.uint256);
         currentOrigin = currentOrigin.value;
       } else if (currentOrigin && Type.isArray(currentOrigin)) {
-        // Array access - compute array slot with index
-        const slotTemp = yield* Process.Variables.newTemp();
+        // Array access - first compute the array's first slot (hash of base)
+        const firstSlotTemp = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit({
           kind: "compute_slot",
           slotKind: "array",
           base: currentSlot,
-          index: access.key,
+          dest: firstSlotTemp,
+          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+        });
+
+        // Then add the index to get the actual element slot
+        const slotTemp = yield* Process.Variables.newTemp();
+        yield* Process.Instructions.emit({
+          kind: "binary",
+          op: "add",
+          left: Ir.Value.temp(firstSlotTemp, Ir.Type.Scalar.uint256),
+          right: access.key,
           dest: slotTemp,
           debug: node ? yield* Process.Debug.forAstNode(node) : {},
         });

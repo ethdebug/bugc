@@ -44,16 +44,26 @@ export function* buildArray(
         // Generate the index value
         const indexValue = Ir.Value.constant(BigInt(i), Ir.Type.Scalar.uint256);
 
-        // Compute slot for array[i]
-        const slotTemp = yield* Process.Variables.newTemp();
+        // Compute the first slot for the array
+        const firstSlotTemp = yield* Process.Variables.newTemp();
         yield* Process.Instructions.emit(
           Ir.Instruction.ComputeSlot.array(
             Ir.Value.constant(BigInt(context.slot), Ir.Type.Scalar.uint256),
-            indexValue,
-            slotTemp,
+            firstSlotTemp,
             yield* Process.Debug.forAstNode(expr),
           ),
         );
+
+        // Add the index to get the actual element slot
+        const slotTemp = yield* Process.Variables.newTemp();
+        yield* Process.Instructions.emit({
+          kind: "binary",
+          op: "add",
+          left: Ir.Value.temp(firstSlotTemp, Ir.Type.Scalar.uint256),
+          right: indexValue,
+          dest: slotTemp,
+          debug: yield* Process.Debug.forAstNode(expr),
+        } as Ir.Instruction.BinaryOp);
 
         // Write to storage
         yield* Process.Instructions.emit({

@@ -119,7 +119,7 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
         if (Ir.Instruction.ComputeSlot.isMapping(result)) {
           result.key = propagateValue(result.key);
         } else if (Ir.Instruction.ComputeSlot.isArray(result)) {
-          result.index = propagateValue(result.index);
+          // Array compute_slot no longer has index field
         }
         break;
       case "hash":
@@ -146,7 +146,7 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
     }
 
     // Check if we actually changed anything
-    let changed = propagatedDebugContexts.length > 0;
+    const changed = propagatedDebugContexts.length > 0;
 
     // If we propagated constants, combine debug contexts
     if (changed) {

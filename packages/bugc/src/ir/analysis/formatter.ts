@@ -176,8 +176,8 @@ export class Formatter {
           const key = this.formatValue(inst.key);
           slotExpr = `slot[${base}].mapping[${key}]`;
         } else if (Ir.Instruction.ComputeSlot.isArray(inst)) {
-          const index = this.formatValue(inst.index);
-          slotExpr = `slot[${base}].array[${index}]`;
+          // Array compute_slot computes the first slot of the array
+          slotExpr = `slot[${base}].array`;
         } else if (Ir.Instruction.ComputeSlot.isField(inst)) {
           // Just show the offset, no field name
           slotExpr = `slot[${base}].field[${inst.fieldOffset}]`;

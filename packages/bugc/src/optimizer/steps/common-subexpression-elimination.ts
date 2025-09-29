@@ -174,7 +174,7 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
         if (Ir.Instruction.ComputeSlot.isMapping(result)) {
           result.key = replaceValue(result.key);
         } else if (Ir.Instruction.ComputeSlot.isArray(result)) {
-          result.index = replaceValue(result.index);
+          // Array compute_slot no longer has index field
         }
         break;
       case "hash":
@@ -214,8 +214,8 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
           : "unknown";
         return `compute_slot:mapping(${baseKey},${keyKey}:${keyTypeKey})`;
       } else if (inst.slotKind === "array") {
-        const indexKey = this.getValueKey(inst.index);
-        return `compute_slot:array(${baseKey},${indexKey})`;
+        // Array compute_slot only depends on base now
+        return `compute_slot:array(${baseKey})`;
       }
     } else if (inst.kind === "env") {
       // Environment values are constant during execution

@@ -631,7 +631,18 @@ describe("Function.generate", () => {
                   value: 0n,
                   type: Ir.Type.Scalar.uint256,
                 },
-                index: {
+                dest: "%first_slot",
+                debug: {},
+              },
+              {
+                kind: "binary",
+                op: "add",
+                left: {
+                  kind: "temp",
+                  id: "%first_slot",
+                  type: Ir.Type.Scalar.uint256,
+                },
+                right: {
                   kind: "temp",
                   id: "%index",
                   type: Ir.Type.Scalar.uint256,
@@ -667,9 +678,10 @@ describe("Function.generate", () => {
       allocations: {
         "%value": { offset: 0x80, size: 32 },
         "%index": { offset: 0xa0, size: 32 },
-        "%slot": { offset: 0xc0, size: 32 },
+        "%first_slot": { offset: 0xc0, size: 32 },
+        "%slot": { offset: 0xe0, size: 32 },
       },
-      nextStaticOffset: 0xe0,
+      nextStaticOffset: 0x100,
     };
 
     const layout: Layout.Function.Info = {
@@ -722,7 +734,18 @@ describe("Function.generate", () => {
                   value: 0n,
                   type: Ir.Type.Scalar.uint256,
                 },
-                index: {
+                dest: "%first_slot",
+                debug: {},
+              },
+              {
+                kind: "binary",
+                op: "add",
+                left: {
+                  kind: "temp",
+                  id: "%first_slot",
+                  type: Ir.Type.Scalar.uint256,
+                },
+                right: {
                   kind: "temp",
                   id: "%index",
                   type: Ir.Type.Scalar.uint256,
@@ -762,10 +785,11 @@ describe("Function.generate", () => {
     const memory: Memory.Function.Info = {
       allocations: {
         "%index": { offset: 0x80, size: 32 },
-        "%slot": { offset: 0xa0, size: 32 },
-        "%value": { offset: 0xc0, size: 32 },
+        "%first_slot": { offset: 0xa0, size: 32 },
+        "%slot": { offset: 0xc0, size: 32 },
+        "%value": { offset: 0xe0, size: 32 },
       },
-      nextStaticOffset: 0xe0,
+      nextStaticOffset: 0x100,
     };
 
     const layout: Layout.Function.Info = {
@@ -1025,7 +1049,7 @@ describe("Function.generate", () => {
                 dest: "%userSlot",
                 debug: {},
               },
-              // Then compute array slot with index
+              // Then compute array first slot
               {
                 kind: "compute_slot",
                 slotKind: "array",
@@ -1034,7 +1058,19 @@ describe("Function.generate", () => {
                   id: "%userSlot",
                   type: Ir.Type.Scalar.uint256,
                 },
-                index: {
+                dest: "%arrayFirstSlot",
+                debug: {},
+              },
+              // Add the index
+              {
+                kind: "binary",
+                op: "add",
+                left: {
+                  kind: "temp",
+                  id: "%arrayFirstSlot",
+                  type: Ir.Type.Scalar.uint256,
+                },
+                right: {
                   kind: "temp",
                   id: "%index",
                   type: Ir.Type.Scalar.uint256,
@@ -1076,10 +1112,11 @@ describe("Function.generate", () => {
         "%sender": { offset: 0x80, size: 20 },
         "%index": { offset: 0xa0, size: 32 },
         "%userSlot": { offset: 0xc0, size: 32 },
-        "%finalSlot": { offset: 0xe0, size: 32 },
-        "%value": { offset: 0x100, size: 32 },
+        "%arrayFirstSlot": { offset: 0xe0, size: 32 },
+        "%finalSlot": { offset: 0x100, size: 32 },
+        "%value": { offset: 0x120, size: 32 },
       },
-      nextStaticOffset: 0x120,
+      nextStaticOffset: 0x140,
     };
 
     const layout: Layout.Function.Info = {
