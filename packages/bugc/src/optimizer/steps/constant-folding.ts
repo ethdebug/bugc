@@ -167,6 +167,10 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
           return right !== 0n ? left / right : undefined;
         case "mod":
           return right !== 0n ? left % right : undefined;
+        case "shl":
+          return left << right;
+        case "shr":
+          return left >> right;
         case "lt":
           return left < right;
         case "gt":
@@ -192,6 +196,24 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
           return left === right;
         case "ne":
           return left !== right;
+      }
+    }
+
+    // Handle boolean as bigint for bitwise operations
+    if (op === "or" || op === "shl" || op === "shr") {
+      const leftBigint = typeof left === "boolean" ? (left ? 1n : 0n) : left;
+      const rightBigint =
+        typeof right === "boolean" ? (right ? 1n : 0n) : right;
+
+      if (typeof leftBigint === "bigint" && typeof rightBigint === "bigint") {
+        switch (op) {
+          case "or":
+            return leftBigint | rightBigint;
+          case "shl":
+            return leftBigint << rightBigint;
+          case "shr":
+            return leftBigint >> rightBigint;
+        }
       }
     }
 

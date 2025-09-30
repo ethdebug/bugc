@@ -19,11 +19,21 @@ export function combineDebugContexts(
     return {};
   }
 
+  // Flatten pick contexts - if a context has a pick, extract its children
+  const flattenedContexts: Format.Program.Context[] = [];
+  for (const context of contexts) {
+    if ("pick" in context && Array.isArray(context.pick)) {
+      flattenedContexts.push(...context.pick);
+    } else {
+      flattenedContexts.push(context);
+    }
+  }
+
   // Deduplicate contexts by checking structural equality
   const uniqueContexts: Format.Program.Context[] = [];
   const contextStrings = new Set<string>();
 
-  for (const context of contexts) {
+  for (const context of flattenedContexts) {
     // Create a string representation for comparison
     // We need to handle the structure carefully since it might have nested objects
     const contextStr = JSON.stringify(context, (_key, value) => {

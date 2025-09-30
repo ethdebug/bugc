@@ -2,11 +2,12 @@ import type * as Ir from "#ir";
 import type { Stack } from "#evm";
 
 import type { State } from "#evmgen/state";
-import { type Transition, operations, pipe } from "#evmgen/operations";
+import { type Transition, operations, pipe, rebrand } from "#evmgen/operations";
 
 import { loadValue, storeValueIfNeeded } from "../values/index.js";
 
-const { ADD, SUB, MUL, DIV, MOD, EQ, LT, GT, AND, OR, NOT } = operations;
+const { ADD, SUB, MUL, DIV, MOD, EQ, LT, GT, AND, OR, NOT, SHL, SHR } =
+  operations;
 
 /**
  * Generate code for binary operations
@@ -24,6 +25,14 @@ export function generateBinary<S extends Stack>(
     mul: MUL(),
     div: DIV(),
     mod: MOD(),
+    shl: pipe<readonly ["a", "b", ...S]>()
+      .then(rebrand<"a", "shift", "b", "value">({ 1: "shift", 2: "value" }))
+      .then(SHL())
+      .done(),
+    shr: pipe<readonly ["a", "b", ...S]>()
+      .then(rebrand<"a", "shift", "b", "value">({ 1: "shift", 2: "value" }))
+      .then(SHR())
+      .done(),
     eq: EQ(),
     ne: pipe<readonly ["a", "b", ...S]>()
       .then(EQ(), { as: "a" })

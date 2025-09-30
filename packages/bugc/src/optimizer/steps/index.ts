@@ -5,3 +5,4 @@ export { ConstantPropagationStep } from "./constant-propagation.js";
 export { JumpOptimizationStep } from "./jump-optimization.js";
 export { BlockMergingStep } from "./block-merging.js";
 export { ReturnMergingStep } from "./return-merging.js";
+export { ReadWriteMergingStep } from "./read-write-merging.js";

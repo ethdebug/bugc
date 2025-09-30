@@ -12,6 +12,7 @@ import {
   JumpOptimizationStep,
   BlockMergingStep,
   ReturnMergingStep,
+  ReadWriteMergingStep,
 } from "./steps/index.js";
 
 /**
@@ -64,9 +65,13 @@ function createOptimizationPipeline(level: number): OptimizationStep[] {
     );
   }
 
-  // Level 3: Add block merging
+  // Level 3: Add block merging and read/write merging
   if (level >= 3) {
-    steps.push(new BlockMergingStep(), new ReturnMergingStep());
+    steps.push(
+      new BlockMergingStep(),
+      new ReturnMergingStep(),
+      new ReadWriteMergingStep(),
+    );
   }
 
   return steps;

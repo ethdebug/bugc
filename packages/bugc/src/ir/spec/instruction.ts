@@ -277,6 +277,9 @@ export namespace Instruction {
       | "mul"
       | "div"
       | "mod"
+      // Bitwise
+      | "shl"
+      | "shr"
       // Comparison
       | "eq"
       | "ne"
