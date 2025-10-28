@@ -13,6 +13,7 @@ import {
   BlockMergingStep,
   ReturnMergingStep,
   ReadWriteMergingStep,
+  TailCallOptimizationStep,
 } from "./steps/index.js";
 
 /**
@@ -57,10 +58,11 @@ function createOptimizationPipeline(level: number): OptimizationStep[] {
     );
   }
 
-  // Level 2: Add CSE and jump optimization
+  // Level 2: Add CSE, tail call optimization, and jump optimization
   if (level >= 2) {
     steps.push(
       new CommonSubexpressionEliminationStep(),
+      new TailCallOptimizationStep(),
       new JumpOptimizationStep(),
     );
   }
