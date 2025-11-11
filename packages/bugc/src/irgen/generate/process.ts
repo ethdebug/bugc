@@ -97,9 +97,11 @@ export namespace Process {
         const placeholderBlock: Ir.Block = {
           id: targetBlockId,
           instructions: [],
-          terminator: { kind: "jump", target: targetBlockId, debug: {} }, // Placeholder terminator
+          // No debug context - compiler-generated placeholder terminator
+          terminator: { kind: "jump", target: targetBlockId, debug: {} },
           predecessors: new Set([predId]),
           phis: [],
+          // No debug context - compiler-generated placeholder block
           debug: {},
         };
 
@@ -199,6 +201,7 @@ export namespace Process {
           terminator: block.terminator,
           predecessors: block.predecessors,
           phis: block.phis,
+          // No debug context - block-level context not currently tracked
           debug: {},
         };
 
@@ -481,6 +484,7 @@ export namespace Process {
         dest: phiDest,
         sources,
         type: ssaVar.type,
+        // No debug context - compiler-generated phi node (SSA merge point)
         debug: {},
       };
 
@@ -755,6 +759,7 @@ export namespace Process {
               dest: phiTemp,
               sources,
               type: loopPhi.type,
+              // No debug context - compiler-generated phi node (loop merge)
               debug: {},
             };
 

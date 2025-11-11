@@ -12,7 +12,12 @@
 
 export { type Stack } from "./stack.js";
 
-export { type Instruction, type Unsafe, State } from "./state.js";
+export {
+  type Instruction,
+  type InstructionDebug,
+  type Unsafe,
+  State,
+} from "./state.js";
 
 export { type Operations, makeOperations } from "./definitions.js";
 

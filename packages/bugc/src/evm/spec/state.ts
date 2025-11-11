@@ -1,5 +1,6 @@
 import type { $ } from "./hkts.js";
 import type { Stack, TopN, PopN, Push } from "./stack.js";
+import type * as Format from "@ethdebug/format";
 
 export namespace Unsafe {
   /**
@@ -59,12 +60,21 @@ export namespace Unsafe {
 }
 
 /**
- * Represents an EVM instruction with its mnemonic, opcode, and optional immediate values.
+ * Debug context type for instructions
+ */
+export type InstructionDebug = {
+  context?: Format.Program.Context;
+};
+
+/**
+ * Represents an EVM instruction with its mnemonic, opcode, optional immediate
+ * values, and optional debug context for source mapping.
  */
 export interface Instruction {
   mnemonic: string;
   opcode: number;
   immediates?: number[];
+  debug?: InstructionDebug;
 }
 
 export namespace State {

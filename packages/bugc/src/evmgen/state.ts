@@ -1,8 +1,15 @@
+import * as Format from "@ethdebug/format";
+
 import * as Evm from "#evm";
 import { type _ } from "#evm";
 
 import * as Analysis from "#evmgen/analysis";
 import type { Error } from "#evmgen/errors";
+
+// Debug context type for EVM instructions
+export type DebugContext = {
+  context?: Format.Program.Context;
+};
 
 // Track stack at type level
 export interface State<S extends Evm.Stack> {
@@ -17,6 +24,7 @@ export interface State<S extends Evm.Stack> {
     target: string;
   }[];
   warnings: Error[];
+  currentDebug?: DebugContext; // Debug context for current IR instruction
 }
 
 export interface StackItem {
@@ -24,10 +32,10 @@ export interface StackItem {
   irValue?: string; // Optional IR value ID (e.g., "t1", "t2")
 }
 
-const unsafe: Evm.Unsafe.StateControls<
-  State<_ & Evm.Stack>,
-  StackItem & { brand: _ & Evm.Stack.Brand }
-> = {
+type UnsafeState = State<_ & Evm.Stack>;
+type UnsafeItem = StackItem & { brand: _ & Evm.Stack.Brand };
+
+const unsafe: Evm.Unsafe.StateControls<UnsafeState, UnsafeItem> = {
   slice: (state, ...args) => ({
     ...state,
     stack: state.stack.slice(...args),
@@ -70,11 +78,41 @@ const unsafe: Evm.Unsafe.StateControls<
   }),
   emit: (state, instruction) => ({
     ...state,
-    instructions: [...state.instructions, instruction],
+    instructions: [
+      ...state.instructions,
+      {
+        ...instruction,
+        // Attach debug context from state if available and not already set
+        debug: instruction.debug ?? state.currentDebug,
+      },
+    ],
   }),
 };
 
-export const controls: Evm.State.Controls<
-  State<_ & Evm.Stack>,
-  StackItem & { brand: _ & Evm.Stack.Brand }
-> = Evm.State.makeControls(unsafe);
+export const controls: Evm.State.Controls<UnsafeState, UnsafeItem> =
+  Evm.State.makeControls(unsafe);
+
+/**
+ * Set the current debug context for subsequent instruction emissions
+ */
+export function setDebugContext<S extends Evm.Stack>(
+  state: State<S>,
+  debug: DebugContext | undefined,
+): State<S> {
+  return {
+    ...state,
+    currentDebug: debug,
+  };
+}
+
+/**
+ * Clear the current debug context
+ */
+export function clearDebugContext<S extends Evm.Stack>(
+  state: State<S>,
+): State<S> {
+  return {
+    ...state,
+    currentDebug: undefined,
+  };
+}

@@ -3,34 +3,38 @@ import type { _ } from "#evm";
 
 import { type State, type StackItem, controls } from "#evmgen/state";
 
-export const { rebrand, rebrandTop } = Evm.makeRebrands<
-  State<_ & Evm.Stack>,
-  StackItem & { brand: _ & Evm.Stack.Brand }
->(controls);
+type UnsafeState = State<_ & Evm.Stack>;
+type UnsafeItem = StackItem & { brand: _ & Evm.Stack.Brand };
+
+const rebrands: ReturnType<typeof Evm.makeRebrands<UnsafeState, UnsafeItem>> =
+  Evm.makeRebrands<UnsafeState, UnsafeItem>(controls);
+export const rebrand: typeof rebrands.rebrand = rebrands.rebrand;
+export const rebrandTop: typeof rebrands.rebrandTop = rebrands.rebrandTop;
 
 export type Transition<
   X extends Evm.Stack,
   Y extends Evm.Stack,
-> = Evm.Transition<State<_ & Evm.Stack>, X, Y>;
+> = Evm.Transition<UnsafeState, X, Y>;
 
-export const pipe = Evm.makePipe<
-  State<_ & Evm.Stack>,
-  StackItem & { brand: _ & Evm.Stack.Brand }
->(controls);
+export const pipe = Evm.makePipe<UnsafeState, UnsafeItem>(controls);
 
-export type RawOperations = Evm.Operations<
-  State<_ & Evm.Stack>,
-  StackItem & { brand: _ & Evm.Stack.Brand }
->;
+export type RawOperations = Evm.Operations<UnsafeState, UnsafeItem>;
 
 export const rawOperations: RawOperations = Evm.makeOperations<
-  State<_ & Evm.Stack>,
-  StackItem & { brand: _ & Evm.Stack.Brand }
+  UnsafeState,
+  UnsafeItem
 >(controls);
 
-export type Operations = typeof operations;
+export type Operations = typeof rawOperations & {
+  DUPn: <S extends Evm.Stack>(
+    position: number,
+  ) => Transition<S, readonly ["value", ...S]>;
+  PUSHn: <S extends Evm.Stack>(
+    value: bigint,
+  ) => Transition<readonly [...S], readonly ["value", ...S]>;
+};
 
-export const operations = {
+export const operations: Operations = {
   ...rawOperations,
 
   DUPn: <S extends Evm.Stack>(

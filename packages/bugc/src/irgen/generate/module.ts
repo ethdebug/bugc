@@ -132,8 +132,14 @@ function createEmptyFunction(name: string): Ir.Function {
           id: "entry",
           instructions: [],
           phis: [],
-          terminator: { kind: "return", value: undefined, debug: {} },
+          terminator: {
+            kind: "return",
+            value: undefined,
+            // No debug context - compiler-generated empty function
+            debug: {},
+          },
           predecessors: new Set(),
+          // No debug context - compiler-generated empty block
           debug: {},
         },
       ],

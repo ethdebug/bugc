@@ -56,11 +56,29 @@ export function generate<S extends Stack>(
 
       // Process regular instructions
       for (const inst of block.instructions) {
-        result = result.then(Instruction.generate(inst));
+        result = result
+          .then((s) => ({
+            ...s,
+            currentDebug: inst.debug,
+          }))
+          .then(Instruction.generate(inst))
+          .then((s) => ({
+            ...s,
+            currentDebug: undefined,
+          }));
       }
 
       // Process terminator
-      result = result.then(generateTerminator(block.terminator, isLastBlock));
+      result = result
+        .then((s) => ({
+          ...s,
+          currentDebug: block.terminator.debug,
+        }))
+        .then(generateTerminator(block.terminator, isLastBlock))
+        .then((s) => ({
+          ...s,
+          currentDebug: undefined,
+        }));
 
       return result;
     })

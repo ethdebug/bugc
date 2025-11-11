@@ -180,6 +180,9 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
       case "hash":
         result.value = replaceValue(result.value);
         break;
+      case "length":
+        result.object = replaceValue(result.object);
+        break;
     }
 
     return result;

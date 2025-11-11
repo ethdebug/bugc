@@ -254,6 +254,7 @@ function formatOutput<T extends Phase>(
         (result as CompilerOutput<"bytecode">).bytecode,
         format,
         values.pretty as boolean,
+        source,
       );
     default:
       return "";
@@ -319,6 +320,7 @@ function formatBytecode(
   bytecode: EvmGenerationOutput,
   format: string,
   pretty: boolean,
+  source?: string,
 ): string {
   if (format === "json") {
     // For JSON, return the bytecode as hex strings
@@ -332,11 +334,17 @@ function formatBytecode(
   } else if (format === "asm") {
     // For asm format, use the instruction objects directly
     let output = `; Runtime bytecode (${bytecode.runtime.length} bytes)\n`;
-    output += EvmFormatter.formatInstructions(bytecode.runtimeInstructions);
+    output += EvmFormatter.formatInstructions(
+      bytecode.runtimeInstructions,
+      source,
+    );
 
     if (bytecode.create && bytecode.createInstructions) {
       output += `\n\n; Creation bytecode (${bytecode.create.length} bytes)\n`;
-      output += EvmFormatter.formatInstructions(bytecode.createInstructions);
+      output += EvmFormatter.formatInstructions(
+        bytecode.createInstructions,
+        source,
+      );
     }
 
     return output;
