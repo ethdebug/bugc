@@ -323,11 +323,17 @@ function formatBytecode(
   source?: string,
 ): string {
   if (format === "json") {
-    // For JSON, return the bytecode as hex strings
+    // For JSON, return the bytecode with instructions and debug info
     const output = {
-      runtime: "0x" + Buffer.from(bytecode.runtime).toString("hex"),
+      runtime: {
+        bytecode: "0x" + Buffer.from(bytecode.runtime).toString("hex"),
+        instructions: bytecode.runtimeInstructions,
+      },
       create: bytecode.create
-        ? "0x" + Buffer.from(bytecode.create).toString("hex")
+        ? {
+            bytecode: "0x" + Buffer.from(bytecode.create).toString("hex"),
+            instructions: bytecode.createInstructions,
+          }
         : undefined,
     };
     return formatJson(output, pretty);
