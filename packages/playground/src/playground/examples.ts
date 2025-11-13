@@ -64,4 +64,9 @@ export const examples: Example[] = [
     displayName: "String Length",
     code: exampleFiles["../../../../examples/string-length.bug"],
   },
+  {
+    name: "cse",
+    displayName: "CSE Demo",
+    code: exampleFiles["../../../../examples/cse.bug"],
+  },
 ];

@@ -1,24 +1,64 @@
 import type { BytecodeOutput } from "../compiler/types";
-import { formatBytecode } from "./formatBytecode";
+import type { Evm } from "@ethdebug/bugc";
+import { extractSourceRange, type SourceRange } from "./debugUtils";
 import "./BytecodeView.css";
 
 interface BytecodeViewProps {
   bytecode: BytecodeOutput;
+  onOpcodeHover?: (ranges: SourceRange[]) => void;
 }
 
-export function BytecodeView({ bytecode }: BytecodeViewProps) {
+function DisassemblyView({
+  instructions,
+  onOpcodeHover,
+}: {
+  instructions: Evm.Instruction[];
+  onOpcodeHover?: (ranges: SourceRange[]) => void;
+}) {
+  let pc = 0;
+
+  return (
+    <div className="bytecode-disassembly-interactive">
+      {instructions.map((instruction, idx) => {
+        const currentPc = pc;
+        pc += 1 + (instruction.immediates?.length || 0);
+
+        const sourceRanges = extractSourceRange(instruction.debug?.context);
+        const hasDebugInfo = sourceRanges.length > 0;
+
+        return (
+          <div
+            key={idx}
+            className={`opcode-line ${hasDebugInfo ? "has-debug-info" : ""}`}
+            onMouseEnter={() => onOpcodeHover?.(sourceRanges)}
+            onMouseLeave={() => onOpcodeHover?.([])}
+          >
+            <span className="pc">{currentPc.toString().padStart(4, "0")}</span>
+            <span className="opcode">{instruction.mnemonic}</span>
+            {instruction.immediates && instruction.immediates.length > 0 && (
+              <span className="immediates">
+                0x
+                {instruction.immediates
+                  .map((b) => b.toString(16).padStart(2, "0"))
+                  .join("")}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function BytecodeView({ bytecode, onOpcodeHover }: BytecodeViewProps) {
   const runtimeHex = Array.from(bytecode.runtime)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  const runtimeDisassembly = formatBytecode(runtimeHex);
 
   const constructorHex = bytecode.create
     ? Array.from(bytecode.create)
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("")
-    : null;
-  const constructorDisassembly = constructorHex
-    ? formatBytecode(constructorHex)
     : null;
 
   return (
@@ -35,14 +75,17 @@ export function BytecodeView({ bytecode }: BytecodeViewProps) {
           <div className="bytecode-content">
             <div className="bytecode-section">
               <h4>Hex</h4>
-              <pre className="bytecode-hex">{bytecode.create}</pre>
+              <pre className="bytecode-hex">{constructorHex}</pre>
             </div>
 
             <div className="bytecode-section">
               <h4>Disassembly</h4>
-              <pre className="bytecode-disassembly">
-                {constructorDisassembly}
-              </pre>
+              {bytecode.createInstructions && (
+                <DisassemblyView
+                  instructions={bytecode.createInstructions}
+                  onOpcodeHover={onOpcodeHover}
+                />
+              )}
             </div>
           </div>
 
@@ -60,12 +103,15 @@ export function BytecodeView({ bytecode }: BytecodeViewProps) {
       <div className="bytecode-content">
         <div className="bytecode-section">
           <h4>Hex</h4>
-          <pre className="bytecode-hex">{bytecode.runtime}</pre>
+          <pre className="bytecode-hex">{runtimeHex}</pre>
         </div>
 
         <div className="bytecode-section">
           <h4>Disassembly</h4>
-          <pre className="bytecode-disassembly">{runtimeDisassembly}</pre>
+          <DisassemblyView
+            instructions={bytecode.runtimeInstructions}
+            onOpcodeHover={onOpcodeHover}
+          />
         </div>
       </div>
     </div>

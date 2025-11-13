@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Editor } from "../editor/Editor";
+import { Editor, type SourceRange } from "../editor/Editor";
 import { CompilerOutput } from "../compiler/CompilerOutput";
 import { useCompiler } from "../compiler/useCompiler";
 import { examples } from "./examples";
@@ -9,6 +9,9 @@ export function Playground() {
   const [code, setCode] = useState(examples[0].code);
   const [selectedExample, setSelectedExample] = useState(examples[0].name);
   const [optimizationLevel, setOptimizationLevel] = useState(3);
+  const [highlightedRanges, setHighlightedRanges] = useState<SourceRange[]>(
+    [],
+  );
 
   const { compileResult, isCompiling, compile } = useCompiler();
 
@@ -72,10 +75,20 @@ export function Playground() {
 
       <div className="playground-content">
         <div className="playground-editor">
-          <Editor value={code} onChange={setCode} language="bug" />
+          <Editor
+            value={code}
+            onChange={setCode}
+            language="bug"
+            highlightedRanges={highlightedRanges}
+          />
         </div>
         <div className="playground-output">
-          {compileResult && <CompilerOutput result={compileResult} />}
+          {compileResult && (
+            <CompilerOutput
+              result={compileResult}
+              onOpcodeHover={setHighlightedRanges}
+            />
+          )}
         </div>
       </div>
     </div>

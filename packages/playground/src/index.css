@@ -73,3 +73,22 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Monaco Editor custom decorations */
+/* Primary location (teal) - first source location */
+.opcode-hover-highlight {
+  background-color: rgba(78, 201, 176, 0.2);
+}
+
+.opcode-hover-highlight-inline {
+  background-color: rgba(78, 201, 176, 0.3);
+}
+
+/* Alternative locations (orange) - deduplicated sources */
+.opcode-hover-highlight-alternative {
+  background-color: rgba(255, 165, 0, 0.2);
+}
+
+.opcode-hover-highlight-alternative-inline {
+  background-color: rgba(255, 165, 0, 0.3);
+}

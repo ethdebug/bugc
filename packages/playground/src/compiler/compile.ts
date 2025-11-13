@@ -74,7 +74,12 @@ export async function compile(
     };
   }
 
-  const bytecode = bytecodeResult.value.bytecode;
+  const bytecode = {
+    runtime: bytecodeResult.value.bytecode.runtime,
+    create: bytecodeResult.value.bytecode.create,
+    runtimeInstructions: bytecodeResult.value.bytecode.runtimeInstructions,
+    createInstructions: bytecodeResult.value.bytecode.createInstructions,
+  };
 
   // Collect all warnings
   const allWarnings = [

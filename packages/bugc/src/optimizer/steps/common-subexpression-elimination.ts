@@ -13,14 +13,30 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
 
     // Process each function separately
     this.processAllFunctions(optimized, (func) => {
+      // Compute dominator tree for this function
+      const analyzer = new Ir.Analysis.Statistics.Analyzer();
+      const analysis = analyzer.analyze({ ...module, main: func });
+      const dominators = analysis.dominatorTree;
+
       // Global replacements map for the entire function
       const globalReplacements = new Map<string, string>();
       // Pure expressions that persist across side effects
-      const pureExpressions = new Map<string, string>();
+      // Maps expression -> {instruction, blockId}
+      const pureExpressions = new Map<
+        string,
+        { instruction: Ir.Instruction; block: string }
+      >();
 
-      for (const block of func.blocks.values()) {
-        // Map of expression -> temp that computes it (cleared on side effects)
-        const expressions = new Map<string, string>();
+      // Process blocks in topological order to ensure dominators are
+      // processed first
+      const orderedBlocks = this.topologicalSort(func);
+
+      for (const blockId of orderedBlocks) {
+        const block = func.blocks.get(blockId);
+        if (!block) continue;
+        // Map of expression -> instruction that computes it
+        // (cleared on side effects)
+        const expressions = new Map<string, Ir.Instruction>();
         const newInstructions: Ir.Instruction[] = [];
 
         for (const inst of block.instructions) {
@@ -43,12 +59,34 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
               processedInst.kind === "env";
 
             // Check if we've seen this expression before
-            const existing = isPure
-              ? pureExpressions.get(exprKey) || expressions.get(exprKey)
-              : expressions.get(exprKey);
-            if (existing && "dest" in processedInst) {
-              // This is a duplicate - map this temp to the existing one
-              globalReplacements.set(processedInst.dest, existing);
+            let existingInst: Ir.Instruction | undefined;
+            if (isPure) {
+              // For pure expressions, check if we have a dominating
+              // definition
+              const pureEntry = pureExpressions.get(exprKey);
+              if (
+                pureEntry &&
+                this.dominates(pureEntry.block, blockId, dominators)
+              ) {
+                existingInst = pureEntry.instruction;
+              } else {
+                // Fall back to local expressions in this block
+                existingInst = expressions.get(exprKey);
+              }
+            } else {
+              // Non-pure expressions only within the same block
+              existingInst = expressions.get(exprKey);
+            }
+
+            if (existingInst && "dest" in processedInst && "dest" in existingInst) {
+              // This is a duplicate - combine debug contexts
+              existingInst.debug = Ir.Utils.combineDebugContexts(
+                existingInst.debug,
+                processedInst.debug,
+              );
+
+              // Map this temp to the existing one
+              globalReplacements.set(processedInst.dest, existingInst.dest);
 
               context.trackTransformation({
                 type: "delete",
@@ -61,15 +99,19 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
             } else {
               // First time seeing this expression
               if ("dest" in processedInst && exprKey) {
-                expressions.set(exprKey, processedInst.dest);
+                expressions.set(exprKey, processedInst);
                 if (isPure) {
-                  pureExpressions.set(exprKey, processedInst.dest);
+                  pureExpressions.set(exprKey, {
+                    instruction: processedInst,
+                    block: blockId,
+                  });
                 }
               }
               newInstructions.push(processedInst);
             }
           } else if (this.hasSideEffects(processedInst)) {
-            // Instructions with side effects invalidate our expression tracking
+            // Instructions with side effects invalidate our expression
+            // tracking
             expressions.clear();
             newInstructions.push(processedInst);
           } else {
@@ -80,7 +122,8 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
         block.instructions = newInstructions;
       }
 
-      // Now apply replacements to phi nodes and terminators in a second pass
+      // Now apply replacements to phi nodes and terminators in a second
+      // pass
       for (const block of func.blocks.values()) {
         // Apply replacements to phi nodes
         for (const phi of block.phis) {
@@ -259,5 +302,66 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
       default:
         return false;
     }
+  }
+
+  private topologicalSort(func: Ir.Function): string[] {
+    const visited = new Set<string>();
+    const result: string[] = [];
+
+    const visit = (blockId: string): void => {
+      if (visited.has(blockId)) return;
+      visited.add(blockId);
+
+      // Add current block first (pre-order)
+      result.push(blockId);
+
+      const block = func.blocks.get(blockId);
+      if (!block) return;
+
+      // Then visit successors
+      const successors = this.getSuccessors(block);
+      for (const succ of successors) {
+        visit(succ);
+      }
+    };
+
+    // Start from entry
+    visit(func.entry);
+
+    // Visit any unreachable blocks
+    for (const blockId of func.blocks.keys()) {
+      visit(blockId);
+    }
+
+    return result;
+  }
+
+  private getSuccessors(block: Ir.Block): string[] {
+    switch (block.terminator.kind) {
+      case "jump":
+        return [block.terminator.target];
+      case "branch":
+        return [block.terminator.trueTarget, block.terminator.falseTarget];
+      case "call":
+        return [block.terminator.continuation];
+      case "return":
+        return [];
+      default:
+        return [];
+    }
+  }
+
+  private dominates(
+    a: string,
+    b: string,
+    dominators: Record<string, string | null>,
+  ): boolean {
+    // Check if block a dominates block b
+    let current: string | null = b;
+    while (current !== null) {
+      if (current === a) return true;
+      current = dominators[current] || null;
+    }
+    return false;
   }
 }

@@ -1,8 +1,10 @@
-import type { Ast, Ir } from "@ethdebug/bugc";
+import type { Ast, Ir, Evm } from "@ethdebug/bugc";
 
 export interface BytecodeOutput {
   runtime: Uint8Array;
   create?: Uint8Array;
+  runtimeInstructions: Evm.Instruction[];
+  createInstructions?: Evm.Instruction[];
 }
 
 export interface SuccessfulCompileResult {

@@ -5,10 +5,12 @@ import { IrView } from "../visualization/IrView";
 import { CfgView } from "../visualization/CfgView";
 import { BytecodeView } from "../visualization/BytecodeView";
 import { ErrorView } from "./ErrorView";
+import type { SourceRange } from "../visualization/debugUtils";
 import "./CompilerOutput.css";
 
 interface CompilerOutputProps {
   result: CompileResult;
+  onOpcodeHover?: (ranges: SourceRange[]) => void;
 }
 
 type TabType =
@@ -20,7 +22,10 @@ type TabType =
   | "bytecode"
   | "error";
 
-export function CompilerOutput({ result }: CompilerOutputProps) {
+export function CompilerOutput({
+  result,
+  onOpcodeHover,
+}: CompilerOutputProps) {
   const [activeTab, setActiveTab] = useState<TabType>(
     result.success ? "ast" : "error",
   );
@@ -64,7 +69,10 @@ export function CompilerOutput({ result }: CompilerOutputProps) {
           <CfgView ir={result.optimizedIr} optimized />
         )}
         {activeTab === "bytecode" && (
-          <BytecodeView bytecode={result.bytecode} />
+          <BytecodeView
+            bytecode={result.bytecode}
+            onOpcodeHover={onOpcodeHover}
+          />
         )}
       </div>
 
