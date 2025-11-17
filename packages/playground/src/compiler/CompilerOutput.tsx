@@ -13,19 +13,9 @@ interface CompilerOutputProps {
   onOpcodeHover?: (ranges: SourceRange[]) => void;
 }
 
-type TabType =
-  | "ast"
-  | "ir"
-  | "ir-optimized"
-  | "cfg"
-  | "cfg-optimized"
-  | "bytecode"
-  | "error";
+type TabType = "ast" | "ir" | "cfg" | "bytecode" | "error";
 
-export function CompilerOutput({
-  result,
-  onOpcodeHover,
-}: CompilerOutputProps) {
+export function CompilerOutput({ result, onOpcodeHover }: CompilerOutputProps) {
   const [activeTab, setActiveTab] = useState<TabType>(
     result.success ? "ast" : "error",
   );
@@ -36,10 +26,8 @@ export function CompilerOutput({
 
   const tabs: { id: TabType; label: string; disabled?: boolean }[] = [
     { id: "ast", label: "AST" },
-    { id: "ir", label: "IR (Unoptimized)" },
-    { id: "ir-optimized", label: "IR (Optimized)" },
-    { id: "cfg", label: "CFG (Unoptimized)" },
-    { id: "cfg-optimized", label: "CFG (Optimized)" },
+    { id: "ir", label: "IR" },
+    { id: "cfg", label: "CFG" },
     { id: "bytecode", label: "Bytecode" },
   ];
 
@@ -61,13 +49,7 @@ export function CompilerOutput({
       <div className="output-content">
         {activeTab === "ast" && <AstView ast={result.ast} />}
         {activeTab === "ir" && <IrView ir={result.ir} />}
-        {activeTab === "ir-optimized" && (
-          <IrView ir={result.optimizedIr} optimized />
-        )}
         {activeTab === "cfg" && <CfgView ir={result.ir} />}
-        {activeTab === "cfg-optimized" && (
-          <CfgView ir={result.optimizedIr} optimized />
-        )}
         {activeTab === "bytecode" && (
           <BytecodeView
             bytecode={result.bytecode}

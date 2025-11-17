@@ -11,7 +11,6 @@ export interface SuccessfulCompileResult {
   success: true;
   ast: Ast.Program;
   ir: Ir.Module;
-  optimizedIr: Ir.Module;
   bytecode: BytecodeOutput;
   warnings: string[];
 }

@@ -70,7 +70,7 @@ function DisassemblyView({
 
   const handleDebugIconMouseEnter = (
     e: React.MouseEvent<HTMLSpanElement>,
-    instruction: Evm.Instruction
+    instruction: Evm.Instruction,
   ) => {
     if (instruction.debug?.context) {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -105,9 +105,7 @@ function DisassemblyView({
             {hasDebugInfo ? (
               <span
                 className="debug-info-icon"
-                onMouseEnter={(e) =>
-                  handleDebugIconMouseEnter(e, instruction)
-                }
+                onMouseEnter={(e) => handleDebugIconMouseEnter(e, instruction)}
                 onMouseLeave={handleDebugIconMouseLeave}
                 title="Hover to see ethdebug context"
               >

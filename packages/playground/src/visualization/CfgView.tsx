@@ -20,7 +20,6 @@ import "./CfgView.css";
 
 interface CfgViewProps {
   ir: Ir.Module;
-  optimized?: boolean;
   showComparison?: boolean;
   comparisonIr?: Ir.Module;
 }
@@ -60,7 +59,7 @@ const nodeTypes = {
   block: BlockNode,
 };
 
-function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
+function CfgViewContent({ ir }: CfgViewProps) {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const { fitView } = useReactFlow();
 
@@ -389,9 +388,7 @@ function CfgViewContent({ ir, optimized = false }: CfgViewProps) {
   return (
     <div className="cfg-view">
       <div className="cfg-header">
-        <h3>
-          {optimized ? "Optimized Control Flow Graph" : "Control Flow Graph"}
-        </h3>
+        <h3>Control Flow Graph</h3>
       </div>
       <div className="cfg-content">
         <div className="cfg-graph">

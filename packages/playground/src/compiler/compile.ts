@@ -22,11 +22,11 @@ export async function compile(
 
   const ast = astResult.value.ast;
 
-  // Get unoptimized IR
+  // Get IR at selected optimization level
   const irResult = await bugCompile({
     to: "ir",
     source: code,
-    optimizer: { level: 0 },
+    optimizer: { level: optimizationLevel as 0 | 1 | 2 | 3 },
   });
 
   if (!irResult.success) {
@@ -41,20 +41,6 @@ export async function compile(
   }
 
   const ir = irResult.value.ir;
-
-  // Get optimized IR if optimization is requested
-  let optimizedIr = ir;
-  if (optimizationLevel > 0) {
-    const optimizedResult = await bugCompile({
-      to: "ir",
-      source: code,
-      optimizer: { level: optimizationLevel as 0 | 1 | 2 | 3 },
-    });
-
-    if (optimizedResult.success) {
-      optimizedIr = optimizedResult.value.ir;
-    }
-  }
 
   // Generate bytecode with optimization
   const bytecodeResult = await bugCompile({
@@ -92,7 +78,6 @@ export async function compile(
     success: true,
     ast,
     ir,
-    optimizedIr,
     bytecode,
     warnings: [...new Set(allWarnings)], // Remove duplicates
   };

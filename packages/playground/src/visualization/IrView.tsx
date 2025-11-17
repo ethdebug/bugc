@@ -3,10 +3,9 @@ import "./IrView.css";
 
 interface IrViewProps {
   ir: Ir.Module;
-  optimized?: boolean;
 }
 
-export function IrView({ ir, optimized = false }: IrViewProps) {
+export function IrView({ ir }: IrViewProps) {
   const formatter = new Ir.Analysis.Formatter();
   const formatted = formatter.format(ir);
 
@@ -26,7 +25,7 @@ export function IrView({ ir, optimized = false }: IrViewProps) {
   return (
     <div className="ir-view">
       <div className="ir-header">
-        <h3>{optimized ? "Optimized IR" : "Unoptimized IR"}</h3>
+        <h3>IR</h3>
         <div className="ir-stats">
           {userFunctionCount > 0 && (
             <span>

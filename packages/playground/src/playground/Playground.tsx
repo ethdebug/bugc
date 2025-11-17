@@ -9,9 +9,7 @@ export function Playground() {
   const [code, setCode] = useState(examples[0].code);
   const [selectedExample, setSelectedExample] = useState(examples[0].name);
   const [optimizationLevel, setOptimizationLevel] = useState(3);
-  const [highlightedRanges, setHighlightedRanges] = useState<SourceRange[]>(
-    [],
-  );
+  const [highlightedRanges, setHighlightedRanges] = useState<SourceRange[]>([]);
 
   const { compileResult, isCompiling, compile } = useCompiler();
 

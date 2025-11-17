@@ -78,7 +78,11 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
               existingInst = expressions.get(exprKey);
             }
 
-            if (existingInst && "dest" in processedInst && "dest" in existingInst) {
+            if (
+              existingInst &&
+              "dest" in processedInst &&
+              "dest" in existingInst
+            ) {
               // This is a duplicate - combine debug contexts
               existingInst.debug = Ir.Utils.combineDebugContexts(
                 existingInst.debug,
