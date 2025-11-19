@@ -4,6 +4,6 @@ storage {
   [0] value: uint256;
 }
 
-code {
+create {
   value = 1;
 }
