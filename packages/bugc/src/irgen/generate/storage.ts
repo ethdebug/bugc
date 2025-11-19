@@ -164,7 +164,7 @@ export function* emitStorageChainLoad(
           key: access.key,
           keyType: keyIrType,
           dest: tempId,
-          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+          operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
         } as Ir.Instruction.ComputeSlot);
         // Update to the value type
         currentOrigin = currentOrigin.value;
@@ -176,7 +176,7 @@ export function* emitStorageChainLoad(
           slotKind: "array",
           base: currentSlot,
           dest: firstSlotTempId,
-          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+          operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
         } as Ir.Instruction.ComputeSlot);
 
         // Then add the index to get the actual element slot
@@ -186,7 +186,7 @@ export function* emitStorageChainLoad(
           left: Ir.Value.temp(firstSlotTempId, Ir.Type.Scalar.uint256),
           right: access.key,
           dest: tempId,
-          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+          operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
         } as Ir.Instruction.BinaryOp);
         // Update to the element type
         currentOrigin = currentOrigin.element;
@@ -219,7 +219,7 @@ export function* emitStorageChainLoad(
             base: currentSlot,
             fieldOffset: fieldSlotOffset,
             dest: tempId,
-            debug: node ? yield* Process.Debug.forAstNode(node) : {},
+            operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
           });
           currentSlot = Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
         }
@@ -261,7 +261,7 @@ export function* emitStorageChainLoad(
     length: Ir.Value.constant(BigInt(fieldSize), Ir.Type.Scalar.uint256),
     type: valueType,
     dest: loadTempId,
-    debug: node ? yield* Process.Debug.forAstNode(node) : {},
+    operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
   } as Ir.Instruction.Read);
 
   return Ir.Value.temp(loadTempId, valueType);
@@ -285,7 +285,7 @@ export function* emitStorageChainStore(
       offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
       length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
       value,
-      debug: node ? yield* Process.Debug.forAstNode(node) : {},
+      operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
     } as Ir.Instruction.Write);
     return;
   }
@@ -315,7 +315,7 @@ export function* emitStorageChainStore(
           key: access.key,
           keyType: keyIrType,
           dest: slotTemp,
-          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+          operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
         } as Ir.Instruction.ComputeSlot);
         currentSlot = Ir.Value.temp(slotTemp, Ir.Type.Scalar.uint256);
         currentOrigin = currentOrigin.value;
@@ -327,7 +327,7 @@ export function* emitStorageChainStore(
           slotKind: "array",
           base: currentSlot,
           dest: firstSlotTemp,
-          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+          operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
         });
 
         // Then add the index to get the actual element slot
@@ -338,7 +338,7 @@ export function* emitStorageChainStore(
           left: Ir.Value.temp(firstSlotTemp, Ir.Type.Scalar.uint256),
           right: access.key,
           dest: slotTemp,
-          debug: node ? yield* Process.Debug.forAstNode(node) : {},
+          operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
         });
         currentSlot = Ir.Value.temp(slotTemp, Ir.Type.Scalar.uint256);
         currentOrigin = currentOrigin.element;
@@ -362,7 +362,7 @@ export function* emitStorageChainStore(
               base: currentSlot,
               fieldOffset: fieldSlotOffset,
               dest: tempId,
-              debug: node ? yield* Process.Debug.forAstNode(node) : {},
+              operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
             });
             currentSlot = Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
           }
@@ -414,7 +414,7 @@ export function* emitStorageChainStore(
     offset: Ir.Value.constant(BigInt(byteOffset), Ir.Type.Scalar.uint256),
     length: Ir.Value.constant(BigInt(actualFieldSize), Ir.Type.Scalar.uint256),
     value,
-    debug: node ? yield* Process.Debug.forAstNode(node) : {},
+    operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
   } as Ir.Instruction.Write);
 }
 

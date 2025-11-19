@@ -34,32 +34,42 @@ export namespace Block {
    * Block terminator instructions
    */
   export type Terminator =
-    | { kind: "jump"; target: string; debug: Block.Debug }
+    | { kind: "jump"; target: string; operationDebug: Block.Debug }
     | {
         kind: "branch";
         condition: Value;
+        conditionDebug?: Block.Debug;
         trueTarget: string;
         falseTarget: string;
-        debug: Block.Debug;
+        operationDebug: Block.Debug;
       }
-    | { kind: "return"; value?: Value; debug: Block.Debug }
+    | {
+        kind: "return";
+        value?: Value;
+        valueDebug?: Block.Debug;
+        operationDebug: Block.Debug;
+      }
     | {
         kind: "call";
         function: string;
         arguments: Value[];
+        argumentsDebug?: Block.Debug[];
         dest?: string;
         continuation: string;
-        debug: Block.Debug;
+        operationDebug: Block.Debug;
       };
 
   export interface Phi {
     kind: "phi";
     /** Map from predecessor block ID to value */
     sources: Map<string, Value>;
+    /** Map from predecessor block ID to debug context for that source */
+    sourcesDebug?: Map<string, Block.Debug>;
     /** Destination temp to assign the phi result */
     dest: string;
     /** Type of the phi node (all sources must have same type) */
     type: Type;
-    debug: Block.Debug;
+    /** Debug context for the phi operation itself */
+    operationDebug: Block.Debug;
   }
 }

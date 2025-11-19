@@ -87,7 +87,7 @@ export class Formatter {
     // Phi nodes
     if (block.phis && block.phis.length > 0) {
       for (const phi of block.phis) {
-        const phiSourceComment = this.formatSourceComment(phi.debug);
+        const phiSourceComment = this.formatSourceComment(phi.operationDebug);
         if (phiSourceComment) {
           // Handle multi-line comments for pick contexts
           for (const line of phiSourceComment.split("\n")) {
@@ -100,7 +100,7 @@ export class Formatter {
 
     // Instructions
     for (const inst of block.instructions) {
-      const sourceComment = this.formatSourceComment(inst.debug);
+      const sourceComment = this.formatSourceComment(inst.operationDebug);
       if (sourceComment) {
         // Handle multi-line comments for pick contexts
         for (const line of sourceComment.split("\n")) {
@@ -112,7 +112,7 @@ export class Formatter {
 
     // Terminator
     const terminatorSourceComment = this.formatSourceComment(
-      block.terminator.debug,
+      block.terminator.operationDebug,
     );
     if (terminatorSourceComment) {
       // Handle multi-line comments for pick contexts

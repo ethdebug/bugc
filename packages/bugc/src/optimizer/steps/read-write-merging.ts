@@ -260,7 +260,7 @@ export class ReadWriteMergingStep extends BaseOptimizationStep {
       // Track debug contexts as we process writes
       combinedDebug = Ir.Utils.combineDebugContexts(
         combinedDebug,
-        info.write.debug,
+        info.write.operationDebug,
       );
 
       if (shiftBits > 0n) {
@@ -276,7 +276,7 @@ export class ReadWriteMergingStep extends BaseOptimizationStep {
             type: Ir.Type.Scalar.uint256,
           },
           dest: shiftTemp,
-          debug: combinedDebug,
+          operationDebug: combinedDebug,
         });
 
         const shiftedValue: Ir.Value = {
@@ -296,7 +296,7 @@ export class ReadWriteMergingStep extends BaseOptimizationStep {
             left: combinedValue,
             right: shiftedValue,
             dest: orTemp,
-            debug: combinedDebug,
+            operationDebug: combinedDebug,
           });
           combinedValue = {
             kind: "temp",
@@ -317,7 +317,7 @@ export class ReadWriteMergingStep extends BaseOptimizationStep {
             left: combinedValue,
             right: info.write.value,
             dest: orTemp,
-            debug: combinedDebug,
+            operationDebug: combinedDebug,
           });
           combinedValue = {
             kind: "temp",
@@ -351,7 +351,7 @@ export class ReadWriteMergingStep extends BaseOptimizationStep {
         type: Ir.Type.Scalar.uint256,
       },
       value: combinedValue!,
-      debug: combinedDebug,
+      operationDebug: combinedDebug,
     };
 
     instructions.push(mergedWrite);

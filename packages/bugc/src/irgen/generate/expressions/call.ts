@@ -51,7 +51,7 @@ export const makeBuildCall = (
         kind: "hash",
         value: argValue,
         dest: resultTemp,
-        debug: yield* Process.Debug.forAstNode(expr),
+        operationDebug: yield* Process.Debug.forAstNode(expr),
       } as Ir.Instruction);
 
       return Ir.Value.temp(resultTemp, resultType);
@@ -105,7 +105,7 @@ export const makeBuildCall = (
         arguments: argValues,
         dest,
         continuation: continuationBlockId,
-        debug: yield* Process.Debug.forAstNode(expr),
+        operationDebug: yield* Process.Debug.forAstNode(expr),
       });
 
       // Switch to the continuation block

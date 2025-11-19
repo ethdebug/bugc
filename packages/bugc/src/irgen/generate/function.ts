@@ -30,7 +30,7 @@ export function* buildFunction(
         kind: "return",
         value: undefined,
         // No debug context - compiler-generated implicit return
-        debug: {},
+        operationDebug: {},
       });
     }
   }

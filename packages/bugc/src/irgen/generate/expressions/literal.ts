@@ -67,7 +67,7 @@ export function* buildLiteral(expr: Ast.Expression.Literal): Process<Ir.Value> {
     dest: tempId,
     value,
     type,
-    debug: yield* Process.Debug.forAstNode(expr),
+    operationDebug: yield* Process.Debug.forAstNode(expr),
   } as Ir.Instruction.Const);
 
   return Ir.Value.temp(tempId, type);

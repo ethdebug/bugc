@@ -98,7 +98,7 @@ export namespace Process {
           id: targetBlockId,
           instructions: [],
           // No debug context - compiler-generated placeholder terminator
-          terminator: { kind: "jump", target: targetBlockId, debug: {} },
+          terminator: { kind: "jump", target: targetBlockId, operationDebug: {} },
           predecessors: new Set([predId]),
           phis: [],
           // No debug context - compiler-generated placeholder block
@@ -485,7 +485,7 @@ export namespace Process {
         sources,
         type: ssaVar.type,
         // No debug context - compiler-generated phi node (SSA merge point)
-        debug: {},
+        operationDebug: {},
       };
 
       yield* lift(State.Block.addPhi)(phi);
@@ -760,7 +760,7 @@ export namespace Process {
               sources,
               type: loopPhi.type,
               // No debug context - compiler-generated phi node (loop merge)
-              debug: {},
+              operationDebug: {},
             };
 
             // Add the phi to the header block
@@ -1021,7 +1021,7 @@ export namespace Process {
         base: baseSlot,
         key,
         dest: tempId,
-        debug: node ? yield* Process.Debug.forAstNode(node) : {},
+        operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
       } as Ir.Instruction.ComputeSlot);
       return Ir.Value.temp(tempId, Ir.Type.Scalar.uint256);
     }
@@ -1043,7 +1043,7 @@ export namespace Process {
         length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         type,
         dest: tempId,
-        debug: node ? yield* Process.Debug.forAstNode(node) : {},
+        operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
       } as Ir.Instruction.Read);
       return Ir.Value.temp(tempId, type);
     }
@@ -1063,7 +1063,7 @@ export namespace Process {
         offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
         length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
         value,
-        debug: node ? yield* Process.Debug.forAstNode(node) : {},
+        operationDebug: node ? yield* Process.Debug.forAstNode(node) : {},
       } as Ir.Instruction.Write);
     }
   }

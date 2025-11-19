@@ -59,7 +59,7 @@ export function generate<S extends Stack>(
         result = result
           .then((s) => ({
             ...s,
-            currentDebug: inst.debug,
+            currentDebug: inst.operationDebug,
           }))
           .then(Instruction.generate(inst))
           .then((s) => ({
@@ -72,7 +72,7 @@ export function generate<S extends Stack>(
       result = result
         .then((s) => ({
           ...s,
-          currentDebug: block.terminator.debug,
+          currentDebug: block.terminator.operationDebug,
         }))
         .then(generateTerminator(block.terminator, isLastBlock))
         .then((s) => ({

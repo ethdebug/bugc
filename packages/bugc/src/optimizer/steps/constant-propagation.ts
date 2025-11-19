@@ -25,8 +25,8 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
           // Track constant assignments and their debug info
           if (inst.kind === "const" && "dest" in inst) {
             constants.set(inst.dest, inst.value);
-            if (inst.debug) {
-              constantDebug.set(inst.dest, inst.debug);
+            if (inst.operationDebug) {
+              constantDebug.set(inst.dest, inst.operationDebug);
             }
           } else {
             // Try to propagate constants into instruction operands
@@ -150,8 +150,8 @@ export class ConstantPropagationStep extends BaseOptimizationStep {
 
     // If we propagated constants, combine debug contexts
     if (changed) {
-      result.debug = Ir.Utils.combineDebugContexts(
-        inst.debug,
+      result.operationDebug = Ir.Utils.combineDebugContexts(
+        inst.operationDebug,
         ...propagatedDebugContexts,
       );
     }

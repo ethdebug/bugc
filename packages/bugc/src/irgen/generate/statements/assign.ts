@@ -103,7 +103,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
           left: value,
           right: Ir.Value.constant(0n, ssaVar.type),
           dest: newSsaVar.currentTempId,
-          debug: yield* Process.Debug.forAstNode(node),
+          operationDebug: yield* Process.Debug.forAstNode(node),
         } as Ir.Instruction);
       }
       return;
@@ -122,7 +122,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
         offset: Ir.Value.constant(0n, Ir.Type.Scalar.uint256),
         length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256), // 32 bytes for uint256
         value,
-        debug: yield* Process.Debug.forAstNode(node),
+        operationDebug: yield* Process.Debug.forAstNode(node),
       } as Ir.Instruction.Write);
       return;
     }
@@ -186,7 +186,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
             field: fieldName,
             fieldOffset,
             dest: offsetTemp,
-            debug: yield* Process.Debug.forAstNode(accessNode),
+            operationDebug: yield* Process.Debug.forAstNode(accessNode),
           } as Ir.Instruction.ComputeOffset);
 
           // Then write to that offset
@@ -196,7 +196,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
             offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
             length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
             value,
-            debug: yield* Process.Debug.forAstNode(accessNode),
+            operationDebug: yield* Process.Debug.forAstNode(accessNode),
           } as Ir.Instruction.Write);
           return;
         }
@@ -227,7 +227,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
           index,
           stride: 1, // bytes are 1 byte each
           dest: offsetTemp,
-          debug: yield* Process.Debug.forAstNode(node),
+          operationDebug: yield* Process.Debug.forAstNode(node),
         } as Ir.Instruction.ComputeOffset);
 
         // Write the byte at that offset
@@ -237,7 +237,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
           offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
           length: Ir.Value.constant(1n, Ir.Type.Scalar.uint256),
           value,
-          debug: yield* Process.Debug.forAstNode(node),
+          operationDebug: yield* Process.Debug.forAstNode(node),
         } as Ir.Instruction.Write);
         return;
       }
@@ -267,7 +267,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
           index,
           stride: 32, // array elements are 32 bytes each
           dest: offsetTemp,
-          debug: yield* Process.Debug.forAstNode(node),
+          operationDebug: yield* Process.Debug.forAstNode(node),
         } as Ir.Instruction.ComputeOffset);
 
         // Write the element at that offset
@@ -277,7 +277,7 @@ function* assignToTarget(node: Ast.Expression, value: Ir.Value): Process<void> {
           offset: Ir.Value.temp(offsetTemp, Ir.Type.Scalar.uint256),
           length: Ir.Value.constant(32n, Ir.Type.Scalar.uint256),
           value,
-          debug: yield* Process.Debug.forAstNode(node),
+          operationDebug: yield* Process.Debug.forAstNode(node),
         } as Ir.Instruction.Write);
         return;
       }

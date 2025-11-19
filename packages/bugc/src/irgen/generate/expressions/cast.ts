@@ -51,7 +51,7 @@ export const makeBuildCast = (
       value: exprValue,
       targetType: targetIrType,
       dest: resultTemp,
-      debug: yield* Process.Debug.forAstNode(expr),
+      operationDebug: yield* Process.Debug.forAstNode(expr),
     } as Ir.Instruction.Cast);
 
     return Ir.Value.temp(resultTemp, targetIrType);

@@ -251,14 +251,14 @@ function createModuleWithBinaryOp(a: bigint, b: bigint, op: string): Ir.Module {
                 value: a,
                 dest: "t0",
                 type: Ir.Type.Scalar.uint256,
-                debug: {},
+                operationDebug: {},
               },
               {
                 kind: "const",
                 value: b,
                 dest: "t1",
                 type: Ir.Type.Scalar.uint256,
-                debug: {},
+                operationDebug: {},
               },
               {
                 kind: "binary",
@@ -286,10 +286,10 @@ function createModuleWithBinaryOp(a: bigint, b: bigint, op: string): Ir.Module {
                 },
                 dest: "t2",
                 type: Ir.Type.Scalar.uint256,
-                debug: {},
+                operationDebug: {},
               },
             ],
-            terminator: { kind: "return", debug: {} },
+            terminator: { kind: "return", operationDebug: {} },
             phis: [],
             predecessors: new Set<string>(),
             debug: {},
@@ -311,7 +311,7 @@ function createModuleWithDeadCode(useFlags: boolean[]): Ir.Module {
       value: BigInt(index),
       dest: `t${index}`,
       type: Ir.Type.Scalar.uint256,
-      debug: {},
+      operationDebug: {},
     });
   });
 
@@ -329,7 +329,7 @@ function createModuleWithDeadCode(useFlags: boolean[]): Ir.Module {
         },
         right: { kind: "temp", id: "t0", type: Ir.Type.Scalar.uint256 },
         dest: `result${index}`,
-        debug: {},
+        operationDebug: {},
       });
     }
   });
@@ -346,7 +346,7 @@ function createModuleWithDeadCode(useFlags: boolean[]): Ir.Module {
           {
             id: "entry",
             instructions: [...instructions, ...usedInstructions],
-            terminator: { kind: "return", debug: {} },
+            terminator: { kind: "return", operationDebug: {} },
             phis: [],
             predecessors: new Set<string>(),
             debug: {},
@@ -376,14 +376,14 @@ function createModuleWithDuplicateExpressions(a: bigint, b: bigint): Ir.Module {
                 value: a,
                 dest: "t0",
                 type: Ir.Type.Scalar.uint256,
-                debug: {},
+                operationDebug: {},
               },
               {
                 kind: "const",
                 value: b,
                 dest: "t1",
                 type: Ir.Type.Scalar.uint256,
-                debug: {},
+                operationDebug: {},
               },
               // First computation
               {
@@ -401,7 +401,7 @@ function createModuleWithDuplicateExpressions(a: bigint, b: bigint): Ir.Module {
                 },
                 dest: "t2",
                 type: Ir.Type.Scalar.uint256,
-                debug: {},
+                operationDebug: {},
               },
               // Duplicate computation
               {
@@ -419,7 +419,7 @@ function createModuleWithDuplicateExpressions(a: bigint, b: bigint): Ir.Module {
                 },
                 dest: "t3",
                 type: Ir.Type.Scalar.uint256,
-                debug: {},
+                operationDebug: {},
               },
               // Use both results
               {
@@ -437,10 +437,10 @@ function createModuleWithDuplicateExpressions(a: bigint, b: bigint): Ir.Module {
                 },
                 dest: "t4",
                 type: Ir.Type.Scalar.uint256,
-                debug: {},
+                operationDebug: {},
               },
             ],
-            terminator: { kind: "return", debug: {} },
+            terminator: { kind: "return", operationDebug: {} },
             phis: [],
             predecessors: new Set<string>(),
             debug: {},
@@ -467,7 +467,7 @@ function createModuleWithMergeableBlocks(
         value: cond1 ? 1n : 0n,
         dest: "t0",
         type: Ir.Type.Scalar.bool,
-        debug: {},
+        operationDebug: {},
       },
     ],
     terminator: {
@@ -475,7 +475,7 @@ function createModuleWithMergeableBlocks(
       condition: { kind: "temp", id: "t0", type: Ir.Type.Scalar.bool },
       trueTarget: "block1",
       falseTarget: "block2",
-      debug: {},
+      operationDebug: {},
     },
     phis: [],
     predecessors: new Set<string>(),
@@ -486,7 +486,7 @@ function createModuleWithMergeableBlocks(
   blocks.set("block1", {
     id: "block1",
     instructions: [],
-    terminator: { kind: "jump", target: "final", debug: {} },
+    terminator: { kind: "jump", target: "final", operationDebug: {} },
     phis: [],
     predecessors: new Set<string>(["entry"]),
     debug: {},
@@ -495,7 +495,7 @@ function createModuleWithMergeableBlocks(
   blocks.set("block2", {
     id: "block2",
     instructions: [],
-    terminator: { kind: "jump", target: "final", debug: {} },
+    terminator: { kind: "jump", target: "final", operationDebug: {} },
     phis: [],
     predecessors: new Set<string>(["entry"]),
     debug: {},
@@ -505,7 +505,7 @@ function createModuleWithMergeableBlocks(
   blocks.set("final", {
     id: "final",
     instructions: [],
-    terminator: { kind: "return", debug: {} },
+    terminator: { kind: "return", operationDebug: {} },
     phis: [],
     predecessors: new Set<string>(["block1", "block2"]),
     debug: {},
@@ -553,10 +553,10 @@ function createSimpleBlocks(): Map<string, Ir.Block> {
         value: 42n,
         dest: "t0",
         type: Ir.Type.Scalar.uint256,
-        debug: {},
+        operationDebug: {},
       },
     ],
-    terminator: { kind: "return", debug: {} },
+    terminator: { kind: "return", operationDebug: {} },
     phis: [],
     predecessors: new Set<string>(),
     debug: {},

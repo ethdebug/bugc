@@ -108,7 +108,7 @@ export class TailCallOptimizationStep extends BaseOptimizationStep {
             sources: phiSources,
             dest: `${param.tempId}_loop`,
             type: param.type,
-            debug: { context: param.loc ? undefined : undefined },
+            operationDebug: { context: param.loc ? undefined : undefined },
           });
         }
 
@@ -120,7 +120,7 @@ export class TailCallOptimizationStep extends BaseOptimizationStep {
           terminator: {
             kind: "jump",
             target: func.entry,
-            debug: {},
+            operationDebug: {},
           },
           predecessors: new Set([func.entry, ...tailCallBlocks]),
           debug: {},
@@ -147,7 +147,7 @@ export class TailCallOptimizationStep extends BaseOptimizationStep {
           block.terminator = {
             kind: "jump",
             target: loopHeaderId,
-            debug: callTerm.debug,
+            operationDebug: callTerm.operationDebug,
           };
 
           // Track the transformation

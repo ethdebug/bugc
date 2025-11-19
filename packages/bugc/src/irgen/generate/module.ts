@@ -136,7 +136,7 @@ function createEmptyFunction(name: string): Ir.Function {
             kind: "return",
             value: undefined,
             // No debug context - compiler-generated empty function
-            debug: {},
+            operationDebug: {},
           },
           predecessors: new Set(),
           // No debug context - compiler-generated empty block

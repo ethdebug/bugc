@@ -52,7 +52,7 @@ export function* buildSpecial(expr: Ast.Expression.Special): Process<Ir.Value> {
     kind: "env",
     op,
     dest: temp,
-    debug: yield* Process.Debug.forAstNode(expr),
+    operationDebug: yield* Process.Debug.forAstNode(expr),
   } as Ir.Instruction.Env);
 
   return Ir.Value.temp(temp, resultType);

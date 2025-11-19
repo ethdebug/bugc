@@ -29,7 +29,12 @@ export type Instruction =
 export namespace Instruction {
   export interface Base {
     kind: string;
-    debug: Instruction.Debug;
+    /**
+     * Debug context for the operation itself (not operands).
+     * Renamed from `debug` to clarify that this tracks only the operation,
+     * while operands have their own debug contexts.
+     */
+    operationDebug: Instruction.Debug;
   }
 
   export interface Debug {
@@ -52,10 +57,13 @@ export namespace Instruction {
     location: Location;
     // For storage/transient (segment-based)
     slot?: Value;
+    slotDebug?: Instruction.Debug;
     // For all locations that need offset
     offset?: Value;
+    offsetDebug?: Instruction.Debug;
     // Length in bytes
     length?: Value;
+    lengthDebug?: Instruction.Debug;
     // For local variables
     name?: string;
     // Destination and type
@@ -69,14 +77,18 @@ export namespace Instruction {
     location: Exclude<Location, "calldata" | "returndata" | "code">; // No writes to read-only locations
     // For storage/transient (segment-based)
     slot?: Value;
+    slotDebug?: Instruction.Debug;
     // For all locations that need offset
     offset?: Value;
+    offsetDebug?: Instruction.Debug;
     // Length in bytes
     length?: Value;
+    lengthDebug?: Instruction.Debug;
     // For local variables
     name?: string;
     // Value to write
     value: Value;
+    valueDebug?: Instruction.Debug;
   }
 
   // NEW: Unified compute offset instruction
@@ -91,12 +103,14 @@ export namespace Instruction {
       offsetKind: "array" | "field" | "byte";
       location: "memory" | "calldata" | "returndata" | "code";
       base: Value;
+      baseDebug?: Instruction.Debug;
       dest: string;
     }
 
     export interface Array extends ComputeOffset.Base {
       offsetKind: "array";
       index: Value;
+      indexDebug?: Instruction.Debug;
       stride: number;
     }
 
@@ -109,16 +123,20 @@ export namespace Instruction {
       index: Value,
       stride: number,
       dest: string,
-      debug: Instruction.Debug,
+      operationDebug: Instruction.Debug,
+      baseDebug?: Instruction.Debug,
+      indexDebug?: Instruction.Debug,
     ): ComputeOffset.Array => ({
       kind: "compute_offset",
       offsetKind: "array",
       location,
       base,
+      baseDebug,
       index,
+      indexDebug,
       stride,
       dest,
-      debug,
+      operationDebug,
     });
 
     export interface Field extends ComputeOffset.Base {
@@ -136,21 +154,24 @@ export namespace Instruction {
       field: string,
       fieldOffset: number,
       dest: string,
-      debug: Instruction.Debug,
+      operationDebug: Instruction.Debug,
+      baseDebug?: Instruction.Debug,
     ): ComputeOffset.Field => ({
       kind: "compute_offset",
       offsetKind: "field",
       location,
       base,
+      baseDebug,
       field,
       fieldOffset,
       dest,
-      debug,
+      operationDebug,
     });
 
     export interface Byte extends ComputeOffset.Base {
       offsetKind: "byte";
       offset: Value;
+      offsetDebug?: Instruction.Debug;
     }
 
     export const isByte = (inst: ComputeOffset): inst is ComputeOffset.Byte =>
@@ -161,21 +182,26 @@ export namespace Instruction {
       base: Value,
       offset: Value,
       dest: string,
-      debug: Instruction.Debug,
+      operationDebug: Instruction.Debug,
+      baseDebug?: Instruction.Debug,
+      offsetDebug?: Instruction.Debug,
     ): ComputeOffset.Byte => ({
       kind: "compute_offset",
       offsetKind: "byte",
       location,
       base,
+      baseDebug,
       offset,
+      offsetDebug,
       dest,
-      debug,
+      operationDebug,
     });
   }
 
   export interface Const extends Instruction.Base {
     kind: "const";
     value: bigint | string | boolean;
+    valueDebug?: Instruction.Debug;
     type: Type;
     dest: string;
   }
@@ -185,6 +211,7 @@ export namespace Instruction {
     kind: "allocate";
     location: "memory"; // For now, only memory allocation
     size: Value; // Size in bytes to allocate
+    sizeDebug?: Instruction.Debug;
     dest: string; // Destination temp for the allocated pointer
   }
 
@@ -198,12 +225,14 @@ export namespace Instruction {
       kind: "compute_slot";
       slotKind: "mapping" | "array" | "field";
       base: Value;
+      baseDebug?: Instruction.Debug;
       dest: string;
     }
 
     export interface Mapping extends ComputeSlot.Base {
       slotKind: "mapping";
       key: Value;
+      keyDebug?: Instruction.Debug;
       keyType: Type;
     }
 
@@ -215,15 +244,19 @@ export namespace Instruction {
       key: Value,
       keyType: Type,
       dest: string,
-      debug: Instruction.Debug,
+      operationDebug: Instruction.Debug,
+      baseDebug?: Instruction.Debug,
+      keyDebug?: Instruction.Debug,
     ): ComputeSlot.Mapping => ({
       kind: "compute_slot",
       slotKind: "mapping",
       base,
+      baseDebug,
       key,
+      keyDebug,
       keyType,
       dest,
-      debug,
+      operationDebug,
     });
 
     export interface Array extends ComputeSlot.Base {
@@ -237,13 +270,15 @@ export namespace Instruction {
     export const array = (
       base: Value,
       dest: string,
-      debug: Instruction.Debug,
+      operationDebug: Instruction.Debug,
+      baseDebug?: Instruction.Debug,
     ): ComputeSlot.Array => ({
       kind: "compute_slot",
       slotKind: "array",
       base,
+      baseDebug,
       dest,
-      debug,
+      operationDebug,
     });
 
     export interface Field extends ComputeSlot.Base {
@@ -258,14 +293,16 @@ export namespace Instruction {
       base: Value,
       fieldOffset: number,
       dest: string,
-      debug: Instruction.Debug,
+      operationDebug: Instruction.Debug,
+      baseDebug?: Instruction.Debug,
     ): ComputeSlot.Field => ({
       kind: "compute_slot",
       slotKind: "field",
       base,
+      baseDebug,
       fieldOffset,
       dest,
-      debug,
+      operationDebug,
     });
   }
 
@@ -291,7 +328,9 @@ export namespace Instruction {
       | "and"
       | "or";
     left: Value;
+    leftDebug?: Instruction.Debug;
     right: Value;
+    rightDebug?: Instruction.Debug;
     dest: string;
   }
 
@@ -299,6 +338,7 @@ export namespace Instruction {
     kind: "unary";
     op: "not" | "neg";
     operand: Value;
+    operandDebug?: Instruction.Debug;
     dest: string;
   }
 
@@ -317,12 +357,14 @@ export namespace Instruction {
   export interface Hash extends Instruction.Base {
     kind: "hash";
     value: Value;
+    valueDebug?: Instruction.Debug;
     dest: string;
   }
 
   export interface Cast extends Instruction.Base {
     kind: "cast";
     value: Value;
+    valueDebug?: Instruction.Debug;
     targetType: Type;
     dest: string;
   }
@@ -332,6 +374,7 @@ export namespace Instruction {
   export interface Length extends Instruction.Base {
     kind: "length";
     object: Value;
+    objectDebug?: Instruction.Debug;
     dest: string;
   }
 }

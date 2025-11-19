@@ -84,9 +84,9 @@ export class CommonSubexpressionEliminationStep extends BaseOptimizationStep {
               "dest" in existingInst
             ) {
               // This is a duplicate - combine debug contexts
-              existingInst.debug = Ir.Utils.combineDebugContexts(
-                existingInst.debug,
-                processedInst.debug,
+              existingInst.operationDebug = Ir.Utils.combineDebugContexts(
+                existingInst.operationDebug,
+                processedInst.operationDebug,
               );
 
               // Map this temp to the existing one

@@ -134,7 +134,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
       value: result,
       type: this.getResultType(inst.op, typeof result),
       dest: inst.dest,
-      debug: Ir.Utils.preserveDebug(inst),
+      operationDebug: Ir.Utils.preserveDebug(inst),
     };
   }
 
@@ -266,7 +266,7 @@ export class ConstantFoldingStep extends BaseOptimizationStep {
       value: hashValue,
       type: Ir.Type.Scalar.bytes32,
       dest: inst.dest,
-      debug: Ir.Utils.preserveDebug(inst),
+      operationDebug: Ir.Utils.preserveDebug(inst),
     };
   }
 
