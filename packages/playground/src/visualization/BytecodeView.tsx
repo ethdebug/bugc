@@ -9,7 +9,7 @@ interface BytecodeViewProps {
   onOpcodeHover?: (ranges: SourceRange[]) => void;
 }
 
-function DisassemblyView({
+function InstructionsView({
   instructions,
   onOpcodeHover,
 }: {
@@ -107,7 +107,6 @@ function DisassemblyView({
                 className="debug-info-icon"
                 onMouseEnter={(e) => handleDebugIconMouseEnter(e, instruction)}
                 onMouseLeave={handleDebugIconMouseLeave}
-                title="Hover to see ethdebug context"
               >
                 ℹ
               </span>
@@ -172,9 +171,9 @@ export function BytecodeView({ bytecode, onOpcodeHover }: BytecodeViewProps) {
             </div>
 
             <div className="bytecode-section">
-              <h4>Disassembly</h4>
+              <h4>Instructions</h4>
               {bytecode.createInstructions && (
-                <DisassemblyView
+                <InstructionsView
                   instructions={bytecode.createInstructions}
                   onOpcodeHover={onOpcodeHover}
                 />
@@ -200,8 +199,8 @@ export function BytecodeView({ bytecode, onOpcodeHover }: BytecodeViewProps) {
         </div>
 
         <div className="bytecode-section">
-          <h4>Disassembly</h4>
-          <DisassemblyView
+          <h4>Instructions</h4>
+          <InstructionsView
             instructions={bytecode.runtimeInstructions}
             onOpcodeHover={onOpcodeHover}
           />
