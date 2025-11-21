@@ -41,10 +41,13 @@ export function combineDebugContexts(
       if (value && typeof value === "object" && !Array.isArray(value)) {
         return Object.keys(value)
           .sort()
-          .reduce((sorted, key) => {
-            sorted[key] = value[key];
-            return sorted;
-          }, {} as Record<string, unknown>);
+          .reduce(
+            (sorted, key) => {
+              sorted[key] = value[key];
+              return sorted;
+            },
+            {} as Record<string, unknown>,
+          );
       }
       return value;
     });
@@ -232,10 +235,7 @@ export function extractSubInstructionContexts(
       if (instruction.baseDebug?.context) {
         contexts.push(instruction.baseDebug.context);
       }
-      if (
-        instruction.slotKind === "mapping" &&
-        instruction.keyDebug?.context
-      ) {
+      if (instruction.slotKind === "mapping" && instruction.keyDebug?.context) {
         contexts.push(instruction.keyDebug.context);
       }
       break;

@@ -80,23 +80,23 @@ export function generate(
   );
 
   // Patch function calls in user-defined functions
-  const patchedFunctions = functionResults.map(funcResult =>
+  const patchedFunctions = functionResults.map((funcResult) =>
     Function.patchFunctionCalls(
       funcResult.bytecode,
       funcResult.instructions,
       funcResult.patches,
       functionRegistry,
-    )
+    ),
   );
 
   // Combine runtime with user functions
   const allRuntimeBytes = [
     ...patchedRuntime.bytecode,
-    ...patchedFunctions.flatMap(f => f.bytecode),
+    ...patchedFunctions.flatMap((f) => f.bytecode),
   ];
   const allRuntimeInstructions = [
     ...patchedRuntime.instructions,
-    ...patchedFunctions.flatMap(f => f.instructions),
+    ...patchedFunctions.flatMap((f) => f.instructions),
   ];
 
   // Generate constructor function if present

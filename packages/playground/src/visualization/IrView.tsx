@@ -57,9 +57,7 @@ function HoverablePart({
 }
 
 // Format a value (temp, const) - matches Formatter.formatValue
-function formatValue(
-  value: Ir.Value | bigint | string | boolean,
-): string {
+function formatValue(value: Ir.Value | bigint | string | boolean): string {
   if (typeof value === "bigint") {
     return value.toString();
   }
@@ -117,11 +115,7 @@ function InstructionRenderer({
   const parts: (HoverablePart | string)[] = [];
 
   // Helper to add a hoverable operand
-  const addOperand = (
-    label: string,
-    text: string,
-    className?: string,
-  ) => {
+  const addOperand = (label: string, text: string, className?: string) => {
     const ranges = extractOperandSourceRanges(debugInfo, label);
     parts.push({ text, ranges, className });
   };
@@ -139,7 +133,9 @@ function InstructionRenderer({
       break;
 
     case "allocate":
-      add(`${formatDest(instruction.dest, Ir.Type.Scalar.uint256)} = allocate.${instruction.location}, size=`);
+      add(
+        `${formatDest(instruction.dest, Ir.Type.Scalar.uint256)} = allocate.${instruction.location}, size=`,
+      );
       addOperand("size", formatValue(instruction.size));
       break;
 
@@ -183,7 +179,10 @@ function InstructionRenderer({
         add("].mapping[");
         addOperand("key", formatValue(instruction.key));
         add("]");
-      } else if ("slotKind" in instruction && instruction.slotKind === "array") {
+      } else if (
+        "slotKind" in instruction &&
+        instruction.slotKind === "array"
+      ) {
         add("].array");
       } else if ("fieldOffset" in instruction) {
         add(`].field[${instruction.fieldOffset}]`);
@@ -195,7 +194,9 @@ function InstructionRenderer({
 
     case "compute_offset": {
       const base = formatValue(instruction.base);
-      const dest = instruction.dest.startsWith("t") ? `%${instruction.dest}` : instruction.dest;
+      const dest = instruction.dest.startsWith("t")
+        ? `%${instruction.dest}`
+        : instruction.dest;
       add(`${dest} = offset[`);
       addOperand("base", base);
       if ("index" in instruction && instruction.index) {
@@ -222,8 +223,14 @@ function InstructionRenderer({
 
     case "read": {
       const location = instruction.location;
-      const isDefaultOffset = !instruction.offset || (instruction.offset.kind === "const" && instruction.offset.value === 0n);
-      const isDefaultLength = !instruction.length || (instruction.length.kind === "const" && instruction.length.value === 32n);
+      const isDefaultOffset =
+        !instruction.offset ||
+        (instruction.offset.kind === "const" &&
+          instruction.offset.value === 0n);
+      const isDefaultLength =
+        !instruction.length ||
+        (instruction.length.kind === "const" &&
+          instruction.length.value === 32n);
 
       add(`${formatDest(instruction.dest, instruction.type)} = `);
 
@@ -256,7 +263,9 @@ function InstructionRenderer({
           } else {
             add(`${location}[offset: `);
             addOperand("offset", offset);
-            const length = instruction.length ? formatValue(instruction.length) : "32";
+            const length = instruction.length
+              ? formatValue(instruction.length)
+              : "32";
             add(", length: ");
             addOperand("length", length);
             add("]");
@@ -271,8 +280,14 @@ function InstructionRenderer({
     case "write": {
       const location = instruction.location;
       const value = formatValue(instruction.value);
-      const isDefaultOffset = !instruction.offset || (instruction.offset.kind === "const" && instruction.offset.value === 0n);
-      const isDefaultLength = !instruction.length || (instruction.length.kind === "const" && instruction.length.value === 32n);
+      const isDefaultOffset =
+        !instruction.offset ||
+        (instruction.offset.kind === "const" &&
+          instruction.offset.value === 0n);
+      const isDefaultLength =
+        !instruction.length ||
+        (instruction.length.kind === "const" &&
+          instruction.length.value === 32n);
 
       if (location === "storage" || location === "transient") {
         const slot = instruction.slot ? formatValue(instruction.slot) : "0";
@@ -303,7 +318,9 @@ function InstructionRenderer({
           } else {
             add(`${location}[offset: `);
             addOperand("offset", offset);
-            const length = instruction.length ? formatValue(instruction.length) : "32";
+            const length = instruction.length
+              ? formatValue(instruction.length)
+              : "32";
             add(", length: ");
             addOperand("length", length);
             add("] = ");
@@ -320,7 +337,8 @@ function InstructionRenderer({
       add(`; unknown instruction: ${(instruction as { kind?: string }).kind}`);
   }
 
-  const hasAnyDebug = operationRanges.length > 0 ||
+  const hasAnyDebug =
+    operationRanges.length > 0 ||
     debugInfo.operands.some((op) => op.debug?.context);
 
   const handleDebugIconHover = (e: React.MouseEvent<HTMLSpanElement>) => {
@@ -383,11 +401,7 @@ function TerminatorRenderer({
 
   const parts: (HoverablePart | string)[] = [];
 
-  const addOperand = (
-    label: string,
-    text: string,
-    className?: string,
-  ) => {
+  const addOperand = (label: string, text: string, className?: string) => {
     const ranges = extractOperandSourceRanges(debugInfo, label);
     parts.push({ text, ranges, className });
   };
@@ -429,7 +443,8 @@ function TerminatorRenderer({
       break;
   }
 
-  const hasAnyDebug = operationRanges.length > 0 ||
+  const hasAnyDebug =
+    operationRanges.length > 0 ||
     debugInfo.operands.some((op) => op.debug?.context);
 
   const handleDebugIconHover = (e: React.MouseEvent<HTMLSpanElement>) => {
@@ -490,7 +505,8 @@ function PhiRenderer({
     ? extractAllSourceRanges({ operation: debugInfo.operation, operands: [] })
     : [];
 
-  const hasAnyDebug = operationRanges.length > 0 ||
+  const hasAnyDebug =
+    operationRanges.length > 0 ||
     debugInfo.operands.some((op) => op.debug?.context);
 
   const handleDebugIconHover = (e: React.MouseEvent<HTMLSpanElement>) => {

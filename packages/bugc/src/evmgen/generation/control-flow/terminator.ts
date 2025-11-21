@@ -51,15 +51,13 @@ export function generateTerminator<S extends Stack>(
 
             if (allocation === undefined) {
               const offset = state.memory.nextStaticOffset;
-              return (
-                builder
-                  .then(loadValue(value))
-                  .then(PUSHn(BigInt(offset)), { as: "offset" })
-                  .then(MSTORE())
-                  .then(PUSHn(32n), { as: "size" })
-                  .then(PUSHn(BigInt(offset)), { as: "offset" })
-                  .then(RETURN())
-              );
+              return builder
+                .then(loadValue(value))
+                .then(PUSHn(BigInt(offset)), { as: "offset" })
+                .then(MSTORE())
+                .then(PUSHn(32n), { as: "size" })
+                .then(PUSHn(BigInt(offset)), { as: "offset" })
+                .then(RETURN());
             } else {
               const offset = allocation.offset;
               return builder
@@ -134,7 +132,9 @@ export function generateTerminator<S extends Stack>(
 
     case "call":
       // Call terminators should be handled specially in block.ts
-      throw new Error("Call terminator should be handled by generateCallTerminator");
+      throw new Error(
+        "Call terminator should be handled by generateCallTerminator",
+      );
   }
 }
 

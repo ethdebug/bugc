@@ -153,7 +153,9 @@ const makeBuildLoop = (
     yield* Process.Blocks.terminate({
       kind: "jump",
       target: headerBlock,
-      operationDebug: config.node ? yield* Process.Debug.forAstNode(config.node) : {},
+      operationDebug: config.node
+        ? yield* Process.Debug.forAstNode(config.node)
+        : {},
     });
 
     // Header: evaluate condition and branch
@@ -175,7 +177,9 @@ const makeBuildLoop = (
       condition: condVal,
       trueTarget: bodyBlock,
       falseTarget: exitBlock,
-      operationDebug: config.node ? yield* Process.Debug.forAstNode(config.node) : {},
+      operationDebug: config.node
+        ? yield* Process.Debug.forAstNode(config.node)
+        : {},
     });
 
     // Body: execute loop body

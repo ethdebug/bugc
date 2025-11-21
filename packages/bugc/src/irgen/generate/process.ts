@@ -98,7 +98,11 @@ export namespace Process {
           id: targetBlockId,
           instructions: [],
           // No debug context - compiler-generated placeholder terminator
-          terminator: { kind: "jump", target: targetBlockId, operationDebug: {} },
+          terminator: {
+            kind: "jump",
+            target: targetBlockId,
+            operationDebug: {},
+          },
           predecessors: new Set([predId]),
           phis: [],
           // No debug context - compiler-generated placeholder block

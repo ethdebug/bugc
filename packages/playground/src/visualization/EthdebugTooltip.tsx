@@ -12,10 +12,7 @@ interface EthdebugTooltipProps {
   onUpdate?: (tooltip: TooltipData) => void;
 }
 
-export function EthdebugTooltip({
-  tooltip,
-  onUpdate,
-}: EthdebugTooltipProps) {
+export function EthdebugTooltip({ tooltip, onUpdate }: EthdebugTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,10 +71,7 @@ export function EthdebugTooltip({
 export function useEthdebugTooltip() {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
-  const showTooltip = (
-    e: React.MouseEvent<HTMLElement>,
-    content: string,
-  ) => {
+  const showTooltip = (e: React.MouseEvent<HTMLElement>, content: string) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setTooltip({
       content,

@@ -169,9 +169,7 @@ export function formatMultiLevelDebug(info: MultiLevelDebugInfo): string {
     result.operation = info.operation.context;
   }
 
-  const operandsWithDebug = info.operands.filter(
-    (op) => op.debug?.context,
-  );
+  const operandsWithDebug = info.operands.filter((op) => op.debug?.context);
   if (operandsWithDebug.length > 0) {
     result.operands = Object.fromEntries(
       operandsWithDebug.map((op) => [op.label, op.debug!.context]),

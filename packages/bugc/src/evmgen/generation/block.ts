@@ -12,7 +12,10 @@ import { calculateSize } from "#evmgen/serialize";
 
 import * as Instruction from "./instruction.js";
 import { loadValue } from "./values/index.js";
-import { generateTerminator, generateCallTerminator } from "./control-flow/index.js";
+import {
+  generateTerminator,
+  generateCallTerminator,
+} from "./control-flow/index.js";
 import { annotateTop } from "./values/identify.js";
 
 /**
@@ -57,9 +60,11 @@ export function generate<S extends Stack>(
         // annotate TOS with the dest variable
         if (func && predecessor) {
           const predBlock = func.blocks.get(predecessor);
-          if (predBlock?.terminator.kind === "call" &&
-              predBlock.terminator.continuation === block.id &&
-              predBlock.terminator.dest) {
+          if (
+            predBlock?.terminator.kind === "call" &&
+            predBlock.terminator.continuation === block.id &&
+            predBlock.terminator.dest
+          ) {
             // TOS has the return value, annotate it
             result = result.then(annotateTop(predBlock.terminator.dest));
           }
@@ -86,17 +91,18 @@ export function generate<S extends Stack>(
       }
 
       // Process terminator
-      result = result
-        .then((s) => ({
-          ...s,
-          currentDebug: block.terminator.operationDebug,
-        }));
+      result = result.then((s) => ({
+        ...s,
+        currentDebug: block.terminator.operationDebug,
+      }));
 
       // Handle call terminators specially (they cross function boundaries)
       if (block.terminator.kind === "call") {
         result = result.then(generateCallTerminator(block.terminator));
       } else {
-        result = result.then(generateTerminator(block.terminator, isLastBlock, isUserFunction));
+        result = result.then(
+          generateTerminator(block.terminator, isLastBlock, isUserFunction),
+        );
       }
 
       result = result.then((s) => ({

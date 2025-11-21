@@ -28,11 +28,7 @@ export namespace Value {
   /**
    * Helper to create temporary value references
    */
-  export function temp(
-    id: string,
-    type: Type,
-    debug?: ValueDebug,
-  ): Value {
+  export function temp(id: string, type: Type, debug?: ValueDebug): Value {
     return { kind: "temp", id, type, debug };
   }
 
