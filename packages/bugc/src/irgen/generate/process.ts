@@ -677,7 +677,7 @@ export namespace Process {
     }
 
     /**
-     * Create phi nodes for loop variables at loop header
+     * Create phi nodes for loop variables at loop header (deprecated - use createAndInsertLoopPhis)
      */
     export function createLoopPhis(
       preLoopVars: Map<string, { tempId: string; type: Ir.Type }>,
@@ -706,7 +706,86 @@ export namespace Process {
     }
 
     /**
+     * Create and insert phi nodes for loop variables at loop header
+     * This creates placeholder phis with initial values, to be updated later
+     */
+    export function* createAndInsertLoopPhis(
+      preLoopVars: Map<string, { tempId: string; type: Ir.Type }>,
+      headerBlockId: string,
+    ): Process<
+      Map<
+        string,
+        { phiTemp: string; varName: string; type: Ir.Type; initialTemp: string }
+      >
+    > {
+      const loopPhis = new Map<
+        string,
+        { phiTemp: string; varName: string; type: Ir.Type; initialTemp: string }
+      >();
+
+      const state: State = yield { type: "peek" };
+      const headerBlock = state.function.blocks.get(headerBlockId);
+      if (!headerBlock) {
+        return loopPhis;
+      }
+
+      // Find the entry predecessor (the block before the loop)
+      const entryPredecessor = Array.from(headerBlock.predecessors).find(
+        (pred) => pred !== headerBlockId,
+      );
+
+      if (!entryPredecessor) {
+        return loopPhis;
+      }
+
+      // We should already be in the header block when this is called
+      // Create phi nodes for all variables that exist before the loop
+      for (const [varName, { tempId, type }] of preLoopVars) {
+        const phiTemp = yield* newTemp();
+
+        // Create a placeholder phi with only the entry value for now
+        // The loop-back value will be added later in updateLoopPhis
+        const sources = new Map<string, Ir.Value>();
+        sources.set(entryPredecessor, Ir.Value.temp(tempId, type));
+
+        const phi: Ir.Block.Phi = {
+          kind: "phi",
+          dest: phiTemp,
+          sources,
+          type,
+          operationDebug: {},
+        };
+
+        // Add the phi to the current block (header block) state
+        yield* lift(State.Block.addPhi)(phi);
+
+        // Track SSA metadata for the phi
+        const scopeIndex = yield* lift(State.Scopes.extract)(
+          (s) => s.stack.length - 1,
+        );
+        const scopeId = `scope_${scopeIndex}_${varName}`;
+        yield* addSsaMetadata(phiTemp, varName, scopeId, type, 0);
+
+        // Update the SSA variable to use the phi result
+        // This is crucial: from this point forward in the header block,
+        // all uses of this variable will reference the phi node
+        yield* updateSsaTemp(varName, phiTemp);
+
+        // Track the phi for later update
+        loopPhis.set(varName, {
+          phiTemp,
+          varName,
+          type,
+          initialTemp: tempId,
+        });
+      }
+
+      return loopPhis;
+    }
+
+    /**
      * Update loop phi nodes with values from the loop body
+     * This adds the loop-back edge to the phi nodes created by createAndInsertLoopPhis
      */
     export function* updateLoopPhis(
       loopPhis: Map<
@@ -727,79 +806,53 @@ export namespace Process {
         const currentVar = currentVars.get(varName);
         if (!currentVar) continue;
 
-        // Check if the variable was modified in the loop
-        if (currentVar.tempId !== loopPhi.initialTemp) {
-          // Variable was modified, we need a phi node
-          const phiTemp = yield* newTemp();
+        // Find the existing phi node for this variable
+        const existingPhi = headerBlock.phis.find(
+          (phi) => phi.dest === loopPhi.phiTemp,
+        );
 
-          // Find the entry predecessor (the block before the loop)
-          const entryPredecessor = Array.from(headerBlock.predecessors).find(
-            (pred) => !pred.includes("body") && !pred.includes("update"),
-          );
+        if (existingPhi) {
+          // Update the existing phi node with the loop-back value
+          yield {
+            type: "modify",
+            fn: (s: State) => {
+              const updatedBlock = s.function.blocks.get(headerBlockId);
+              if (!updatedBlock) return s;
 
-          if (entryPredecessor) {
-            // Build the phi sources
-            const sources = new Map<string, Ir.Value>();
+              const updatedPhis = updatedBlock.phis.map((phi) => {
+                if (phi.dest === loopPhi.phiTemp) {
+                  // Add the loop-back source
+                  const newSources = new Map(phi.sources);
+                  newSources.set(
+                    fromBlockId,
+                    Ir.Value.temp(currentVar.tempId, loopPhi.type),
+                  );
+                  return {
+                    ...phi,
+                    sources: newSources,
+                  };
+                }
+                return phi;
+              });
 
-            // Entry value (from before the loop)
-            sources.set(
-              entryPredecessor,
-              Ir.Value.temp(loopPhi.initialTemp, loopPhi.type),
-            );
-
-            // Loop body/update value
-            sources.set(
-              fromBlockId,
-              Ir.Value.temp(currentVar.tempId, loopPhi.type),
-            );
-
-            // Add phi node to header block
-            const phi: Ir.Block.Phi = {
-              kind: "phi",
-              dest: phiTemp,
-              sources,
-              type: loopPhi.type,
-              // No debug context - compiler-generated phi node (loop merge)
-              operationDebug: {},
-            };
-
-            // Add the phi to the header block
-            yield {
-              type: "modify",
-              fn: (s: State) => {
-                const updatedBlock = s.function.blocks.get(headerBlockId);
-                if (!updatedBlock) return s;
-
-                return {
-                  ...s,
-                  function: {
-                    ...s.function,
-                    blocks: new Map([
-                      ...s.function.blocks,
-                      [
-                        headerBlockId,
-                        {
-                          ...updatedBlock,
-                          phis: [...updatedBlock.phis, phi],
-                        },
-                      ],
-                    ]),
-                  },
-                };
-              },
-            };
-
-            // Track SSA metadata for the phi
-            const scopeIndex = yield* lift(State.Scopes.extract)(
-              (s) => s.stack.length - 1,
-            );
-            const scopeId = `scope_${scopeIndex}_${varName}`;
-            yield* addSsaMetadata(phiTemp, varName, scopeId, loopPhi.type, 0);
-
-            // Update the SSA variable to use the phi result in the header block
-            // This ensures uses of the variable in the loop see the phi result
-            yield* updateSsaTemp(varName, phiTemp);
-          }
+              return {
+                ...s,
+                function: {
+                  ...s.function,
+                  blocks: new Map([
+                    ...s.function.blocks,
+                    [
+                      headerBlockId,
+                      {
+                        ...updatedBlock,
+                        phis: updatedPhis,
+                      },
+                    ],
+                  ]),
+                },
+              };
+            },
+          };
         }
       }
     }

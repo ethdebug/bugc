@@ -39,7 +39,8 @@ export function* buildFunction(
   yield* Process.Blocks.syncCurrent();
 
   // Compute predecessors from the control flow graph
-  const blocks = computePredecessors(yield* Process.Functions.currentBlocks());
+  const blocksBeforeCompute = yield* Process.Functions.currentBlocks();
+  const blocks = computePredecessors(blocksBeforeCompute);
   const params = yield* Process.Functions.currentParameters();
 
   // Collect SSA variable metadata

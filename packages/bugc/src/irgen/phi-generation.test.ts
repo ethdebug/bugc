@@ -181,15 +181,6 @@ code {
     }
 
     // Loops should definitely have phi nodes
-    // console.debug("Found loop phi:", foundLoopPhi);
-    for (const [_blockId, _block] of ir.main.blocks.entries()) {
-      // console.debug(`Block ${_blockId}: phis = ${_block.phis.length}, preds = ${Array.from(_block.predecessors).join(', ')}`);
-      if (_block.phis.length > 0) {
-        for (const _phi of _block.phis) {
-          // console.debug(`  Phi: dest=${phi.dest}, sources=${Array.from(phi.sources.entries()).map(([k,v]) => `${k}:${v.kind === 'temp' ? v.id : v.value}`).join(', ')}`);
-        }
-      }
-    }
     expect(foundLoopPhi).toBe(true);
   });
 });

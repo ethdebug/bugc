@@ -160,8 +160,11 @@ const makeBuildLoop = (
     yield* Process.Blocks.switchTo(headerBlock);
 
     // On first entry to header, create phi nodes for loop variables
-    // We'll update these after processing the loop body
-    const loopPhis = Process.Variables.createLoopPhis(preLoopVars, headerBlock);
+    // We need to create placeholder phis NOW so that the condition uses them
+    const loopPhis = yield* Process.Variables.createAndInsertLoopPhis(
+      preLoopVars,
+      headerBlock,
+    );
 
     const condVal = config.condition
       ? yield* buildExpression(config.condition, { kind: "rvalue" })
