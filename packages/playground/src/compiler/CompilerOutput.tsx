@@ -48,7 +48,9 @@ export function CompilerOutput({ result, onOpcodeHover }: CompilerOutputProps) {
 
       <div className="output-content">
         {activeTab === "ast" && <AstView ast={result.ast} />}
-        {activeTab === "ir" && <IrView ir={result.ir} />}
+        {activeTab === "ir" && (
+          <IrView ir={result.ir} onOpcodeHover={onOpcodeHover} />
+        )}
         {activeTab === "cfg" && <CfgView ir={result.ir} />}
         {activeTab === "bytecode" && (
           <BytecodeView
