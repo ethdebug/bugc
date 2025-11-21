@@ -1,5 +1,6 @@
 import type * as Ir from "#ir";
 import type { Stack } from "#evm";
+import type { State } from "#evmgen/state";
 
 import { type Transition, operations, pipe } from "#evmgen/operations";
 
@@ -11,37 +12,55 @@ import { valueId, loadValue } from "../values/index.js";
 export function generateTerminator<S extends Stack>(
   term: Ir.Block.Terminator,
   isLastBlock: boolean = false,
+  isUserFunction: boolean = false,
 ): Transition<S, S> {
-  const { PUSHn, PUSH2, MSTORE, RETURN, STOP, JUMP, JUMPI } = operations;
+  const { PUSHn, PUSH2, MSTORE, MLOAD, RETURN, STOP, JUMP, JUMPI } = operations;
 
   switch (term.kind) {
     case "return": {
+      // Internal function return: load return PC, jump back
+      // Note: For returns with a value, we assume the return value is already
+      // on TOS from the previous instruction in the block. This avoids an
+      // unnecessary DUP that would leave an extra value on the stack.
+      if (isUserFunction) {
+        if (term.value) {
+          // Return with value (assume value already on TOS)
+          return pipe<S>()
+            .then(PUSHn(0x60n), { as: "offset" })
+            .then(MLOAD(), { as: "counter" })
+            .then(JUMP())
+            .done() as unknown as Transition<S, S>;
+        } else {
+          // Return without value (void return)
+          return pipe<S>()
+            .then(PUSHn(0x60n), { as: "offset" })
+            .then(MLOAD(), { as: "counter" })
+            .then(JUMP())
+            .done() as unknown as Transition<S, S>;
+        }
+      }
+
+      // Contract return (main function or create)
       if (term.value) {
-        // Need to return value from memory
-        const value = term.value; // Capture for closure
+        const value = term.value;
         const id = valueId(value);
 
         return pipe<S>()
           .peek((state, builder) => {
-            // Check if value is in memory
             const allocation = state.memory.allocations[id];
 
             if (allocation === undefined) {
-              // Value is on stack, need to store it first
-              // Allocate memory for it (simplified - assuming we track free pointer elsewhere)
               const offset = state.memory.nextStaticOffset;
               return (
                 builder
                   .then(loadValue(value))
                   .then(PUSHn(BigInt(offset)), { as: "offset" })
                   .then(MSTORE())
-                  // Now return from that memory location
                   .then(PUSHn(32n), { as: "size" })
                   .then(PUSHn(BigInt(offset)), { as: "offset" })
                   .then(RETURN())
               );
             } else {
-              // Value already in memory, return from there
               const offset = allocation.offset;
               return builder
                 .then(PUSHn(32n), { as: "size" })
@@ -113,35 +132,69 @@ export function generateTerminator<S extends Stack>(
         .done();
     }
 
-    case "call": {
-      // TODO: Implement actual EVM function call generation
-      // For now, just jump to the continuation block after pushing arguments
-      // This is a placeholder implementation
-      return pipe<S>()
-        .peek((state, builder) => {
-          const patchIndex = state.instructions.length;
-
-          // In a real implementation, we would:
-          // 1. Push arguments
-          // 2. Push return label
-          // 3. Jump to function
-          // 4. After return, result would be on stack if dest is defined
-          // For now, just jump to continuation
-          return builder
-            .then(PUSH2([0, 0]), { as: "counter" })
-            .then(JUMP())
-            .then((newState) => ({
-              ...newState,
-              patches: [
-                ...newState.patches,
-                {
-                  index: patchIndex,
-                  target: term.continuation,
-                },
-              ],
-            }));
-        })
-        .done();
-    }
+    case "call":
+      // Call terminators should be handled specially in block.ts
+      throw new Error("Call terminator should be handled by generateCallTerminator");
   }
+}
+
+/**
+ * Generate code for a call terminator - handled specially since it crosses function boundaries
+ */
+export function generateCallTerminator<S extends Stack>(
+  term: Extract<Ir.Block.Terminator, { kind: "call" }>,
+): Transition<S, Stack> {
+  const funcName = term.function;
+  const args = term.arguments;
+  const cont = term.continuation;
+
+  return ((state: State<S>): State<Stack> => {
+    let currentState: State<Stack> = state as State<Stack>;
+    const returnPcPatchIndex = currentState.instructions.length;
+
+    // Store return PC to memory at 0x60
+    currentState = {
+      ...currentState,
+      instructions: [
+        ...currentState.instructions,
+        { mnemonic: "PUSH2", opcode: 0x61, immediates: [0, 0] },
+        { mnemonic: "PUSH1", opcode: 0x60, immediates: [0x60] },
+        { mnemonic: "MSTORE", opcode: 0x52 },
+      ],
+      patches: [
+        ...currentState.patches,
+        {
+          type: "continuation" as const,
+          index: returnPcPatchIndex,
+          target: cont,
+        },
+      ],
+    };
+
+    // Push arguments using loadValue
+    for (const arg of args) {
+      currentState = loadValue(arg)(currentState);
+    }
+
+    // Push function address and jump
+    const funcAddrPatchIndex = currentState.instructions.length;
+    currentState = {
+      ...currentState,
+      instructions: [
+        ...currentState.instructions,
+        { mnemonic: "PUSH2", opcode: 0x61, immediates: [0, 0] },
+        { mnemonic: "JUMP", opcode: 0x56 },
+      ],
+      patches: [
+        ...currentState.patches,
+        {
+          type: "function" as const,
+          index: funcAddrPatchIndex,
+          target: funcName,
+        },
+      ],
+    };
+
+    return currentState;
+  }) as Transition<S, Stack>;
 }

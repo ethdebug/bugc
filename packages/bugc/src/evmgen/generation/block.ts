@@ -8,10 +8,12 @@ import type { Stack } from "#evm";
 import { Error, ErrorCode } from "#evmgen/errors";
 import { type Transition, pipe, operations } from "#evmgen/operations";
 import { Memory } from "#evmgen/analysis";
+import { calculateSize } from "#evmgen/serialize";
 
 import * as Instruction from "./instruction.js";
 import { loadValue } from "./values/index.js";
-import { generateTerminator } from "./control-flow/index.js";
+import { generateTerminator, generateCallTerminator } from "./control-flow/index.js";
+import { annotateTop } from "./values/identify.js";
 
 /**
  * Generate code for a basic block
@@ -21,13 +23,15 @@ export function generate<S extends Stack>(
   predecessor?: string,
   isLastBlock: boolean = false,
   isFirstBlock: boolean = false,
+  isUserFunction: boolean = false,
+  func?: Ir.Function,
 ): Transition<S, Stack> {
   const { JUMPDEST } = operations;
 
   return pipe<S>()
     .peek((state, builder) => {
-      // Record block offset for jump patching
-      const blockOffset = state.instructions.length;
+      // Record block offset for jump patching (byte offset, not instruction index)
+      const blockOffset = calculateSize(state.instructions);
 
       let result = builder.then((s) => ({
         ...s,
@@ -47,6 +51,19 @@ export function generate<S extends Stack>(
       // Set JUMPDEST for non-first blocks
       if (!isFirstBlock) {
         result = result.then(JUMPDEST());
+
+        // Check if this is a call continuation
+        // If predecessor block ended with a call targeting this block,
+        // annotate TOS with the dest variable
+        if (func && predecessor) {
+          const predBlock = func.blocks.get(predecessor);
+          if (predBlock?.terminator.kind === "call" &&
+              predBlock.terminator.continuation === block.id &&
+              predBlock.terminator.dest) {
+            // TOS has the return value, annotate it
+            result = result.then(annotateTop(predBlock.terminator.dest));
+          }
+        }
       }
 
       // Process phi nodes if we have a predecessor
@@ -73,12 +90,19 @@ export function generate<S extends Stack>(
         .then((s) => ({
           ...s,
           currentDebug: block.terminator.operationDebug,
-        }))
-        .then(generateTerminator(block.terminator, isLastBlock))
-        .then((s) => ({
-          ...s,
-          currentDebug: undefined,
         }));
+
+      // Handle call terminators specially (they cross function boundaries)
+      if (block.terminator.kind === "call") {
+        result = result.then(generateCallTerminator(block.terminator));
+      } else {
+        result = result.then(generateTerminator(block.terminator, isLastBlock, isUserFunction));
+      }
+
+      result = result.then((s) => ({
+        ...s,
+        currentDebug: undefined,
+      }));
 
       return result;
     })

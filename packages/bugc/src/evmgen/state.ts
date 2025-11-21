@@ -19,13 +19,29 @@ export interface State<S extends Evm.Stack> {
   instructions: Evm.Instruction[];
   memory: Analysis.Memory.Function.Info;
   blockOffsets: Record<string, number>;
-  patches: {
-    index: number;
-    target: string;
-  }[];
+  patches: Patch[];
   warnings: Error[];
   currentDebug?: DebugContext; // Debug context for current IR instruction
+  functionRegistry: Record<string, number>; // Function name -> bytecode offset
+  callStackPointer: number; // Memory location for call stack (0x60)
 }
+
+export type Patch =
+  | {
+      type?: "block"; // Default type for backward compatibility
+      index: number;
+      target: string;
+    }
+  | {
+      type: "function";
+      index: number;
+      target: string; // Function name
+    }
+  | {
+      type: "continuation";
+      index: number;
+      target: string; // Block name
+    };
 
 export interface StackItem {
   id: string;

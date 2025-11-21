@@ -27,7 +27,7 @@ export function generate(
   runtimeInstructions: Evm.Instruction[];
   warnings: Error[];
 } {
-  // Generate runtime function
+  // Generate runtime main function
   const runtimeResult = Function.generate(
     module.main,
     memory.main,
@@ -36,6 +36,68 @@ export function generate(
 
   // Collect all warnings
   let allWarnings: Error[] = [...runtimeResult.warnings];
+
+  // Generate user-defined functions and build function registry
+  const functionResults: Array<{
+    name: string;
+    bytecode: number[];
+    instructions: Evm.Instruction[];
+    patches: typeof runtimeResult.patches;
+  }> = [];
+
+  for (const [name, func] of module.functions.entries()) {
+    const funcMemory = memory.functions?.[name];
+    const funcLayout = blocks.functions?.[name];
+
+    if (funcMemory && funcLayout) {
+      const funcResult = Function.generate(func, funcMemory, funcLayout, {
+        isUserFunction: true,
+      });
+      functionResults.push({
+        name,
+        bytecode: funcResult.bytecode,
+        instructions: funcResult.instructions,
+        patches: funcResult.patches,
+      });
+      allWarnings = [...allWarnings, ...funcResult.warnings];
+    }
+  }
+
+  // Build function registry with offsets
+  const functionRegistry: Record<string, number> = {};
+  let currentOffset = runtimeResult.bytecode.length;
+  for (const funcResult of functionResults) {
+    functionRegistry[funcResult.name] = currentOffset;
+    currentOffset += funcResult.bytecode.length;
+  }
+
+  // Patch function calls in runtime bytecode
+  const patchedRuntime = Function.patchFunctionCalls(
+    runtimeResult.bytecode,
+    runtimeResult.instructions,
+    runtimeResult.patches,
+    functionRegistry,
+  );
+
+  // Patch function calls in user-defined functions
+  const patchedFunctions = functionResults.map(funcResult =>
+    Function.patchFunctionCalls(
+      funcResult.bytecode,
+      funcResult.instructions,
+      funcResult.patches,
+      functionRegistry,
+    )
+  );
+
+  // Combine runtime with user functions
+  const allRuntimeBytes = [
+    ...patchedRuntime.bytecode,
+    ...patchedFunctions.flatMap(f => f.bytecode),
+  ];
+  const allRuntimeInstructions = [
+    ...patchedRuntime.instructions,
+    ...patchedFunctions.flatMap(f => f.instructions),
+  ];
 
   // Generate constructor function if present
   let createBytes: number[] = [];
@@ -53,7 +115,7 @@ export function generate(
 
   // Build complete deployment bytecode and get deployment wrapper instructions
   const { deployBytes, deploymentWrapperInstructions } =
-    buildDeploymentInstructions(createBytes, runtimeResult.bytecode);
+    buildDeploymentInstructions(createBytes, allRuntimeBytes);
 
   // Combine constructor instructions with deployment wrapper
   const finalCreateInstructions =
@@ -63,9 +125,9 @@ export function generate(
 
   return {
     create: deployBytes,
-    runtime: runtimeResult.bytecode,
+    runtime: allRuntimeBytes,
     createInstructions: finalCreateInstructions,
-    runtimeInstructions: runtimeResult.instructions,
+    runtimeInstructions: allRuntimeInstructions,
     warnings: allWarnings,
   };
 }
@@ -87,6 +149,8 @@ function calculateDeploymentSize(
     patches: [],
     blockOffsets: {},
     warnings: [],
+    functionRegistry: {},
+    callStackPointer: 0x60,
   };
 
   let deploymentPrefixSize = 0;
@@ -124,6 +188,8 @@ function buildDeploymentInstructions(
     patches: [],
     blockOffsets: {},
     warnings: [],
+    functionRegistry: {},
+    callStackPointer: 0x60,
   };
 
   const deploymentSize = calculateDeploymentSize(
