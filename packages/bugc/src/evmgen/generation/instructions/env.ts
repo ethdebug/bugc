@@ -14,20 +14,22 @@ const { CALLER, CALLVALUE, PUSH0, TIMESTAMP, NUMBER } = operations;
 export function generateEnvOp<S extends Stack>(
   inst: Ir.Instruction.Env,
 ): Transition<S, readonly ["value", ...S]> {
+  const debug = inst.operationDebug;
+
   const map: {
     [O in Ir.Instruction.Env["op"]]: <S extends Stack>(
       state: State<readonly [...S]>,
     ) => State<readonly [Stack.Brand, ...S]>;
   } = {
-    msg_sender: CALLER(),
-    msg_value: CALLVALUE(),
-    msg_data: PUSH0(), // Returns calldata offset (0)
-    block_timestamp: TIMESTAMP(),
-    block_number: NUMBER(),
+    msg_sender: CALLER({ debug }),
+    msg_value: CALLVALUE({ debug }),
+    msg_data: PUSH0({ debug }), // Returns calldata offset (0)
+    block_timestamp: TIMESTAMP({ debug }),
+    block_number: NUMBER({ debug }),
   };
 
   return pipe<S>()
     .then(map[inst.op], { as: "value" })
-    .then(storeValueIfNeeded(inst.dest))
+    .then(storeValueIfNeeded(inst.dest, { debug }))
     .done();
 }

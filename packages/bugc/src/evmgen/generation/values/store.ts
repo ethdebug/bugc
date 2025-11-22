@@ -1,3 +1,4 @@
+import * as Evm from "#evm";
 import type { Stack } from "#evm";
 import { type Transition, operations, pipe } from "#evmgen/operations";
 
@@ -8,6 +9,7 @@ import { annotateTop } from "./identify.js";
  */
 export const storeValueIfNeeded = <S extends Stack>(
   destId: string,
+  options?: Evm.InstructionOptions,
 ): Transition<readonly ["value", ...S], readonly ["value", ...S]> => {
   const { PUSHn, DUP2, SWAP1, MSTORE } = operations;
 
@@ -21,10 +23,10 @@ export const storeValueIfNeeded = <S extends Stack>(
           return builder;
         }
         return builder
-          .then(PUSHn(BigInt(allocation.offset)), { as: "offset" })
-          .then(DUP2())
-          .then(SWAP1())
-          .then(MSTORE());
+          .then(PUSHn(BigInt(allocation.offset), options), { as: "offset" })
+          .then(DUP2(options))
+          .then(SWAP1(options))
+          .then(MSTORE(options));
       })
       .done()
   );

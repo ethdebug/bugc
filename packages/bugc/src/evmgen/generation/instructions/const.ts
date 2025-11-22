@@ -19,6 +19,8 @@ const { PUSHn, DUP2, MSTORE, ADD } = operations;
 export function generateConst<S extends Stack>(
   inst: Ir.Instruction.Const,
 ): Transition<S, readonly ["value", ...S]> {
+  const debug = inst.operationDebug;
+
   // Check the type to determine how to handle the constant
   // Scalar values are stored directly on the stack
   if (inst.type.kind === "scalar") {
@@ -33,8 +35,8 @@ export function generateConst<S extends Stack>(
       value = BigInt(inst.value);
     }
     return pipe<S>()
-      .then(PUSHn(value))
-      .then(storeValueIfNeeded(inst.dest))
+      .then(PUSHn(value, { debug }))
+      .then(storeValueIfNeeded(inst.dest, { debug }))
       .done();
   }
 
@@ -70,12 +72,12 @@ export function generateConst<S extends Stack>(
     return (
       pipe<S>()
         // Allocate memory dynamically
-        .then(allocateMemory(totalBytes), { as: "offset" })
+        .then(allocateMemory(totalBytes, { debug }), { as: "offset" })
 
         // Store the length at the allocated offset
-        .then(PUSHn(BigInt(byteLength)), { as: "value" })
-        .then(DUP2(), { as: "offset" })
-        .then(MSTORE())
+        .then(PUSHn(BigInt(byteLength), { debug }), { as: "value" })
+        .then(DUP2({ debug }), { as: "offset" })
+        .then(MSTORE({ debug }))
         .peek((_, builder) => {
           let result = builder;
 
@@ -100,18 +102,18 @@ export function generateConst<S extends Stack>(
             // Store the word at offset + 32 + (wordIdx * 32)
             const storeOffset = 32n + wordIdx * 32n;
             result = result
-              .then(PUSHn(wordValue), { as: "value" })
-              .then(DUP2(), { as: "b" })
-              .then(PUSHn(storeOffset), { as: "a" })
-              .then(ADD(), { as: "offset" })
-              .then(MSTORE());
+              .then(PUSHn(wordValue, { debug }), { as: "value" })
+              .then(DUP2({ debug }), { as: "b" })
+              .then(PUSHn(storeOffset, { debug }), { as: "a" })
+              .then(ADD({ debug }), { as: "offset" })
+              .then(MSTORE({ debug }));
           }
 
           // The original offset is still on the stack (from DUP2 operations)
           // Rebrand it as value for return
           return result
             .then(rebrandTop("value"))
-            .then(storeValueIfNeeded(inst.dest));
+            .then(storeValueIfNeeded(inst.dest, { debug }));
         })
         .done()
     );
@@ -119,7 +121,7 @@ export function generateConst<S extends Stack>(
 
   // For numeric and boolean constants, use existing behavior
   return pipe<S>()
-    .then(PUSHn(BigInt(inst.value)))
-    .then(storeValueIfNeeded(inst.dest))
+    .then(PUSHn(BigInt(inst.value), { debug }))
+    .then(storeValueIfNeeded(inst.dest, { debug }))
     .done();
 }

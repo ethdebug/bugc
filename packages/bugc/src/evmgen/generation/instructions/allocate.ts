@@ -16,14 +16,16 @@ import { loadValue, storeValueIfNeeded } from "../values/index.js";
 export function generateAllocate<S extends Stack>(
   inst: Ir.Instruction.Allocate,
 ): Transition<S, Stack> {
+  const debug = inst.operationDebug;
+
   return (
     pipe<S>()
       // Load the size value onto the stack
-      .then(loadValue(inst.size), { as: "size" })
+      .then(loadValue(inst.size, { debug }), { as: "size" })
       // Allocate memory using the dynamic allocator
-      .then(allocateMemoryDynamic(), { as: "value" })
+      .then(allocateMemoryDynamic({ debug }), { as: "value" })
       // Store the result if needed
-      .then(storeValueIfNeeded(inst.dest))
+      .then(storeValueIfNeeded(inst.dest, { debug }))
       .done()
   );
 }

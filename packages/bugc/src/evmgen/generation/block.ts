@@ -74,16 +74,9 @@ export function generate<S extends Stack>(
               remark: `call-continuation: resume after call to ${calledFunction}`,
             },
           };
-          result = result.then((s) => ({
-            ...s,
-            currentDebug: continuationDebug,
-          }));
-        }
-
-        result = result.then(JUMPDEST());
-
-        if (isContinuation) {
-          result = result.then((s) => ({ ...s, currentDebug: undefined }));
+          result = result.then(JUMPDEST({ debug: continuationDebug }));
+        } else {
+          result = result.then(JUMPDEST());
         }
 
         // Annotate TOS with dest variable if this is a continuation with return value
@@ -107,24 +100,10 @@ export function generate<S extends Stack>(
 
       // Process regular instructions
       for (const inst of block.instructions) {
-        result = result
-          .then((s) => ({
-            ...s,
-            currentDebug: inst.operationDebug,
-          }))
-          .then(Instruction.generate(inst))
-          .then((s) => ({
-            ...s,
-            currentDebug: undefined,
-          }));
+        result = result.then(Instruction.generate(inst));
       }
 
       // Process terminator
-      result = result.then((s) => ({
-        ...s,
-        currentDebug: block.terminator.operationDebug,
-      }));
-
       // Handle call terminators specially (they cross function boundaries)
       if (block.terminator.kind === "call") {
         result = result.then(generateCallTerminator(block.terminator));
@@ -133,11 +112,6 @@ export function generate<S extends Stack>(
           generateTerminator(block.terminator, isLastBlock, isUserFunction),
         );
       }
-
-      result = result.then((s) => ({
-        ...s,
-        currentDebug: undefined,
-      }));
 
       return result;
     })

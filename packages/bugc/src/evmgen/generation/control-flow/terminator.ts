@@ -33,18 +33,16 @@ export function generateTerminator<S extends Stack>(
         if (term.value) {
           // Return with value (assume value already on TOS)
           return pipe<S>()
-            .then((s) => ({ ...s, currentDebug: returnDebug }))
-            .then(PUSHn(0x60n), { as: "offset" })
-            .then(MLOAD(), { as: "counter" })
-            .then(JUMP())
+            .then(PUSHn(0x60n, { debug: returnDebug }), { as: "offset" })
+            .then(MLOAD({ debug: returnDebug }), { as: "counter" })
+            .then(JUMP({ debug: returnDebug }))
             .done() as unknown as Transition<S, S>;
         } else {
           // Return without value (void return)
           return pipe<S>()
-            .then((s) => ({ ...s, currentDebug: returnDebug }))
-            .then(PUSHn(0x60n), { as: "offset" })
-            .then(MLOAD(), { as: "counter" })
-            .then(JUMP())
+            .then(PUSHn(0x60n, { debug: returnDebug }), { as: "offset" })
+            .then(MLOAD({ debug: returnDebug }), { as: "counter" })
+            .then(JUMP({ debug: returnDebug }))
             .done() as unknown as Transition<S, S>;
         }
       }
@@ -196,11 +194,9 @@ export function generateCallTerminator<S extends Stack>(
         remark: `call-arguments: push ${args.length} argument(s) for ${funcName}`,
       },
     };
-    currentState = { ...currentState, currentDebug: argsDebug };
     for (const arg of args) {
-      currentState = loadValue(arg)(currentState);
+      currentState = loadValue(arg, { debug: argsDebug })(currentState);
     }
-    currentState = { ...currentState, currentDebug: undefined };
 
     // Push function address and jump
     const funcAddrPatchIndex = currentState.instructions.length;

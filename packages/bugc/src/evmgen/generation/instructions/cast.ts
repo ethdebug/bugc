@@ -12,9 +12,11 @@ import { loadValue, storeValueIfNeeded } from "../values/index.js";
 export function generateCast<S extends Stack>(
   inst: Ir.Instruction.Cast,
 ): Transition<S, readonly ["value", ...S]> {
+  const debug = inst.operationDebug;
+
   // Just load the value and store it with the new type annotation
   return pipe<S>()
-    .then(loadValue(inst.value), { as: "value" })
-    .then(storeValueIfNeeded(inst.dest))
+    .then(loadValue(inst.value, { debug }), { as: "value" })
+    .then(storeValueIfNeeded(inst.dest, { debug }))
     .done();
 }

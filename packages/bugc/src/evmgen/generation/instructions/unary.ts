@@ -18,22 +18,24 @@ const { NOT, PUSHn, SUB } = operations;
 export function generateUnary<S extends Stack>(
   inst: Ir.Instruction.UnaryOp,
 ): Transition<S, readonly ["value", ...S]> {
+  const debug = inst.operationDebug;
+
   const map: {
     [O in Ir.Instruction.UnaryOp["op"]]: (
       state: State<readonly ["a", ...S]>,
     ) => State<readonly [Stack.Brand, ...S]>;
   } = {
-    not: NOT(),
+    not: NOT({ debug }),
     neg: pipe<readonly ["a", ...S]>()
       .then(rebrandTop("b"))
-      .then(PUSHn(0n), { as: "a" })
-      .then(SUB())
+      .then(PUSHn(0n, { debug }), { as: "a" })
+      .then(SUB({ debug }))
       .done(),
   };
 
   return pipe<S>()
-    .then(loadValue(inst.operand), { as: "a" })
+    .then(loadValue(inst.operand, { debug }), { as: "a" })
     .then(map[inst.op], { as: "value" })
-    .then(storeValueIfNeeded(inst.dest))
+    .then(storeValueIfNeeded(inst.dest, { debug }))
     .done();
 }

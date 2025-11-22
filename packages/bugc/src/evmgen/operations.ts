@@ -28,11 +28,11 @@ export const rawOperations: RawOperations = Evm.makeOperations<
 export type Operations = typeof rawOperations & {
   DUPn: <S extends Evm.Stack>(
     position: number,
-    options?: Evm.InstructionOptions
+    options?: Evm.InstructionOptions,
   ) => Transition<S, readonly ["value", ...S]>;
   PUSHn: <S extends Evm.Stack>(
     value: bigint,
-    options?: Evm.InstructionOptions
+    options?: Evm.InstructionOptions,
   ) => Transition<readonly [...S], readonly ["value", ...S]>;
 };
 
@@ -41,7 +41,7 @@ export const operations: Operations = {
 
   DUPn: <S extends Evm.Stack>(
     position: number,
-    options?: Evm.InstructionOptions
+    options?: Evm.InstructionOptions,
   ): Transition<S, readonly ["value", ...S]> => {
     if (position < 1 || position > 16) {
       throw new Error(`Cannot reach stack position ${position}`);
@@ -51,9 +51,9 @@ export const operations: Operations = {
       [O in keyof RawOperations]: O extends `DUP${infer _N}` ? O : never;
     }[keyof RawOperations];
 
-    const DUP = rawOperations[
-      `DUP${position}` as DUPn
-    ] as unknown as (options?: Evm.InstructionOptions) => Transition<S, readonly [Evm.Stack.Brand, ...S]>;
+    const DUP = rawOperations[`DUP${position}` as DUPn] as unknown as (
+      options?: Evm.InstructionOptions,
+    ) => Transition<S, readonly [Evm.Stack.Brand, ...S]>;
 
     return pipe<S>()
       .peek((state, builder) => {
@@ -70,7 +70,7 @@ export const operations: Operations = {
 
   PUSHn: <S extends Evm.Stack>(
     value: bigint,
-    options?: Evm.InstructionOptions
+    options?: Evm.InstructionOptions,
   ): Transition<readonly [...S], readonly ["value", ...S]> => {
     if (value === 0n) {
       return rawOperations.PUSH0(options);

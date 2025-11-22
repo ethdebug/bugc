@@ -21,7 +21,6 @@ export interface State<S extends Evm.Stack> {
   blockOffsets: Record<string, number>;
   patches: Patch[];
   warnings: Error[];
-  currentDebug?: DebugContext; // Debug context for current IR instruction
   functionRegistry: Record<string, number>; // Function name -> bytecode offset
   callStackPointer: number; // Memory location for call stack (0x60)
 }
@@ -94,14 +93,7 @@ const unsafe: Evm.Unsafe.StateControls<UnsafeState, UnsafeItem> = {
   }),
   emit: (state, instruction) => ({
     ...state,
-    instructions: [
-      ...state.instructions,
-      {
-        ...instruction,
-        // Attach debug context from state if available and not already set
-        debug: instruction.debug ?? state.currentDebug,
-      },
-    ],
+    instructions: [...state.instructions, instruction],
   }),
 };
 

@@ -14,6 +14,8 @@ const { PUSHn, CALLDATASIZE, SLOAD, MLOAD, SUB, SHR } = operations;
 export function generateLength<S extends Stack>(
   inst: Ir.Instruction.Length,
 ): Transition<S, readonly ["value", ...S]> {
+  const debug = inst.operationDebug;
+
   // Check if this is msg.data (calldata) - use CALLDATASIZE
   const objectId = valueId(inst.object);
   const isCalldata =
@@ -23,8 +25,8 @@ export function generateLength<S extends Stack>(
 
   if (isCalldata) {
     return pipe<S>()
-      .then(CALLDATASIZE(), { as: "value" })
-      .then(storeValueIfNeeded(inst.dest))
+      .then(CALLDATASIZE({ debug }), { as: "value" })
+      .then(storeValueIfNeeded(inst.dest, { debug }))
       .done();
   }
 
@@ -45,24 +47,24 @@ export function generateLength<S extends Stack>(
           // Memory data: length is stored at the pointer location
           // First word contains length
           return builder
-            .then(loadValue(inst.object), { as: "offset" })
-            .then(MLOAD(), { as: "value" })
-            .then(storeValueIfNeeded(inst.dest));
+            .then(loadValue(inst.object, { debug }), { as: "offset" })
+            .then(MLOAD({ debug }), { as: "value" })
+            .then(storeValueIfNeeded(inst.dest, { debug }));
         } else {
           // Storage data: length is packed with data if short, or in slot if long
           // For simplicity, assume it's stored at the slot (long string/bytes)
           // The length is stored as 2 * length + 1 in the slot for long strings
           return (
             builder
-              .then(loadValue(inst.object), { as: "key" })
-              .then(SLOAD(), { as: "b" })
+              .then(loadValue(inst.object, { debug }), { as: "key" })
+              .then(SLOAD({ debug }), { as: "b" })
               // Extract length from storage format
               // For long strings: (value - 1) / 2
-              .then(PUSHn(1n), { as: "a" })
-              .then(SUB(), { as: "value" })
-              .then(PUSHn(1n), { as: "shift" })
-              .then(SHR(), { as: "value" })
-              .then(storeValueIfNeeded(inst.dest))
+              .then(PUSHn(1n, { debug }), { as: "a" })
+              .then(SUB({ debug }), { as: "value" })
+              .then(PUSHn(1n, { debug }), { as: "shift" })
+              .then(SHR({ debug }), { as: "value" })
+              .then(storeValueIfNeeded(inst.dest, { debug }))
           );
         }
       })
@@ -74,8 +76,8 @@ export function generateLength<S extends Stack>(
     // Fixed-size data - this shouldn't normally happen for length instruction
     // but we could return the size in bytes
     return pipe<S>()
-      .then(PUSHn(BigInt(objectType.size)))
-      .then(storeValueIfNeeded(inst.dest))
+      .then(PUSHn(BigInt(objectType.size), { debug }))
+      .then(storeValueIfNeeded(inst.dest, { debug }))
       .done();
   }
 

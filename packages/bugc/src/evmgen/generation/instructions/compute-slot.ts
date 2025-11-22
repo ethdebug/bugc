@@ -14,6 +14,8 @@ const { PUSHn, MSTORE, KECCAK256, ADD } = operations;
 export function generateComputeSlot<S extends Stack>(
   inst: Ir.Instruction.ComputeSlot,
 ): Transition<S, readonly ["value", ...S]> {
+  const debug = inst.operationDebug;
+
   if (Ir.Instruction.ComputeSlot.isMapping(inst)) {
     // For mappings: keccak256(key || baseSlot)
     if (!inst.key) {
@@ -22,17 +24,17 @@ export function generateComputeSlot<S extends Stack>(
     return (
       pipe<S>()
         // store key then base in memory as 32 bytes each
-        .then(loadValue(inst.key))
-        .then(PUSHn(0n), { as: "offset" })
-        .then(MSTORE())
+        .then(loadValue(inst.key, { debug }))
+        .then(PUSHn(0n, { debug }), { as: "offset" })
+        .then(MSTORE({ debug }))
 
-        .then(loadValue(inst.base))
-        .then(PUSHn(32n), { as: "offset" })
-        .then(MSTORE())
-        .then(PUSHn(64n), { as: "size" })
-        .then(PUSHn(0n), { as: "offset" })
-        .then(KECCAK256(), { as: "value" })
-        .then(storeValueIfNeeded(inst.dest))
+        .then(loadValue(inst.base, { debug }))
+        .then(PUSHn(32n, { debug }), { as: "offset" })
+        .then(MSTORE({ debug }))
+        .then(PUSHn(64n, { debug }), { as: "size" })
+        .then(PUSHn(0n, { debug }), { as: "offset" })
+        .then(KECCAK256({ debug }), { as: "value" })
+        .then(storeValueIfNeeded(inst.dest, { debug }))
         .done()
     );
   }
@@ -43,15 +45,15 @@ export function generateComputeSlot<S extends Stack>(
     return (
       pipe<S>()
         // Store base at memory offset 0
-        .then(loadValue(inst.base))
-        .then(PUSHn(0n), { as: "offset" })
-        .then(MSTORE())
+        .then(loadValue(inst.base, { debug }))
+        .then(PUSHn(0n, { debug }), { as: "offset" })
+        .then(MSTORE({ debug }))
 
         // Hash 32 bytes starting at offset 0
-        .then(PUSHn(32n), { as: "size" })
-        .then(PUSHn(0n), { as: "offset" })
-        .then(KECCAK256(), { as: "value" })
-        .then(storeValueIfNeeded(inst.dest))
+        .then(PUSHn(32n, { debug }), { as: "size" })
+        .then(PUSHn(0n, { debug }), { as: "offset" })
+        .then(KECCAK256({ debug }), { as: "value" })
+        .then(storeValueIfNeeded(inst.dest, { debug }))
         .done()
     );
   }
@@ -64,10 +66,10 @@ export function generateComputeSlot<S extends Stack>(
     // Convert byte offset to slot offset
     const slotOffset = Math.floor(inst.fieldOffset / 32);
     return pipe<S>()
-      .then(loadValue(inst.base), { as: "b" })
-      .then(PUSHn(BigInt(slotOffset)), { as: "a" })
-      .then(ADD(), { as: "value" })
-      .then(storeValueIfNeeded(inst.dest))
+      .then(loadValue(inst.base, { debug }), { as: "b" })
+      .then(PUSHn(BigInt(slotOffset), { debug }), { as: "a" })
+      .then(ADD({ debug }), { as: "value" })
+      .then(storeValueIfNeeded(inst.dest, { debug }))
       .done();
   }
 

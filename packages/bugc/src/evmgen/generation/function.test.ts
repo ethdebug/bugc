@@ -1420,6 +1420,61 @@ describe("Function.generate", () => {
     );
     expect(hasLengthValue).toBe(true);
   });
+
+  it("should attach debug context to generated instructions", () => {
+    const debugContext = {
+      context: {
+        remark: "test debug context",
+      },
+    };
+
+    const func: Ir.Function = {
+      name: "test",
+      parameters: [],
+      entry: "entry",
+      blocks: new Map([
+        [
+          "entry",
+          {
+            id: "entry",
+            phis: [],
+            instructions: [
+              {
+                kind: "const",
+                value: 42n,
+                type: Ir.Type.Scalar.uint256,
+                dest: "%1",
+                operationDebug: debugContext,
+              },
+            ],
+            terminator: { kind: "return", operationDebug: {} },
+            predecessors: new Set(),
+            debug: {},
+          } as Ir.Block,
+        ],
+      ]),
+    };
+
+    const memory: Memory.Function.Info = {
+      allocations: {},
+      nextStaticOffset: 0x80,
+    };
+
+    const layout: Layout.Function.Info = {
+      order: ["entry"],
+      offsets: new Map(),
+    };
+
+    const { instructions } = generate(func, memory, layout);
+
+    // Find the PUSH1 42 instruction
+    const push42 = instructions.find(
+      (inst) => inst.mnemonic === "PUSH1" && inst.immediates?.[0] === 42,
+    );
+
+    expect(push42).toBeDefined();
+    expect(push42?.debug).toEqual(debugContext);
+  });
 });
 
 // Helper to create memory allocations for tests

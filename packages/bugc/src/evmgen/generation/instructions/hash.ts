@@ -13,13 +13,15 @@ const { PUSHn, MSTORE, KECCAK256 } = operations;
 export function generateHashOp<S extends Stack>(
   inst: Ir.Instruction.Hash,
 ): Transition<S, readonly ["value", ...S]> {
+  const debug = inst.operationDebug;
+
   return pipe<S>()
-    .then(loadValue(inst.value))
-    .then(PUSHn(0n), { as: "offset" })
-    .then(MSTORE())
-    .then(PUSHn(32n), { as: "size" })
-    .then(PUSHn(0n), { as: "offset" })
-    .then(KECCAK256(), { as: "value" })
-    .then(storeValueIfNeeded(inst.dest))
+    .then(loadValue(inst.value, { debug }))
+    .then(PUSHn(0n, { debug }), { as: "offset" })
+    .then(MSTORE({ debug }))
+    .then(PUSHn(32n, { debug }), { as: "size" })
+    .then(PUSHn(0n, { debug }), { as: "offset" })
+    .then(KECCAK256({ debug }), { as: "value" })
+    .then(storeValueIfNeeded(inst.dest, { debug }))
     .done();
 }
