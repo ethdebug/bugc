@@ -33,7 +33,7 @@ export function convertToEthDebugType(
  * Bug types contain full semantic information about the original
  * source language type
  */
-function convertBugType(bugType: BugType): Format.Type | undefined {
+export function convertBugType(bugType: BugType): Format.Type | undefined {
   // Elementary types
   if (BugType.isElementary(bugType)) {
     return convertElementaryType(bugType);

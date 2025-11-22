@@ -99,12 +99,14 @@ function InstructionRenderer({
   onHover,
   onLeave,
   showTooltip,
+  pinTooltip,
   hideTooltip,
 }: {
   instruction: Ir.Instruction;
   onHover: (ranges: SourceRange[]) => void;
   onLeave: () => void;
   showTooltip: (e: React.MouseEvent<HTMLElement>, content: string) => void;
+  pinTooltip: (e: React.MouseEvent<HTMLElement>, content: string) => void;
   hideTooltip: () => void;
 }) {
   const debugInfo = extractInstructionDebug(instruction);
@@ -346,6 +348,11 @@ function InstructionRenderer({
     showTooltip(e, content);
   };
 
+  const handleDebugIconClick = (e: React.MouseEvent<HTMLSpanElement>) => {
+    const content = formatMultiLevelDebug(debugInfo);
+    pinTooltip(e, content);
+  };
+
   return (
     <div className="ir-instruction">
       {hasAnyDebug && (
@@ -353,6 +360,7 @@ function InstructionRenderer({
           className="debug-info-icon"
           onMouseEnter={handleDebugIconHover}
           onMouseLeave={hideTooltip}
+          onClick={handleDebugIconClick}
         >
           ℹ
         </span>
@@ -386,12 +394,14 @@ function TerminatorRenderer({
   onHover,
   onLeave,
   showTooltip,
+  pinTooltip,
   hideTooltip,
 }: {
   terminator: Ir.Block.Terminator;
   onHover: (ranges: SourceRange[]) => void;
   onLeave: () => void;
   showTooltip: (e: React.MouseEvent<HTMLElement>, content: string) => void;
+  pinTooltip: (e: React.MouseEvent<HTMLElement>, content: string) => void;
   hideTooltip: () => void;
 }) {
   const debugInfo = extractTerminatorDebug(terminator);
@@ -452,6 +462,11 @@ function TerminatorRenderer({
     showTooltip(e, content);
   };
 
+  const handleDebugIconClick = (e: React.MouseEvent<HTMLSpanElement>) => {
+    const content = formatMultiLevelDebug(debugInfo);
+    pinTooltip(e, content);
+  };
+
   return (
     <div className="ir-terminator">
       {hasAnyDebug && (
@@ -459,6 +474,7 @@ function TerminatorRenderer({
           className="debug-info-icon"
           onMouseEnter={handleDebugIconHover}
           onMouseLeave={hideTooltip}
+          onClick={handleDebugIconClick}
         >
           ℹ
         </span>
@@ -492,12 +508,14 @@ function PhiRenderer({
   onHover,
   onLeave,
   showTooltip,
+  pinTooltip,
   hideTooltip,
 }: {
   phi: Ir.Block.Phi;
   onHover: (ranges: SourceRange[]) => void;
   onLeave: () => void;
   showTooltip: (e: React.MouseEvent<HTMLElement>, content: string) => void;
+  pinTooltip: (e: React.MouseEvent<HTMLElement>, content: string) => void;
   hideTooltip: () => void;
 }) {
   const debugInfo = extractPhiDebug(phi);
@@ -512,6 +530,11 @@ function PhiRenderer({
   const handleDebugIconHover = (e: React.MouseEvent<HTMLSpanElement>) => {
     const content = formatMultiLevelDebug(debugInfo);
     showTooltip(e, content);
+  };
+
+  const handleDebugIconClick = (e: React.MouseEvent<HTMLSpanElement>) => {
+    const content = formatMultiLevelDebug(debugInfo);
+    pinTooltip(e, content);
   };
 
   const parts: (HoverablePart | string)[] = [];
@@ -540,6 +563,7 @@ function PhiRenderer({
           className="debug-info-icon"
           onMouseEnter={handleDebugIconHover}
           onMouseLeave={hideTooltip}
+          onClick={handleDebugIconClick}
         >
           ℹ
         </span>
@@ -575,6 +599,7 @@ function BlockRenderer({
   onHover,
   onLeave,
   showTooltip,
+  pinTooltip,
   hideTooltip,
 }: {
   blockId: string;
@@ -583,6 +608,7 @@ function BlockRenderer({
   onHover: (ranges: SourceRange[]) => void;
   onLeave: () => void;
   showTooltip: (e: React.MouseEvent<HTMLElement>, content: string) => void;
+  pinTooltip: (e: React.MouseEvent<HTMLElement>, content: string) => void;
   hideTooltip: () => void;
 }) {
   return (
@@ -599,6 +625,7 @@ function BlockRenderer({
             onHover={onHover}
             onLeave={onLeave}
             showTooltip={showTooltip}
+            pinTooltip={pinTooltip}
             hideTooltip={hideTooltip}
           />
         ))}
@@ -609,6 +636,7 @@ function BlockRenderer({
             onHover={onHover}
             onLeave={onLeave}
             showTooltip={showTooltip}
+            pinTooltip={pinTooltip}
             hideTooltip={hideTooltip}
           />
         ))}
@@ -617,6 +645,7 @@ function BlockRenderer({
           onHover={onHover}
           onLeave={onLeave}
           showTooltip={showTooltip}
+          pinTooltip={pinTooltip}
           hideTooltip={hideTooltip}
         />
       </div>
@@ -631,6 +660,7 @@ function FunctionRenderer({
   onHover,
   onLeave,
   showTooltip,
+  pinTooltip,
   hideTooltip,
 }: {
   name: string;
@@ -638,6 +668,7 @@ function FunctionRenderer({
   onHover: (ranges: SourceRange[]) => void;
   onLeave: () => void;
   showTooltip: (e: React.MouseEvent<HTMLElement>, content: string) => void;
+  pinTooltip: (e: React.MouseEvent<HTMLElement>, content: string) => void;
   hideTooltip: () => void;
 }) {
   // Topological sort of blocks
@@ -697,6 +728,7 @@ function FunctionRenderer({
           onHover={onHover}
           onLeave={onLeave}
           showTooltip={showTooltip}
+          pinTooltip={pinTooltip}
           hideTooltip={hideTooltip}
         />
       ))}
@@ -705,7 +737,7 @@ function FunctionRenderer({
 }
 
 export function IrView({ ir, onOpcodeHover }: IrViewProps) {
-  const { tooltip, setTooltip, showTooltip, hideTooltip } =
+  const { tooltip, setTooltip, showTooltip, pinTooltip, hideTooltip, closeTooltip } =
     useEthdebugTooltip();
 
   const handleHover = (ranges: SourceRange[]) => {
@@ -755,6 +787,7 @@ export function IrView({ ir, onOpcodeHover }: IrViewProps) {
                 onHover={handleHover}
                 onLeave={handleLeave}
                 showTooltip={showTooltip}
+                pinTooltip={pinTooltip}
                 hideTooltip={hideTooltip}
               />
             ))}
@@ -769,6 +802,7 @@ export function IrView({ ir, onOpcodeHover }: IrViewProps) {
               onHover={handleHover}
               onLeave={handleLeave}
               showTooltip={showTooltip}
+              pinTooltip={pinTooltip}
               hideTooltip={hideTooltip}
             />
           </>
@@ -780,10 +814,15 @@ export function IrView({ ir, onOpcodeHover }: IrViewProps) {
           onHover={handleHover}
           onLeave={handleLeave}
           showTooltip={showTooltip}
+          pinTooltip={pinTooltip}
           hideTooltip={hideTooltip}
         />
       </div>
-      <EthdebugTooltip tooltip={tooltip} onUpdate={setTooltip} />
+      <EthdebugTooltip
+        tooltip={tooltip}
+        onUpdate={setTooltip}
+        onClose={closeTooltip}
+      />
     </div>
   );
 }

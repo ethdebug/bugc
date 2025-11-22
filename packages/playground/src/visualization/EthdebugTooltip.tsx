@@ -5,14 +5,20 @@ export interface TooltipData {
   content: string;
   x: number;
   y: number;
+  pinned?: boolean;
 }
 
 interface EthdebugTooltipProps {
   tooltip: TooltipData | null;
   onUpdate?: (tooltip: TooltipData) => void;
+  onClose?: () => void;
 }
 
-export function EthdebugTooltip({ tooltip, onUpdate }: EthdebugTooltipProps) {
+export function EthdebugTooltip({
+  tooltip,
+  onUpdate,
+  onClose,
+}: EthdebugTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,12 +63,21 @@ export function EthdebugTooltip({ tooltip, onUpdate }: EthdebugTooltipProps) {
   return (
     <div
       ref={tooltipRef}
-      className="ethdebug-tooltip"
+      className={`ethdebug-tooltip ${tooltip.pinned ? "pinned" : ""}`}
       style={{
         left: `${tooltip.x}px`,
         top: `${tooltip.y}px`,
       }}
     >
+      {tooltip.pinned && (
+        <button
+          className="tooltip-close-btn"
+          onClick={onClose}
+          title="Close (Esc)"
+        >
+          ×
+        </button>
+      )}
       <pre>{tooltip.content}</pre>
     </div>
   );
@@ -77,12 +92,36 @@ export function useEthdebugTooltip() {
       content,
       x: rect.left,
       y: rect.bottom,
+      pinned: false,
+    });
+  };
+
+  const pinTooltip = (e: React.MouseEvent<HTMLElement>, content: string) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltip({
+      content,
+      x: rect.left,
+      y: rect.bottom,
+      pinned: true,
     });
   };
 
   const hideTooltip = () => {
+    if (!tooltip?.pinned) {
+      setTooltip(null);
+    }
+  };
+
+  const closeTooltip = () => {
     setTooltip(null);
   };
 
-  return { tooltip, setTooltip, showTooltip, hideTooltip };
+  return {
+    tooltip,
+    setTooltip,
+    showTooltip,
+    pinTooltip,
+    hideTooltip,
+    closeTooltip,
+  };
 }

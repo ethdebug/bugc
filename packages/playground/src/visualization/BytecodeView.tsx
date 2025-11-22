@@ -17,7 +17,7 @@ function InstructionsView({
   instructions: Evm.Instruction[];
   onOpcodeHover?: (ranges: SourceRange[]) => void;
 }) {
-  const { tooltip, setTooltip, showTooltip, hideTooltip } =
+  const { tooltip, setTooltip, showTooltip, pinTooltip, hideTooltip, closeTooltip } =
     useEthdebugTooltip();
 
   let pc = 0;
@@ -36,6 +36,15 @@ function InstructionsView({
   ) => {
     if (instruction.debug?.context) {
       showTooltip(e, JSON.stringify(instruction.debug.context, null, 2));
+    }
+  };
+
+  const handleDebugIconClick = (
+    e: React.MouseEvent<HTMLSpanElement>,
+    instruction: Evm.Instruction,
+  ) => {
+    if (instruction.debug?.context) {
+      pinTooltip(e, JSON.stringify(instruction.debug.context, null, 2));
     }
   };
 
@@ -60,6 +69,7 @@ function InstructionsView({
                 className="debug-info-icon"
                 onMouseEnter={(e) => handleDebugIconMouseEnter(e, instruction)}
                 onMouseLeave={hideTooltip}
+                onClick={(e) => handleDebugIconClick(e, instruction)}
               >
                 ℹ
               </span>
@@ -79,7 +89,11 @@ function InstructionsView({
           </div>
         );
       })}
-      <EthdebugTooltip tooltip={tooltip} onUpdate={setTooltip} />
+      <EthdebugTooltip
+        tooltip={tooltip}
+        onUpdate={setTooltip}
+        onClose={closeTooltip}
+      />
     </div>
   );
 }

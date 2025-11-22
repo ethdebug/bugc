@@ -90,28 +90,94 @@ export function generatePointer(
 }
 
 /**
- * Translate storage slot computation instructions to pointer expressions
+ * Translate a compute_slot chain to an ethdebug/format pointer expression
  *
- * This analyzes chains of IR instructions that compute storage slots
- * (e.g., for mappings, arrays) and converts them to ethdebug/format
- * pointer expressions using $keccak256, $sum, etc.
+ * Takes a chain of compute_slot instructions and generates the corresponding
+ * pointer expression using $keccak256, $sum, and other operations.
  *
- * For now, this is a placeholder. Full implementation will analyze
- * compute_slot instructions and their operands.
+ * SAFETY: Handles unknown patterns gracefully by returning simple expressions.
+ * Never crashes - just returns best-effort pointer.
+ *
+ * @param chain The compute_slot chain from storage-analysis
+ * @returns A pointer expression (simple number or complex expression)
  */
-export function translateStorageComputation(
-  _baseSlot: number,
-  _computationChain: unknown[],
+export function translateComputeSlotChain(
+  chain: import("./storage-analysis.js").ComputeSlotChain,
 ): Format.Pointer.Expression {
-  // TODO: Implement full translation of compute_slot chains
-  // This should handle:
-  // - Mapping access: keccak256(key, slot)
-  // - Array indexing: slot + (index * elementSize)
-  // - Struct field access: slot + fieldOffset
-  // - Nested combinations of the above
+  // Start with base slot
+  if (chain.baseSlot === null) {
+    // Couldn't determine base - this shouldn't happen if chain is valid
+    // Return 0 as fallback
+    return 0;
+  }
 
-  // Placeholder: return base slot as literal
-  return _baseSlot;
+  let expr: Format.Pointer.Expression = chain.baseSlot;
+
+  // Process each step in the chain
+  for (const step of chain.steps) {
+    const inst = step.instruction;
+
+    if (inst.slotKind === "mapping") {
+      // Mapping access: keccak256(wordsized(key), slot)
+      // Try to convert key to expression
+      const keyExpr = valueToExpression(step.key);
+      if (keyExpr !== null) {
+        expr = {
+          $keccak256: [{ $wordsized: keyExpr }, expr],
+        };
+      }
+      // If we can't convert the key, skip this step (use current expr)
+    } else if (inst.slotKind === "array") {
+      // Array base: keccak256(slot)
+      // Note: actual element access is done with binary.add afterward
+      // which we don't see in the compute_slot chain
+      expr = {
+        $keccak256: [expr],
+      };
+    } else if (inst.slotKind === "field") {
+      // Struct field: slot + fieldSlotOffset
+      const slotOffset = step.fieldSlotOffset ?? 0;
+      if (slotOffset > 0) {
+        expr = {
+          $sum: [expr, slotOffset],
+        };
+      }
+      // If offset is 0, no change needed
+    }
+    // Unknown slotKind: skip (shouldn't happen)
+  }
+
+  return expr;
+}
+
+/**
+ * Convert an IR value to a pointer expression
+ *
+ * SAFETY: Returns null if we can't convert the value
+ * For now, only handles constants. Future: handle temp references.
+ */
+function valueToExpression(value: unknown): Format.Pointer.Expression | null {
+  // Safety check
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const val = value as any;
+
+  // Handle constant values
+  if (val.kind === "const" && typeof val.value === "bigint") {
+    return Number(val.value);
+  }
+
+  // Handle temp references
+  // For now, we can't represent these in pointer expressions
+  // Future: could use region references or symbolic names
+  if (val.kind === "temp") {
+    // Can't represent temp in pointer expression yet
+    return null;
+  }
+
+  return null;
 }
 
 /**
