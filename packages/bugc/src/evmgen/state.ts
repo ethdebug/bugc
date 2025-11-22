@@ -107,28 +107,3 @@ const unsafe: Evm.Unsafe.StateControls<UnsafeState, UnsafeItem> = {
 
 export const controls: Evm.State.Controls<UnsafeState, UnsafeItem> =
   Evm.State.makeControls(unsafe);
-
-/**
- * Set the current debug context for subsequent instruction emissions
- */
-export function setDebugContext<S extends Evm.Stack>(
-  state: State<S>,
-  debug: DebugContext | undefined,
-): State<S> {
-  return {
-    ...state,
-    currentDebug: debug,
-  };
-}
-
-/**
- * Clear the current debug context
- */
-export function clearDebugContext<S extends Evm.Stack>(
-  state: State<S>,
-): State<S> {
-  return {
-    ...state,
-    currentDebug: undefined,
-  };
-}

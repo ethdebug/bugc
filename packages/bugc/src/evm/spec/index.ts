@@ -14,6 +14,7 @@ export { type Stack } from "./stack.js";
 
 export {
   type Instruction,
+  type InstructionOptions,
   type InstructionDebug,
   type Unsafe,
   State,

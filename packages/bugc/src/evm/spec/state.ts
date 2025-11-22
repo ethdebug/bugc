@@ -77,6 +77,8 @@ export interface Instruction {
   debug?: InstructionDebug;
 }
 
+export type InstructionOptions = Pick<Instruction, "debug">;
+
 export namespace State {
   export type Controls<U, I> = ReturnType<typeof State.makeControls<U, I>>;
 
@@ -187,7 +189,7 @@ export namespace Specifiers {
         idPrefix,
       }: Specifiers.MakeOperationOptions<C, P>) =>
       <T extends Instruction>(instruction: T) =>
-      () =>
+      (options?: InstructionOptions) =>
       <S extends Stack>(
         initialState: $<U, [readonly [...C, ...S]]>,
       ): $<U, [readonly [...P, ...S]]> =>
@@ -196,7 +198,7 @@ export namespace Specifiers {
           initialState,
           consumes,
           produces,
-          instruction,
+          { ...instruction, ...options },
           idPrefix,
           undefined,
         );
@@ -213,7 +215,7 @@ export namespace Specifiers {
         idPrefix,
       }: Specifiers.MakeOperationOptions<C, P>) =>
       <T extends Instruction>(instruction: T) =>
-      (immediates: number[]) =>
+      (immediates: number[], options?: InstructionOptions) =>
       <S extends Stack>(
         initialState: $<U, [readonly [...C, ...S]]>,
       ): $<U, [readonly [...P, ...S]]> =>
@@ -222,7 +224,7 @@ export namespace Specifiers {
           initialState,
           consumes,
           produces,
-          { ...instruction, immediates },
+          { ...instruction, immediates, ...options },
           idPrefix,
           undefined,
         );

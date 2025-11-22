@@ -22,7 +22,7 @@ import type { $ } from "./hkts.js";
 
 import { type Stack } from "./stack.js";
 
-import { type State, Specifiers } from "./state.js";
+import { type InstructionOptions, type State, Specifiers } from "./state.js";
 
 export type Operations<U, I> = ReturnType<typeof makeOperations<U, I>>;
 
@@ -990,7 +990,7 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x80, mnemonic: "DUP1" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <A extends Stack.Brand, S extends Stack>(
           initialState: $<U, [readonly [A, ...S]]>,
         ): $<U, [readonly [A, A, ...S]]> => {
@@ -999,28 +999,28 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           const [a] = controls.topN(initialState, 1);
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(a, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x81, mnemonic: "DUP2" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <A extends Stack.Brand, B extends Stack.Brand, S extends Stack>(
           initialState: $<U, [readonly [A, B, ...S]]>,
         ): $<U, [readonly [B, A, B, ...S]]> => {
           const [_a, b] = controls.topN(initialState, 2);
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(b, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x82, mnemonic: "DUP3" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1032,14 +1032,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           const [_a, _b, c] = controls.topN(initialState, 3);
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(c, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x83, mnemonic: "DUP4" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1052,14 +1052,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           const [_a, _b, _c, d] = controls.topN(initialState, 4);
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(d, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x84, mnemonic: "DUP5" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1073,14 +1073,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           const [_a, _b, _c, _d, e] = controls.topN(initialState, 5);
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(e, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x85, mnemonic: "DUP6" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1095,14 +1095,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           const [_a, _b, _c, _d, _e, f] = controls.topN(initialState, 6);
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(f, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x86, mnemonic: "DUP7" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1118,14 +1118,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           const [_a, _b, _c, _d, _e, _f, g] = controls.topN(initialState, 7);
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(g, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x87, mnemonic: "DUP8" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1145,14 +1145,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           );
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(h, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x88, mnemonic: "DUP9" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1173,14 +1173,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           );
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(i, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x89, mnemonic: "DUP10" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1202,14 +1202,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           );
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(j, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x8a, mnemonic: "DUP11" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1235,14 +1235,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           );
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(k, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x8b, mnemonic: "DUP12" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1269,14 +1269,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           );
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(l, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x8c, mnemonic: "DUP13" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1305,14 +1305,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
             controls.topN(initialState, 13);
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(m, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x8d, mnemonic: "DUP14" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1342,14 +1342,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
             controls.topN(initialState, 14);
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(n, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x8e, mnemonic: "DUP15" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1380,14 +1380,14 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
             controls.topN(initialState, 15);
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(o, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
     ...mapInstruction(
       { opcode: 0x8f, mnemonic: "DUP16" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1435,7 +1435,7 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           ] = controls.topN(initialState, 16);
           const { id, state } = controls.generateId(initialState, "dup");
           const stateWithPush = controls.push(state, controls.duplicate(p, id));
-          return controls.emit(stateWithPush, instruction);
+          return controls.emit(stateWithPush, { ...instruction, ...options });
         },
     ),
 
@@ -1447,7 +1447,7 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
     ...mapInstruction(
       { opcode: 0x90, mnemonic: "SWAP1" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <A extends Stack.Brand, B extends Stack.Brand, S extends Stack>(
           initialState: $<U, [readonly [A, B, ...S]]>,
         ): $<U, [readonly [B, A, ...S]]> => {
@@ -1464,13 +1464,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, a);
           state = controls.push(state, b);
 
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x91, mnemonic: "SWAP2" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1489,13 +1489,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, b);
           state = controls.push(state, c);
 
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x92, mnemonic: "SWAP3" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1516,13 +1516,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, b);
           state = controls.push(state, d);
 
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x93, mnemonic: "SWAP4" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1545,13 +1545,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, b);
           state = controls.push(state, e);
 
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x94, mnemonic: "SWAP5" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1571,13 +1571,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, f);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x95, mnemonic: "SWAP6" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1599,13 +1599,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, g);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x96, mnemonic: "SWAP7" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1629,13 +1629,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, h);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x97, mnemonic: "SWAP8" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1661,13 +1661,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, i);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x98, mnemonic: "SWAP9" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1698,13 +1698,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, j);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x99, mnemonic: "SWAP10" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1740,13 +1740,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, k);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x9a, mnemonic: "SWAP11" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1784,13 +1784,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, l);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x9b, mnemonic: "SWAP12" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1830,13 +1830,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, m);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x9c, mnemonic: "SWAP13" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1881,13 +1881,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, n);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x9d, mnemonic: "SWAP14" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1934,13 +1934,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, o);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x9e, mnemonic: "SWAP15" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -1987,13 +1987,13 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, p);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
     ...mapInstruction(
       { opcode: 0x9f, mnemonic: "SWAP16" } as const,
       (instruction) =>
-        () =>
+        (options?: InstructionOptions) =>
         <
           A extends Stack.Brand,
           B extends Stack.Brand,
@@ -2042,7 +2042,7 @@ export const makeOperations = <U, I>(controls: State.Controls<U, I>) => {
           state = controls.push(state, c);
           state = controls.push(state, b);
           state = controls.push(state, q);
-          return controls.emit(state, instruction);
+          return controls.emit(state, { ...instruction, ...options });
         },
     ),
 
