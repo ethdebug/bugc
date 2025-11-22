@@ -46,5 +46,7 @@ export namespace Function {
     type: Type;
     /** Version number for this SSA instance */
     version: number;
+    /** Source location of declaration */
+    loc?: Ast.SourceLocation;
   }
 }

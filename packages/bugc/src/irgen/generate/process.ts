@@ -4,6 +4,10 @@ import * as Ir from "#ir";
 import { assertExhausted } from "#irgen/errors";
 
 import { State, type Modify, type Read, isModify, isRead } from "./state.js";
+import {
+  collectVariablesWithLocations,
+  toVariableContextEntry,
+} from "../debug/variables.js";
 
 /**
  * Generator type for IR operations
@@ -224,6 +228,7 @@ export namespace Process {
     export function* declare(
       name: string,
       type: Ir.Type,
+      loc?: Ast.SourceLocation,
     ): Process<State.SsaVariable> {
       const scope = yield* lift(State.Scopes.current)();
       const tempId = yield* newTemp();
@@ -251,7 +256,7 @@ export namespace Process {
         (s) => s.stack.length - 1,
       );
       const scopeId = `scope_${scopeIndex}_${name}`;
-      yield* addSsaMetadata(tempId, name, scopeId, type, version);
+      yield* addSsaMetadata(tempId, name, scopeId, type, version, loc);
 
       return ssaVar;
     }
@@ -263,6 +268,7 @@ export namespace Process {
       name: string,
       type: Ir.Type,
       tempId: string,
+      loc?: Ast.SourceLocation,
     ): Process<State.SsaVariable> {
       const scope = yield* lift(State.Scopes.current)();
 
@@ -289,7 +295,7 @@ export namespace Process {
         (s) => s.stack.length - 1,
       );
       const scopeId = `scope_${scopeIndex}_${name}`;
-      yield* addSsaMetadata(tempId, name, scopeId, type, version);
+      yield* addSsaMetadata(tempId, name, scopeId, type, version, loc);
 
       return ssaVar;
     }
@@ -361,6 +367,7 @@ export namespace Process {
       scopeId: string,
       type: Ir.Type,
       version: number,
+      loc?: Ast.SourceLocation,
     ): Process<void> {
       const state: State = yield { type: "peek" };
       const currentMetadata = state.function.ssaMetadata || new Map();
@@ -371,6 +378,7 @@ export namespace Process {
         scopeId,
         type,
         version,
+        loc,
       });
 
       // Update function with new metadata
@@ -1018,20 +1026,66 @@ export namespace Process {
   }
 
   export namespace Debug {
+    /**
+     * Generate debug context for an AST node
+     *
+     * Includes:
+     * - Code source location (if node has loc)
+     * - Variables context (all storage variables with known locations)
+     *
+     * This automatically attaches all available debug information to instructions.
+     */
     export function* forAstNode(node: Ast.Node): Process<Ir.Instruction.Debug> {
+      const variablesContext = yield* withStorageVariables();
+
       if (!node.loc) {
-        return {};
+        // No code location, but might have variables
+        return variablesContext;
       }
 
       const { offset, length } = node.loc;
-
       const id = (yield* Process.Modules.current()).name;
+
+      // Combine code and variables in a single context object
+      // No need for gather since the keys don't conflict
+      const context: any = {
+        code: {
+          source: { id },
+          range: { offset, length },
+        },
+      };
+
+      // Add variables if available
+      if (variablesContext.context && "variables" in variablesContext.context) {
+        context.variables = (variablesContext.context as any).variables;
+      }
+
+      return { context };
+    }
+
+    /**
+     * Generate variables context for all storage variables
+     *
+     * This includes variables with determinable runtime locations:
+     * - Storage variables (with fixed slots)
+     * - Memory allocations (when tracked)
+     *
+     * SSA temps are NOT included as they don't have concrete locations
+     * until EVM code generation.
+     */
+    export function* withStorageVariables(): Process<Ir.Instruction.Debug> {
+      const state: State = yield { type: "peek" };
+      const id = state.module.name;
+
+      const variables = collectVariablesWithLocations(state, id);
+
+      if (variables.length === 0) {
+        return {};
+      }
+
       return {
         context: {
-          code: {
-            source: { id },
-            range: { offset, length },
-          },
+          variables: variables.map(toVariableContextEntry),
         },
       };
     }
