@@ -46,7 +46,7 @@ function InstructionsView({
         pc += 1 + (instruction.immediates?.length || 0);
 
         const sourceRanges = extractSourceRange(instruction.debug?.context);
-        const hasDebugInfo = sourceRanges.length > 0;
+        const hasDebugInfo = !!instruction.debug?.context;
 
         return (
           <div

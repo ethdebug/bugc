@@ -87,6 +87,13 @@ export class EvmFormatter {
       return "";
     }
 
+    const parts: string[] = [];
+
+    // Check for remark (ethdebug format)
+    if (typeof context.remark === "string") {
+      parts.push(`; ${context.remark}`);
+    }
+
     // Check for code.range (ethdebug format)
     if (context.code?.range) {
       const range = context.code.range;
@@ -99,11 +106,14 @@ export class EvmFormatter {
           offset: range.offset,
           length: range.length,
         };
-        return AstAnalysis.formatSourceComment(loc, source);
+        const sourceComment = AstAnalysis.formatSourceComment(loc, source);
+        if (sourceComment) {
+          parts.push(sourceComment);
+        }
       }
     }
 
-    return "";
+    return parts.join("\n");
   }
 
   /**

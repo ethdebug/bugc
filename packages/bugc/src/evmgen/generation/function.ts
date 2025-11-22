@@ -26,12 +26,17 @@ function generatePrologue<S extends Stack>(
   return ((state: State<S>): State<readonly []> => {
     let currentState = state;
 
-    // Add JUMPDEST
+    // Add JUMPDEST with function entry annotation
+    const entryDebug = {
+      context: {
+        remark: `function-entry: ${func.name || "anonymous"}`,
+      },
+    };
     currentState = {
       ...currentState,
       instructions: [
         ...currentState.instructions,
-        { mnemonic: "JUMPDEST", opcode: 0x5b },
+        { mnemonic: "JUMPDEST", opcode: 0x5b, debug: entryDebug },
       ],
     };
 
@@ -39,6 +44,12 @@ function generatePrologue<S extends Stack>(
     // Stack layout on entry: [arg0, arg1, ..., argN]
     // Return PC is already in memory at 0x60 (stored by caller)
     // Pop and store each arg from argN down to arg0
+
+    const prologueDebug = {
+      context: {
+        remark: `prologue: store ${params.length} parameter(s) to memory`,
+      },
+    };
 
     for (let i = params.length - 1; i >= 0; i--) {
       const param = params[i];
@@ -57,6 +68,7 @@ function generatePrologue<S extends Stack>(
             mnemonic: "PUSH2",
             opcode: 0x61,
             immediates: [highByte, lowByte],
+            debug: prologueDebug,
           },
         ],
       };

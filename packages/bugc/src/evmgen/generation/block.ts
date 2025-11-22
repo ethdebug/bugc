@@ -53,11 +53,40 @@ export function generate<S extends Stack>(
 
       // Set JUMPDEST for non-first blocks
       if (!isFirstBlock) {
+        // Check if this is a call continuation
+        let isContinuation = false;
+        let calledFunction = "";
+        if (func && predecessor) {
+          const predBlock = func.blocks.get(predecessor);
+          if (
+            predBlock?.terminator.kind === "call" &&
+            predBlock.terminator.continuation === block.id
+          ) {
+            isContinuation = true;
+            calledFunction = predBlock.terminator.function;
+          }
+        }
+
+        // Add JUMPDEST with continuation annotation if applicable
+        if (isContinuation) {
+          const continuationDebug = {
+            context: {
+              remark: `call-continuation: resume after call to ${calledFunction}`,
+            },
+          };
+          result = result.then((s) => ({
+            ...s,
+            currentDebug: continuationDebug,
+          }));
+        }
+
         result = result.then(JUMPDEST());
 
-        // Check if this is a call continuation
-        // If predecessor block ended with a call targeting this block,
-        // annotate TOS with the dest variable
+        if (isContinuation) {
+          result = result.then((s) => ({ ...s, currentDebug: undefined }));
+        }
+
+        // Annotate TOS with dest variable if this is a continuation with return value
         if (func && predecessor) {
           const predBlock = func.blocks.get(predecessor);
           if (

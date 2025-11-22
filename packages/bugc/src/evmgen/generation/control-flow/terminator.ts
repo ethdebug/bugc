@@ -23,9 +23,17 @@ export function generateTerminator<S extends Stack>(
       // on TOS from the previous instruction in the block. This avoids an
       // unnecessary DUP that would leave an extra value on the stack.
       if (isUserFunction) {
+        const returnDebug = {
+          context: {
+            remark: term.value
+              ? "function-return: return with value"
+              : "function-return: void return",
+          },
+        };
         if (term.value) {
           // Return with value (assume value already on TOS)
           return pipe<S>()
+            .then((s) => ({ ...s, currentDebug: returnDebug }))
             .then(PUSHn(0x60n), { as: "offset" })
             .then(MLOAD(), { as: "counter" })
             .then(JUMP())
@@ -33,6 +41,7 @@ export function generateTerminator<S extends Stack>(
         } else {
           // Return without value (void return)
           return pipe<S>()
+            .then((s) => ({ ...s, currentDebug: returnDebug }))
             .then(PUSHn(0x60n), { as: "offset" })
             .then(MLOAD(), { as: "counter" })
             .then(JUMP())
@@ -153,11 +162,21 @@ export function generateCallTerminator<S extends Stack>(
     const returnPcPatchIndex = currentState.instructions.length;
 
     // Store return PC to memory at 0x60
+    const returnPcDebug = {
+      context: {
+        remark: `call-preparation: store return address for ${funcName}`,
+      },
+    };
     currentState = {
       ...currentState,
       instructions: [
         ...currentState.instructions,
-        { mnemonic: "PUSH2", opcode: 0x61, immediates: [0, 0] },
+        {
+          mnemonic: "PUSH2",
+          opcode: 0x61,
+          immediates: [0, 0],
+          debug: returnPcDebug,
+        },
         { mnemonic: "PUSH1", opcode: 0x60, immediates: [0x60] },
         { mnemonic: "MSTORE", opcode: 0x52 },
       ],
@@ -172,17 +191,34 @@ export function generateCallTerminator<S extends Stack>(
     };
 
     // Push arguments using loadValue
+    const argsDebug = {
+      context: {
+        remark: `call-arguments: push ${args.length} argument(s) for ${funcName}`,
+      },
+    };
+    currentState = { ...currentState, currentDebug: argsDebug };
     for (const arg of args) {
       currentState = loadValue(arg)(currentState);
     }
+    currentState = { ...currentState, currentDebug: undefined };
 
     // Push function address and jump
     const funcAddrPatchIndex = currentState.instructions.length;
+    const invocationDebug = {
+      context: {
+        remark: `call-invocation: jump to function ${funcName}`,
+      },
+    };
     currentState = {
       ...currentState,
       instructions: [
         ...currentState.instructions,
-        { mnemonic: "PUSH2", opcode: 0x61, immediates: [0, 0] },
+        {
+          mnemonic: "PUSH2",
+          opcode: 0x61,
+          immediates: [0, 0],
+          debug: invocationDebug,
+        },
         { mnemonic: "JUMP", opcode: 0x56 },
       ],
       patches: [
