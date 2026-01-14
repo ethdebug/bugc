@@ -32,3 +32,12 @@ code {
   // Struct in mapping (would need more complex handling)
   // userInfo[sender].age = 25;
 }
+
+/*@test balances-pointer
+at-line: 20
+variables:
+  balances:
+    pointer:
+      location: storage
+      slot: 0
+*/

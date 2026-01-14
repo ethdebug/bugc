@@ -70,3 +70,20 @@ code {
 
   return;
 }
+
+/*@test sum-pointer
+at-line: 19
+variables:
+  sum:
+    pointer:
+      location: storage
+      slot: 1
+*/
+
+/*@test evaluate-sum
+at-line: 19
+evaluate: true
+variables:
+  sum:
+    value: 0
+*/

@@ -54,3 +54,20 @@ storage:
   0: 3
   1: 400
 */
+
+/*@test y-pointer
+at-line: 18
+variables:
+  y:
+    pointer:
+      location: storage
+      slot: 1
+*/
+
+/*@test evaluate-y
+at-line: 18
+evaluate: true
+variables:
+  y:
+    value: 0
+*/

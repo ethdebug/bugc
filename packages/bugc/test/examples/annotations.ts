@@ -7,10 +7,19 @@
 
 import YAML from "yaml";
 
+// Slot can be a literal number/string or a pointer expression
+export type SlotExpression = string | number | Record<string, unknown>;
+
+export interface StorageExpectation {
+  slot: SlotExpression;
+  value: string | number;
+}
+
 export interface StorageTest {
   after: "deploy" | "call";
   callData?: string;
-  storage: Record<string, string | number>;
+  // Simple format: { "0": 42 } or array format: [{ slot: expr, value: 42 }]
+  storage: StorageExpectation[];
 }
 
 export interface VariablesTest {
@@ -135,10 +144,33 @@ function extractExpectFail(parsed: unknown): string | undefined {
 }
 
 function normalizeStorageTest(parsed: Record<string, unknown>): StorageTest {
+  const rawStorage = parsed.storage;
+  let storage: StorageExpectation[];
+
+  if (Array.isArray(rawStorage)) {
+    // Array format: [{ slot: expr, value: 42 }]
+    storage = rawStorage.map((item: { slot: SlotExpression; value: unknown }) =>
+      ({
+        slot: item.slot,
+        value: item.value as string | number,
+      })
+    );
+  } else if (typeof rawStorage === "object" && rawStorage !== null) {
+    // Simple format: { "0": 42, "1": 100 }
+    storage = Object.entries(rawStorage as Record<string, unknown>).map(
+      ([slot, value]) => ({
+        slot: slot,
+        value: value as string | number,
+      })
+    );
+  } else {
+    storage = [];
+  }
+
   return {
     after: parsed.after as "deploy" | "call",
     callData: parsed["call-data"] as string | undefined,
-    storage: parsed.storage as Record<string, string | number>,
+    storage,
   };
 }
 

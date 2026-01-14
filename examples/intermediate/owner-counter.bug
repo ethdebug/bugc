@@ -39,3 +39,20 @@ storage:
   1: 1
   2: 1000000
 */
+
+/*@test count-pointer
+at-line: 32
+variables:
+  count:
+    pointer:
+      location: storage
+      slot: 0
+*/
+
+/*@test evaluate-count
+at-line: 32
+evaluate: true
+variables:
+  count:
+    value: 0
+*/

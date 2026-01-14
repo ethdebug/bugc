@@ -6,14 +6,19 @@
 
 import type * as Evm from "#evm";
 import * as Format from "@ethdebug/format";
-import { dereference } from "@ethdebug/pointers";
+import { dereference, evaluate } from "@ethdebug/pointers";
 import { bytesToHex } from "ethereum-cryptography/utils";
 
 import { EvmExecutor } from "../evm/index.js";
-import type { StorageTest, VariablesTest, EvaluateTest } from "./annotations.js";
+import type {
+  StorageTest,
+  VariablesTest,
+  EvaluateTest,
+  SlotExpression,
+} from "./annotations.js";
 import type { SourceMapping } from "./source-map.js";
 import { findInstructionsAtLine } from "./source-map.js";
-import { createMachineState } from "./machine-adapter.js";
+import { createMachineState, createNullMachineState } from "./machine-adapter.js";
 
 export interface TestResult {
   passed: boolean;
@@ -27,6 +32,31 @@ export interface TestResult {
  */
 function toHex(bytes: Uint8Array): string {
   return bytesToHex(bytes);
+}
+
+/**
+ * Evaluate a slot expression to get the actual slot number.
+ * Uses @ethdebug/pointers evaluate for pointer expressions ($keccak256, $sum).
+ */
+async function evaluateSlot(slot: SlotExpression): Promise<bigint> {
+  // Literal number
+  if (typeof slot === "number") {
+    return BigInt(slot);
+  }
+
+  // Literal string (hex or decimal)
+  if (typeof slot === "string") {
+    return BigInt(slot);
+  }
+
+  // Pointer expression - use @ethdebug/pointers evaluate
+  const nullState = createNullMachineState();
+  const data = await evaluate(slot as Format.Pointer.Expression, {
+    state: nullState,
+    regions: {},
+    variables: {},
+  });
+  return data.asUint();
 }
 
 /**
@@ -64,15 +94,18 @@ export async function runStorageTest(
     }
 
     // Check each expected storage slot
-    for (const [slot, expected] of Object.entries(test.storage)) {
-      const slotNum = BigInt(slot);
+    for (const expectation of test.storage) {
+      const slotNum = await evaluateSlot(expectation.slot);
       const actual = await executor.getStorage(slotNum);
-      const expectedNum = BigInt(expected);
+      const expectedNum = BigInt(expectation.value);
 
       if (actual !== expectedNum) {
+        const slotDisplay = typeof expectation.slot === "object"
+          ? JSON.stringify(expectation.slot)
+          : expectation.slot;
         return {
           passed: false,
-          message: `Storage slot ${slot}: expected ${expectedNum}, got ${actual}`,
+          message: `Storage slot ${slotDisplay}: expected ${expectedNum}, got ${actual}`,
           expected: expectedNum,
           actual,
         };
