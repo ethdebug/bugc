@@ -1,0 +1,32 @@
+name ArrayValues;
+
+storage {
+  [0] nums: array<uint256>;
+  [1] first: uint256;
+}
+
+create {
+  // Use array literal assignment instead of index writes
+  nums = [100, 200, 300];
+  first = nums[0];
+  return;
+}
+
+code {
+  let f = first;
+  /*@test first-element-check
+  at: here
+  after: deploy
+  variables:
+    first:
+      pointer: { location: storage, slot: 1 }
+      value: 100
+  */
+  /*@test array-values-check
+  at: here
+  after: deploy
+  variables:
+    nums:
+      values: [3, 100, 200, 300]
+  */
+}

@@ -144,19 +144,20 @@ function generateStoragePointer(
     } else {
       // Dynamic array: length at base slot, elements at keccak256(slot) + index
       // Elements start at keccak256(baseSlot)
+      // Note: baseSlot must be wordsized for proper 32-byte keccak256 input
       const elementSlotExpression: Format.Pointer.Expression =
         elementSize >= 32
           ? // Full slots: keccak256(baseSlot) + i * (elementSize / 32)
             {
               $sum: [
-                { $keccak256: [baseSlot] },
+                { $keccak256: [{ $wordsized: baseSlot }] },
                 { $product: ["i", elementSize / 32] },
               ],
             }
           : // Packed elements: keccak256(baseSlot) + floor((i * elementSize) / 32)
             {
               $sum: [
-                { $keccak256: [baseSlot] },
+                { $keccak256: [{ $wordsized: baseSlot }] },
                 {
                   $quotient: [{ $product: ["i", elementSize] }, 32],
                 },

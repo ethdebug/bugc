@@ -9,7 +9,8 @@ import YAML from "yaml";
 
 export interface VariableExpectation {
   pointer?: unknown;  // Expected pointer structure
-  value?: string | number | bigint;  // Expected dereferenced value
+  value?: string | number | bigint;  // Expected dereferenced scalar value
+  values?: (string | number | bigint)[];  // Expected values for each region
   type?: unknown;  // Expected type (future use)
 }
 

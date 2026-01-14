@@ -82,20 +82,22 @@ export async function runVariablesTest(
       if (!match) {
         return {
           passed: false,
-          message: `Variable "${name}" pointer mismatch`,
+          message: `Variable "${name}" pointer mismatch\n` +
+            `  expected: ${JSON.stringify(expected.pointer)}\n` +
+            `  actual:   ${JSON.stringify(pointer)}`,
           expected: expected.pointer,
           actual: pointer,
         };
       }
     }
 
-    // Check dereferenced value if specified
-    if (expected.value !== undefined) {
-      const result = await checkValue(
+    // Check dereferenced value(s) if specified
+    if (expected.value !== undefined || expected.values !== undefined) {
+      const result = await checkValues(
         bytecode,
         pointer,
         name,
-        expected.value,
+        expected.value !== undefined ? [expected.value] : expected.values!,
         test.after,
         test.callData
       );
@@ -109,13 +111,14 @@ export async function runVariablesTest(
 }
 
 /**
- * Deploy contract and check dereferenced value.
+ * Deploy contract and check dereferenced value(s).
+ * Supports both scalar (single region) and array (multiple regions) checks.
  */
-async function checkValue(
+async function checkValues(
   bytecode: { runtime: Uint8Array; create?: Uint8Array },
   pointer: Format.Pointer,
   name: string,
-  expectedValue: string | number | bigint,
+  expectedValues: (string | number | bigint)[],
   after: "deploy" | "call" = "deploy",
   callData?: string
 ): Promise<TestResult> {
@@ -152,24 +155,45 @@ async function checkValue(
       };
     }
 
-    const data = await view.read(view.regions[0]);
-    const actual = data.asUint();
-    const expected = BigInt(expectedValue);
-
-    if (actual !== expected) {
+    // Check region count matches expected values count
+    if (view.regions.length !== expectedValues.length) {
       return {
         passed: false,
-        message: `Variable "${name}": expected ${expected}, got ${actual}`,
-        expected,
-        actual,
+        message: `Variable "${name}": expected ${expectedValues.length} ` +
+          `regions, got ${view.regions.length}`,
+        expected: expectedValues.length,
+        actual: view.regions.length,
       };
+    }
+
+    // Read all values first
+    const actualValues: bigint[] = [];
+    for (let i = 0; i < view.regions.length; i++) {
+      const data = await view.read(view.regions[i]);
+      actualValues.push(data.asUint());
+    }
+
+    // Check each region's value
+    for (let i = 0; i < expectedValues.length; i++) {
+      const actual = actualValues[i];
+      const expected = BigInt(expectedValues[i]);
+
+      if (actual !== expected) {
+        return {
+          passed: false,
+          message: `Variable "${name}"[${i}]: expected ${expected}, got ${actual}`,
+          expected,
+          actual,
+        };
+      }
     }
 
     return { passed: true };
   } catch (error) {
     return {
       passed: false,
-      message: `Failed to evaluate "${name}": ${error instanceof Error ? error.message : String(error)}`,
+      message: `Failed to evaluate "${name}": ` +
+        `${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }

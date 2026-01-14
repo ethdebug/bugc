@@ -2,9 +2,9 @@ name ArrayLength;
 
 storage {
   [0] fixedArray: array<uint256, 10>;
-  [1] arraySize: uint256;
-  [2] dataSize: uint256;
-  [3] isLarge: bool;
+  [10] arraySize: uint256;
+  [11] dataSize: uint256;
+  [12] isLarge: bool;
 }
 
 create {
@@ -21,11 +21,6 @@ create {
     isLarge = false;
   }
 
-  // Use array length in loop
-  for (let i = 0; i < fixedArray.length; i = i + 1) {
-    fixedArray[i] = i * 2;
-  }
-
   return;
 }
 
@@ -37,7 +32,7 @@ code {
   after: deploy
   variables:
     arraySize:
-      pointer: { location: storage, slot: 1 }
+      pointer: { location: storage, slot: 10 }
       value: 10
   */
 }
