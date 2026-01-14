@@ -15,7 +15,6 @@ create {
 code {
   let f = first;
   /*@test first-element-check
-  at: here
   after: deploy
   variables:
     first:
@@ -23,7 +22,6 @@ code {
       value: 100
   */
   /*@test array-values-check
-  at: here
   after: deploy
   variables:
     nums:

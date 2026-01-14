@@ -31,7 +31,6 @@ code {
   // Increment counter
   count = count + 1;
   /*@test count-after-deploy
-  at: here
   after: deploy
   variables:
     count:
@@ -42,7 +41,6 @@ code {
       value: 1000000
   */
   /*@test count-after-call
-  at: here
   after: call
   variables:
     count:

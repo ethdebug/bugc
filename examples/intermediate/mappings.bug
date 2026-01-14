@@ -19,7 +19,6 @@ code {
   let sender: address = msg.sender;
   balances[sender] = 1000;
   /*@test balances-pointer
-  at: here
   after: deploy
   variables:
     balances:

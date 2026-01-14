@@ -34,7 +34,6 @@ code {
   result = total;
   /*@test function-call-result
   fails: stack underflow in internal function calls
-  at: here
   after: call
   variables:
     result:

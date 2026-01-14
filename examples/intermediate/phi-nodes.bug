@@ -17,7 +17,6 @@ code {
 
   y = a;  // 'a' should need a phi node here
   /*@test y-at-assignment
-  at: here
   after: deploy
   variables:
     y:

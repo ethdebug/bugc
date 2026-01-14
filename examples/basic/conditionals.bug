@@ -61,7 +61,6 @@ code {
   // Read values for testing
   let c = count;
   /*@test count-after-deploy
-  at: here
   after: deploy
   variables:
     count:
@@ -71,7 +70,6 @@ code {
 
   let p = permission;
   /*@test permission-pointer
-  at: here
   after: deploy
   variables:
     permission:

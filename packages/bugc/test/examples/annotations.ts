@@ -66,9 +66,18 @@ function findPrecedingCodeLine(source: string, offset: number): number {
 
 /**
  * Remove common leading indentation from a multi-line string.
+ * Also strips JSDoc-style " * " prefixes from lines.
  */
 function dedent(text: string): string {
-  const lines = text.split("\n");
+  let lines = text.split("\n");
+
+  // Strip JSDoc-style " * " prefix from each line
+  const allHaveJsdocPrefix = lines.every(
+    (line) => !line.trim() || /^\s*\*\s?/.test(line)
+  );
+  if (allHaveJsdocPrefix) {
+    lines = lines.map((line) => line.replace(/^\s*\*\s?/, ""));
+  }
 
   // Find minimum indentation (ignoring empty lines)
   let minIndent = Infinity;
@@ -80,7 +89,7 @@ function dedent(text: string): string {
   }
 
   if (minIndent === Infinity || minIndent === 0) {
-    return text;
+    return lines.join("\n");
   }
 
   // Remove the common indentation
@@ -93,8 +102,8 @@ function dedent(text: string): string {
 export function parseTestBlocks(source: string): TestBlock[] {
   const blocks: TestBlock[] = [];
 
-  // Match /*@test <name>\n<yaml>\n*/
-  const regex = /\/\*@test\s*(\S*)?\n([\s\S]*?)\*\//g;
+  // Match /*@test or /**@test style blocks
+  const regex = /\/\*\*?@test\s*(\S*)?\n([\s\S]*?)\*\//g;
 
   let match;
   while ((match = regex.exec(source)) !== null) {
@@ -131,8 +140,8 @@ function isValidTest(parsed: unknown): boolean {
     return false;
   }
   const obj = parsed as Record<string, unknown>;
-  const hasLocation = "at-line" in obj || obj.at === "here";
-  return hasLocation && "variables" in obj;
+  // Only require variables; location defaults to "here" (preceding line)
+  return "variables" in obj;
 }
 
 function extractExpectFail(parsed: Record<string, unknown>): string | undefined {
@@ -147,11 +156,11 @@ function normalizeTest(
   source: string,
   blockOffset: number
 ): VariablesTest {
-  // Support both "at-line: N" and "at: here"
-  // "at: here" means the code line immediately before the test block
-  const atLine = parsed.at === "here"
-    ? findPrecedingCodeLine(source, blockOffset)
-    : (parsed["at-line"] as number);
+  // Default to preceding code line ("here" behavior)
+  // Can override with explicit "at-line: N"
+  const atLine = "at-line" in parsed
+    ? (parsed["at-line"] as number)
+    : findPrecedingCodeLine(source, blockOffset);
 
   return {
     atLine,
