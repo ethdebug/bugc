@@ -12,3 +12,12 @@ create {
 
 code {
 }
+
+/*@test array-initialized
+fails: arrays use keccak256-based slots
+after: deploy
+storage:
+  0: 0x101
+  1: 0x102
+  2: 0x103
+*/

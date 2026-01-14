@@ -59,3 +59,10 @@ create {
 
 code {
 }
+
+/*@test conditionals-after-deploy
+after: deploy
+storage:
+  0: 1
+  5: 1
+*/

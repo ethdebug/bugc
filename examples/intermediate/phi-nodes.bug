@@ -47,3 +47,10 @@ code {
 
   y = c;  // 'c' should need a phi node here
 }
+
+/*@test phi-nodes-execution
+after: call
+storage:
+  0: 3
+  1: 400
+*/

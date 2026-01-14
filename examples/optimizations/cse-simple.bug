@@ -14,3 +14,10 @@ code {
 
   result = a + b + c;
 }
+
+/*@test cse-with-zero-value
+after: call
+storage:
+  0: 0
+  1: 0
+*/

@@ -31,3 +31,11 @@ code {
   // Increment counter
   count = count + 1;
 }
+
+/*@test initialized-after-deploy
+after: deploy
+storage:
+  0: 0
+  1: 1
+  2: 1000000
+*/

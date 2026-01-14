@@ -13,3 +13,9 @@ code {
     owner = 0x0000000000000000000000000000000000000000;
   }
 }
+
+/*@test owner-set-on-deploy
+after: deploy
+storage:
+  0: 1
+*/

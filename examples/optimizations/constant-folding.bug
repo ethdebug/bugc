@@ -18,3 +18,10 @@ code {
     result = 999;
   }
 }
+
+/*@test constant-folding-result
+fails: constant comparison folding not implemented
+after: call
+storage:
+  0: 120
+*/

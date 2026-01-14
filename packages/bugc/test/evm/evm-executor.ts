@@ -100,14 +100,6 @@ export class EvmExecutor {
     if (createdAddress) {
       // Update our contract address to the created one
       this.contractAddress = createdAddress;
-      console.log(`Contract deployed at: ${this.contractAddress.toString()}`);
-    }
-
-    // The return value contains the runtime bytecode
-    const returnValue = result.execResult?.returnValue;
-    if (returnValue && returnValue.length > 0) {
-      // The runtime bytecode is already stored at the created address
-      console.log(`Runtime bytecode length: ${returnValue.length} bytes`);
     }
   }
 

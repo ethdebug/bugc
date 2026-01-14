@@ -7,3 +7,9 @@ storage {
 create {
   value = 1;
 }
+
+/*@test storage-initialized
+after: deploy
+storage:
+  0: 1
+*/

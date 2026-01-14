@@ -28,3 +28,12 @@ create {
 
   return;
 }
+
+/*@test array-length-after-deploy
+fails: fixedArray.length returns 0 instead of 10
+after: deploy
+storage:
+  1: 10
+  2: 0
+  3: 0
+*/

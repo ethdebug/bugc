@@ -17,17 +17,12 @@
     "#ast/spec": "./dist/src/ast/spec.js",
     "#ast/visitor": "./dist/src/ast/visitor.js",
     "#ast/analysis": "./dist/src/ast/analysis/index.js",
-
     "#cli": "./dist/src/cli/index.js",
-
     "#compiler": "./dist/src/compiler/index.js",
-
     "#errors": "./dist/src/errors/index.js",
-
     "#evm": "./dist/src/evm/index.js",
     "#evm/spec": "./dist/src/evm/spec/index.js",
     "#evm/analysis": "./dist/src/evm/analysis/index.js",
-
     "#evmgen": "./dist/src/evmgen/index.js",
     "#evmgen/analysis": "./dist/src/evmgen/analysis/index.js",
     "#evmgen/errors": "./dist/src/evmgen/errors.js",
@@ -36,23 +31,18 @@
     "#evmgen/generation": "./dist/src/evmgen/generation/index.js",
     "#evmgen/serialize": "./dist/src/evmgen/serialize.js",
     "#evmgen/pass": "./dist/src/evmgen/pass.js",
-
     "#ir": "./dist/src/ir/index.js",
     "#ir/spec": "./dist/src/ir/spec/index.js",
     "#ir/analysis": "./dist/src/ir/analysis/index.js",
-
     "#irgen": "./dist/src/irgen/index.js",
     "#irgen/pass": "./dist/src/irgen/pass.js",
     "#irgen/errors": "./dist/src/irgen/errors.js",
     "#irgen/type": "./dist/src/irgen/type.js",
     "#irgen/generate": "./dist/src/irgen/generate/index.js",
-
     "#optimizer": "./dist/src/optimizer/index.js",
     "#optimizer/*": "./dist/src/optimizer/*.js",
-
     "#parser": "./dist/src/parser/index.js",
     "#parser/pass": "./dist/src/parser/pass.js",
-
     "#result": "./dist/src/result.js",
     "#typechecker": "./dist/src/typechecker/index.js",
     "#typechecker/pass": "./dist/src/typechecker/pass.js",
@@ -103,7 +93,8 @@
     "prettier": "^3.5.3",
     "tsx": "^4.19.4",
     "typescript": "^5.0.0",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "yaml": "^2.8.2"
   },
   "dependencies": {
     "fp-ts": "^2.16.11",
