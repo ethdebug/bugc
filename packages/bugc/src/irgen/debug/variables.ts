@@ -116,6 +116,7 @@ function generateStoragePointer(
             };
 
       const elementPointer: Format.Pointer = {
+        name: "element",
         location: "storage",
         slot: elementSlotExpression,
       };
@@ -165,6 +166,7 @@ function generateStoragePointer(
             };
 
       const elementPointer: Format.Pointer = {
+        name: "element",
         location: "storage",
         slot: elementSlotExpression,
       };
@@ -185,6 +187,7 @@ function generateStoragePointer(
 
       // For dynamic arrays, we use a group to declare both the length region
       // and the list of elements
+      // Note: "array-length" avoids conflict with Array.prototype.length
       const lengthRegion: Format.Pointer = {
         name: "array-length",
         location: "storage",

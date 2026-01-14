@@ -91,13 +91,28 @@ export async function runVariablesTest(
       }
     }
 
-    // Check dereferenced value(s) if specified
-    if (expected.value !== undefined || expected.values !== undefined) {
-      const result = await checkValues(
+    // Check dereferenced value if specified (scalar - first region)
+    if (expected.value !== undefined) {
+      const result = await checkScalarValue(
         bytecode,
         pointer,
         name,
-        expected.value !== undefined ? [expected.value] : expected.values!,
+        expected.value,
+        test.after,
+        test.callData
+      );
+      if (!result.passed) {
+        return result;
+      }
+    }
+
+    // Check dereferenced values by region name if specified
+    if (expected.values !== undefined) {
+      const result = await checkRegionValues(
+        bytecode,
+        pointer,
+        name,
+        expected.values,
         test.after,
         test.callData
       );
@@ -111,14 +126,13 @@ export async function runVariablesTest(
 }
 
 /**
- * Deploy contract and check dereferenced value(s).
- * Supports both scalar (single region) and array (multiple regions) checks.
+ * Deploy contract and check a scalar value (first region).
  */
-async function checkValues(
+async function checkScalarValue(
   bytecode: { runtime: Uint8Array; create?: Uint8Array },
   pointer: Format.Pointer,
   name: string,
-  expectedValues: (string | number | bigint)[],
+  expectedValue: string | number | bigint,
   after: "deploy" | "call" = "deploy",
   callData?: string
 ): Promise<TestResult> {
@@ -155,37 +169,17 @@ async function checkValues(
       };
     }
 
-    // Check region count matches expected values count
-    if (view.regions.length !== expectedValues.length) {
+    const data = await view.read(view.regions[0]);
+    const actual = data.asUint();
+    const expected = BigInt(expectedValue);
+
+    if (actual !== expected) {
       return {
         passed: false,
-        message: `Variable "${name}": expected ${expectedValues.length} ` +
-          `regions, got ${view.regions.length}`,
-        expected: expectedValues.length,
-        actual: view.regions.length,
+        message: `Variable "${name}": expected ${expected}, got ${actual}`,
+        expected,
+        actual,
       };
-    }
-
-    // Read all values first
-    const actualValues: bigint[] = [];
-    for (let i = 0; i < view.regions.length; i++) {
-      const data = await view.read(view.regions[i]);
-      actualValues.push(data.asUint());
-    }
-
-    // Check each region's value
-    for (let i = 0; i < expectedValues.length; i++) {
-      const actual = actualValues[i];
-      const expected = BigInt(expectedValues[i]);
-
-      if (actual !== expected) {
-        return {
-          passed: false,
-          message: `Variable "${name}"[${i}]: expected ${expected}, got ${actual}`,
-          expected,
-          actual,
-        };
-      }
     }
 
     return { passed: true };
@@ -193,6 +187,109 @@ async function checkValues(
     return {
       passed: false,
       message: `Failed to evaluate "${name}": ` +
+        `${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+/**
+ * Deploy contract and check values by region name.
+ * values is an object like { length: 3, element: [100, 200, 300] }
+ */
+async function checkRegionValues(
+  bytecode: { runtime: Uint8Array; create?: Uint8Array },
+  pointer: Format.Pointer,
+  varName: string,
+  expectedValues: Record<string, string | number | bigint |
+    (string | number | bigint)[]>,
+  after: "deploy" | "call" = "deploy",
+  callData?: string
+): Promise<TestResult> {
+  const executor = new EvmExecutor();
+
+  try {
+    // Deploy
+    const hasCreate = bytecode.create && bytecode.create.length > 0;
+    const createCode = hasCreate
+      ? toHex(bytecode.create!)
+      : toHex(bytecode.runtime);
+    await executor.deploy(createCode);
+
+    // Call if needed
+    if (after === "call") {
+      const execResult = await executor.execute({ data: callData || "" });
+      if (!execResult.success) {
+        return {
+          passed: false,
+          message: `Execution failed: ${JSON.stringify(execResult.error)}`,
+        };
+      }
+    }
+
+    // Dereference the pointer
+    const state = createMachineState(executor);
+    const cursor = await dereference(pointer, { state });
+    const view = await cursor.view(state);
+
+    // Check each expected region
+    for (const [regionName, expectedValue] of Object.entries(expectedValues)) {
+      const regions = view.regions.named(regionName);
+
+      if (regions.length === 0) {
+        return {
+          passed: false,
+          message: `Variable "${varName}": no regions named "${regionName}"`,
+        };
+      }
+
+      if (Array.isArray(expectedValue)) {
+        // Check multiple regions with same name
+        if (regions.length !== expectedValue.length) {
+          return {
+            passed: false,
+            message: `Variable "${varName}.${regionName}": expected ` +
+              `${expectedValue.length} regions, got ${regions.length}`,
+          };
+        }
+
+        for (let i = 0; i < expectedValue.length; i++) {
+          const data = await view.read(regions[i]);
+          const actual = data.asUint();
+          const expected = BigInt(expectedValue[i]);
+
+          if (actual !== expected) {
+            return {
+              passed: false,
+              message: `Variable "${varName}.${regionName}[${i}]": ` +
+                `expected ${expected}, got ${actual}`,
+              expected,
+              actual,
+            };
+          }
+        }
+      } else {
+        // Check single region
+        const data = await view.read(regions[0]);
+        const actual = data.asUint();
+        const expected = BigInt(expectedValue);
+
+        if (actual !== expected) {
+          return {
+            passed: false,
+            message: `Variable "${varName}.${regionName}": ` +
+              `expected ${expected}, got ${actual}`,
+            expected,
+            actual,
+          };
+        }
+      }
+    }
+
+    return { passed: true };
+  } catch (error) {
+    return {
+      passed: false,
+      message: `Failed to evaluate "${varName}": ` +
         `${error instanceof Error ? error.message : String(error)}`,
     };
   }

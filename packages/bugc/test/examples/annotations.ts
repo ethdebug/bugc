@@ -10,9 +10,15 @@ import YAML from "yaml";
 export interface VariableExpectation {
   pointer?: unknown;  // Expected pointer structure
   value?: string | number | bigint;  // Expected dereferenced scalar value
-  values?: (string | number | bigint)[];  // Expected values for each region
+  values?: RegionValues;  // Expected values by region name
   type?: unknown;  // Expected type (future use)
 }
+
+// Region values can be:
+// - An object mapping region names to values/arrays
+// - e.g., { length: 3, element: [100, 200, 300] }
+export type RegionValues = Record<string, string | number | bigint |
+  (string | number | bigint)[]>;
 
 export interface VariablesTest {
   atLine: number;

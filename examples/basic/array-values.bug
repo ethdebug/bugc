@@ -27,6 +27,8 @@ code {
   after: deploy
   variables:
     nums:
-      values: [3, 100, 200, 300]
+      values:
+        array-length: 3
+        element: [100, 200, 300]
   */
 }
