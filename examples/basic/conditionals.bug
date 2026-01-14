@@ -53,12 +53,14 @@ create {
 
   // Store last sender
   lastSender = msg.sender;
+
   /*@test count-after-deploy
   variables:
     count:
       pointer: { location: storage, slot: 0 }
       value: 1
   */
+
   /*@test permission-pointer
   variables:
     permission:

@@ -20,6 +20,7 @@ create {
   } else {
     isLarge = false;
   }
+
   /*@test array-length-after-deploy
   variables:
     arraySize:
