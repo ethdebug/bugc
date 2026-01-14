@@ -35,6 +35,30 @@ export interface TestBlock {
 }
 
 /**
+ * Determine which block (create or code) contains the given offset.
+ * Returns "deploy" for create block, "call" for code block.
+ */
+function inferAfterFromOffset(
+  source: string,
+  offset: number
+): "deploy" | "call" {
+  // Find create { ... } and code { ... } block boundaries
+  // Simple approach: find last occurrence of "create {" or "code {" before offset
+  const beforeOffset = source.slice(0, offset);
+
+  const lastCreate = beforeOffset.lastIndexOf("create {");
+  const lastCode = beforeOffset.lastIndexOf("code {");
+
+  // If we're after "code {" and it comes after "create {", we're in code block
+  if (lastCode > lastCreate) {
+    return "call";
+  }
+
+  // Otherwise assume create block (or default to deploy)
+  return "deploy";
+}
+
+/**
  * Find the last non-empty, non-comment line before a given offset.
  * This is used for "at: here" to find the code line above the test block.
  */
@@ -162,9 +186,15 @@ function normalizeTest(
     ? (parsed["at-line"] as number)
     : findPrecedingCodeLine(source, blockOffset);
 
+  // Default "after" based on which block the test is in
+  // create {} -> deploy, code {} -> call
+  const after = "after" in parsed
+    ? (parsed.after as "deploy" | "call")
+    : inferAfterFromOffset(source, blockOffset);
+
   return {
     atLine,
-    after: parsed.after as "deploy" | "call" | undefined,
+    after,
     callData: parsed["call-data"] as string | undefined,
     variables: parsed.variables as Record<string, VariableExpectation>,
   };
