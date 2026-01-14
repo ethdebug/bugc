@@ -1,72 +1,116 @@
 export interface Example {
   name: string;
   displayName: string;
+  category: "basic" | "intermediate" | "advanced" | "optimizations";
   code: string;
 }
 
-// Import all .bug files from the examples directory
+// Import all .bug files from the examples directory (including subdirectories)
 // Vite will inline the file contents at build time
-const exampleFiles = import.meta.glob("../../../../examples/*.bug", {
+const exampleFiles = import.meta.glob("../../../../examples/**/*.bug", {
   query: "?raw",
   import: "default",
   eager: true,
 }) as Record<string, string>;
 
 // Map the actual example files to the Example interface
+// Organized by category, showing only working examples
 export const examples: Example[] = [
+  // Basic examples
   {
     name: "minimal",
     displayName: "Minimal",
-    code: exampleFiles["../../../../examples/minimal.bug"] || "",
-  },
-  {
-    name: "owner-counter",
-    displayName: "Owner Counter",
-    code: exampleFiles["../../../../examples/owner-counter.bug"],
+    category: "basic",
+    code: exampleFiles["../../../../examples/basic/minimal.bug"] || "",
   },
   {
     name: "conditionals",
     displayName: "Conditionals",
-    code: exampleFiles["../../../../examples/conditionals.bug"],
+    category: "basic",
+    code: exampleFiles["../../../../examples/basic/conditionals.bug"],
   },
   {
-    name: "arrays-and-loops",
-    displayName: "Arrays and Loops",
-    code: exampleFiles["../../../../examples/arrays-and-loops.bug"],
-  },
-  {
-    name: "voting-system",
-    displayName: "Voting System",
-    code: exampleFiles["../../../../examples/voting-system.bug"],
-  },
-  {
-    name: "token-registry",
-    displayName: "Token Registry",
-    code: exampleFiles["../../../../examples/token-registry.bug"],
-  },
-  {
-    name: "optimizations",
-    displayName: "Optimizations Demo",
-    code: exampleFiles["../../../../examples/optimizations.bug"],
-  },
-  {
-    name: "simple-functions",
-    displayName: "Simple Functions",
-    code: exampleFiles["../../../../examples/simple-functions.bug"],
+    name: "functions",
+    displayName: "Functions",
+    category: "basic",
+    code: exampleFiles["../../../../examples/basic/functions.bug"],
   },
   {
     name: "array-length",
     displayName: "Array Length",
-    code: exampleFiles["../../../../examples/array-length.bug"],
+    category: "basic",
+    code: exampleFiles["../../../../examples/basic/array-length.bug"],
+  },
+
+  // Intermediate examples
+  {
+    name: "owner-counter",
+    displayName: "Owner Counter",
+    category: "intermediate",
+    code: exampleFiles["../../../../examples/intermediate/owner-counter.bug"],
   },
   {
-    name: "string-length",
-    displayName: "String Length",
-    code: exampleFiles["../../../../examples/string-length.bug"],
+    name: "arrays",
+    displayName: "Arrays and Loops",
+    category: "intermediate",
+    code: exampleFiles["../../../../examples/intermediate/arrays.bug"],
   },
+  {
+    name: "mappings",
+    displayName: "Mappings",
+    category: "intermediate",
+    code: exampleFiles["../../../../examples/intermediate/mappings.bug"],
+  },
+  {
+    name: "scopes",
+    displayName: "Variable Scopes",
+    category: "intermediate",
+    code: exampleFiles["../../../../examples/intermediate/scopes.bug"],
+  },
+  {
+    name: "slices",
+    displayName: "Byte Slices",
+    category: "intermediate",
+    code: exampleFiles["../../../../examples/intermediate/slices.bug"],
+  },
+  {
+    name: "calldata",
+    displayName: "Calldata Access",
+    category: "intermediate",
+    code: exampleFiles["../../../../examples/intermediate/calldata.bug"],
+  },
+
+  // Advanced examples
+  {
+    name: "nested-mappings",
+    displayName: "Nested Mappings",
+    category: "advanced",
+    code: exampleFiles["../../../../examples/advanced/nested-mappings.bug"],
+  },
+  {
+    name: "nested-arrays",
+    displayName: "Nested Arrays",
+    category: "advanced",
+    code: exampleFiles["../../../../examples/advanced/nested-arrays.bug"],
+  },
+  {
+    name: "nested-structs",
+    displayName: "Nested Structs",
+    category: "advanced",
+    code: exampleFiles["../../../../examples/advanced/nested-structs.bug"],
+  },
+
+  // Optimization demos
   {
     name: "cse",
     displayName: "CSE Demo",
-    code: exampleFiles["../../../../examples/cse.bug"],
+    category: "optimizations",
+    code: exampleFiles["../../../../examples/optimizations/cse.bug"],
+  },
+  {
+    name: "constant-folding",
+    displayName: "Constant Folding",
+    category: "optimizations",
+    code: exampleFiles["../../../../examples/optimizations/constant-folding.bug"],
   },
 ];
