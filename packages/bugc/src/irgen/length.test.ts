@@ -4,7 +4,7 @@ import * as TypeChecker from "#typechecker";
 import { generateModule } from "./generator.js";
 
 describe("IR Builder - Length Instructions", () => {
-  it("should generate length instruction for array", () => {
+  it("should generate const for fixed-size array length", () => {
     const source = `
       name ArrayLength;
 
@@ -33,20 +33,13 @@ describe("IR Builder - Length Instructions", () => {
       const main = ir.value.main;
       const entryBlock = main.blocks.get(main.entry)!;
 
-      // Find the length instruction
-      const lengthInst = entryBlock.instructions.find(
-        (inst) => inst.kind === "length",
+      // For fixed-size arrays, length is a compile-time constant
+      const constInst = entryBlock.instructions.find(
+        (inst) => inst.kind === "const" && inst.value === 10n,
       );
 
-      expect(lengthInst).toBeDefined();
-      expect(lengthInst?.kind).toBe("length");
-
-      if (lengthInst && lengthInst.kind === "length") {
-        expect(lengthInst.object.type?.kind).toBe("ref");
-        if (lengthInst.object.type?.kind === "ref") {
-          expect(lengthInst.object.type.location).toBe("memory");
-        }
-      }
+      expect(constInst).toBeDefined();
+      expect(constInst?.kind).toBe("const");
     }
   });
 
@@ -142,7 +135,7 @@ describe("IR Builder - Length Instructions", () => {
     }
   });
 
-  it("should generate length for loop bounds", () => {
+  it("should generate const for fixed-size array loop bounds", () => {
     const source = `
       name LengthLoop;
 
@@ -171,23 +164,23 @@ describe("IR Builder - Length Instructions", () => {
     if (ir.success) {
       const main = ir.value.main;
 
-      // Find the loop condition block
-      let lengthInstructionFound = false;
+      // For fixed-size arrays, length should be a compile-time constant (5)
+      let constInstructionFound = false;
       for (const [, block] of main.blocks) {
-        const lengthInst = block.instructions.find(
-          (inst) => inst.kind === "length",
+        const constInst = block.instructions.find(
+          (inst) => inst.kind === "const" && inst.value === 5n,
         );
-        if (lengthInst) {
-          lengthInstructionFound = true;
+        if (constInst) {
+          constInstructionFound = true;
           break;
         }
       }
 
-      expect(lengthInstructionFound).toBe(true);
+      expect(constInstructionFound).toBe(true);
     }
   });
 
-  it("should handle nested access with length", () => {
+  it("should handle nested access with fixed-size length", () => {
     const source = `
       name NestedLength;
 
@@ -216,20 +209,12 @@ describe("IR Builder - Length Instructions", () => {
       const main = ir.value.main;
       const entryBlock = main.blocks.get(main.entry)!;
 
-      // For storage arrays, we use read storage with dynamic slot instead of load_index
-      const loadStorageInst = entryBlock.instructions.find(
-        (inst) =>
-          inst.kind === "read" &&
-          inst.location === "storage" &&
-          inst.slot &&
-          inst.slot.kind !== "const",
+      // For fixed-size inner arrays, length is a compile-time constant (3)
+      // We don't need to load from storage to get the length
+      const constInst = entryBlock.instructions.find(
+        (inst) => inst.kind === "const" && inst.value === 3n,
       );
-      expect(loadStorageInst).toBeDefined();
-
-      const lengthInst = entryBlock.instructions.find(
-        (inst) => inst.kind === "length",
-      );
-      expect(lengthInst).toBeDefined();
+      expect(constInst).toBeDefined();
     }
   });
 

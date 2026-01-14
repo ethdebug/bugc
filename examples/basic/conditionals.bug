@@ -60,22 +60,21 @@ create {
 code {
   // Read values for testing
   let c = count;
+  /*@test count-after-deploy
+  at: here
+  after: deploy
+  variables:
+    count:
+      pointer: { location: storage, slot: 0 }
+      value: 1
+  */
+
   let p = permission;
+  /*@test permission-pointer
+  at: here
+  after: deploy
+  variables:
+    permission:
+      pointer: { location: storage, slot: 5, length: 1 }
+  */
 }
-
-/*@test count-after-deploy
-at-line: 62
-after: deploy
-variables:
-  count:
-    pointer: { location: storage, slot: 0 }
-    value: 1
-*/
-
-/*@test permission-pointer
-at-line: 63
-after: deploy
-variables:
-  permission:
-    pointer: { location: storage, slot: 5, length: 1 }
-*/

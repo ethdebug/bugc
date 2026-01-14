@@ -18,6 +18,13 @@ code {
   // Simple mapping access
   let sender: address = msg.sender;
   balances[sender] = 1000;
+  /*@test balances-pointer
+  at: here
+  after: deploy
+  variables:
+    balances:
+      pointer: { location: storage, slot: 0 }
+  */
 
   // Read from mapping
   let balance: uint256 = balances[sender];
@@ -32,11 +39,3 @@ code {
   // Struct in mapping (would need more complex handling)
   // userInfo[sender].age = 25;
 }
-
-/*@test balances-pointer
-at-line: 20
-after: deploy
-variables:
-  balances:
-    pointer: { location: storage, slot: 0 }
-*/

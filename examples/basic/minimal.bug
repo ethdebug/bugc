@@ -11,13 +11,13 @@ create {
 code {
   // Read value to make it available for testing
   let v = value;
-}
 
-/*@test value-initialized
-at-line: 13
-after: deploy
-variables:
-  value:
-    pointer: { location: storage, slot: 0 }
-    value: 1
-*/
+  /*@test value-initialized
+  at: here
+  after: deploy
+  variables:
+    value:
+      pointer: { location: storage, slot: 0 }
+      value: 1
+  */
+}

@@ -42,6 +42,7 @@ export class EvmExecutor {
   private evm: EVM;
   private stateManager: SimpleStateManager;
   private contractAddress: Address;
+  private deployerAddress: Address;
 
   constructor() {
     const common = new Common({
@@ -58,6 +59,18 @@ export class EvmExecutor {
     this.contractAddress = new Address(
       hexToBytes("1234567890123456789012345678901234567890"),
     );
+
+    // Use a fixed deployer address
+    this.deployerAddress = new Address(
+      hexToBytes("0000000000000000000000000000000000000001"),
+    );
+  }
+
+  /**
+   * Get the deployer address used for deployment
+   */
+  getDeployerAddress(): Address {
+    return this.deployerAddress;
   }
 
   /**
@@ -67,12 +80,9 @@ export class EvmExecutor {
     // Execute the constructor bytecode to get the runtime bytecode
     const code = hexToBytes(bytecode);
 
-    // Create a temporary address for deployment
-    const deployerAddress = new Address(hexToBytes("0000000000000000000000000000000000000001"));
-
     // Initialize deployer account
     const deployerAccount = new Account(0n, BigInt(10) ** BigInt(18));
-    await this.stateManager.putAccount(deployerAddress, deployerAccount);
+    await this.stateManager.putAccount(this.deployerAddress, deployerAccount);
 
     // Initialize contract account before execution
     const contractAccount = new Account(0n, 0n);
@@ -80,8 +90,8 @@ export class EvmExecutor {
 
     // Use runCall with empty to address to simulate CREATE
     const result = await this.evm.runCall({
-      caller: deployerAddress,
-      origin: deployerAddress,
+      caller: this.deployerAddress,
+      origin: this.deployerAddress,
       to: undefined, // undefined 'to' means contract creation
       data: code,
       gasLimit: 10_000_000n,
@@ -106,17 +116,27 @@ export class EvmExecutor {
   /**
    * Execute deployed bytecode
    */
-  async execute(options: ExecutionOptions = {}): Promise<ExecutionResult> {
+  async execute(options: ExecutionOptions = {}, trace = false): Promise<ExecutionResult> {
     const runCallOpts = {
       to: this.contractAddress,
-      caller: options.caller ?? new Address(Buffer.alloc(20)),
-      origin: options.origin ?? new Address(Buffer.alloc(20)),
+      caller: options.caller ?? this.deployerAddress,
+      origin: options.origin ?? this.deployerAddress,
       data: options.data ? hexToBytes(options.data) : new Uint8Array(),
       value: options.value ?? 0n,
       gasLimit: options.gasLimit ?? 10_000_000n,
     };
 
+    if (trace) {
+      this.evm.events.on("step", (step: { pc: number; opcode: { name: string }; stack: bigint[] }) => {
+        console.log(`[TRACE] PC=${step.pc.toString(16).padStart(4, "0")} ${step.opcode.name} stack=[${step.stack.slice(-3).map(s => s.toString(16)).join(", ")}]`);
+      });
+    }
+
     const result = await this.evm.runCall(runCallOpts);
+
+    if (trace) {
+      this.evm.events.removeAllListeners("step");
+    }
 
     // Access the execution result from the returned object
     const rawResult = result as ResultWithExec;
@@ -209,6 +229,20 @@ export class EvmExecutor {
       slotBuffer,
       valueBuffer,
     );
+  }
+
+  /**
+   * Get the code at the contract address
+   */
+  async getCode(): Promise<Uint8Array> {
+    return this.stateManager.getCode(this.contractAddress);
+  }
+
+  /**
+   * Get the contract address
+   */
+  getContractAddress(): Address {
+    return this.contractAddress;
   }
 
   /**

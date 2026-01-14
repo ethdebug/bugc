@@ -13,18 +13,17 @@ code {
   // This comparison should be folded
   if (a > 25) {         // 30 > 25 = true, always taken
     result = b + c;     // 60 + 60 = 120
+    /*@test constant-folding-result
+    fails: constant comparison folding not implemented
+    at: here
+    after: call
+    variables:
+      result:
+        pointer: { location: storage, slot: 0 }
+        value: 120
+    */
   } else {
     // Dead code - should be eliminated
     result = 999;
   }
 }
-
-/*@test constant-folding-result
-fails: constant comparison folding not implemented
-at-line: 15
-after: call
-variables:
-  result:
-    pointer: { location: storage, slot: 0 }
-    value: 120
-*/

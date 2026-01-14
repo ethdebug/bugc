@@ -88,10 +88,24 @@ const makeBuildMemberAccess = (
             (Type.Elementary.isBytes(objectType) ||
               Type.Elementary.isString(objectType))))
       ) {
-        const object = yield* buildExpression(expr.object, { kind: "rvalue" });
         const resultType: Ir.Type = Ir.Type.Scalar.uint256;
         const tempId = yield* Process.Variables.newTemp();
 
+        // For fixed-size arrays, emit a constant with the known size
+        if (Type.isArray(objectType) && objectType.size !== undefined) {
+          yield* Process.Instructions.emit({
+            kind: "const",
+            value: BigInt(objectType.size),
+            type: resultType,
+            dest: tempId,
+            operationDebug: yield* Process.Debug.forAstNode(expr),
+          } as Ir.Instruction);
+
+          return Ir.Value.temp(tempId, resultType);
+        }
+
+        // For dynamic arrays/bytes/strings, emit length instruction
+        const object = yield* buildExpression(expr.object, { kind: "rvalue" });
         yield* Process.Instructions.emit({
           kind: "length",
           object,

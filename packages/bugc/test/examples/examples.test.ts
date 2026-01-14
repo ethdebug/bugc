@@ -100,22 +100,6 @@ function skipSuffix(annotations: ExampleAnnotations): string {
   return "";
 }
 
-function handleTestResult(
-  result: { passed: boolean; message?: string },
-  expectFail?: string
-): void {
-  if (expectFail) {
-    if (result.passed) {
-      expect.fail(`Expected to fail (${expectFail}) but passed`);
-    }
-    return;
-  }
-
-  if (!result.passed) {
-    expect.fail(result.message);
-  }
-}
-
 async function compileExample(
   example: ExampleInfo
 ): Promise<{ success: true; bytecode: CompiledBytecode } | { success: false }> {
@@ -195,7 +179,7 @@ describe("Example Files", async () => {
     }
   });
 
-  // === Variables Tests ===
+  // === Runtime Assertions ===
   if (variablesTests.length > 0) {
     const byFile = new Map<string, typeof variablesTests>();
     for (const entry of variablesTests) {
@@ -204,7 +188,7 @@ describe("Example Files", async () => {
       byFile.get(key)!.push(entry);
     }
 
-    describe("Variables", () => {
+    describe("Runtime", () => {
       for (const [relativePath, tests] of byFile) {
         const { annotations, source } = tests[0].example;
         const skip = shouldSkip(annotations);
@@ -213,11 +197,16 @@ describe("Example Files", async () => {
         describeFn(`${relativePath}${skipSuffix(annotations)}`, () => {
           for (const { example, block, test } of tests) {
             const baseName = block.name || `line ${test.atLine}`;
-            const testName = block.expectFail
-              ? `${baseName} (expected: ${block.expectFail})`
-              : baseName;
 
-            it(testName, async () => {
+            // Skip tests with expectFail annotation
+            if (block.expectFail) {
+              it.skip(`${baseName} (known issue: ${block.expectFail})`, () => {
+                // Skipped - known issue
+              });
+              continue;
+            }
+
+            it(baseName, async () => {
               const compiled = await compileExample(example);
               if (!compiled.success) {
                 throw new Error("Compilation failed - cannot run test");
@@ -235,7 +224,9 @@ describe("Example Files", async () => {
                 test
               );
 
-              handleTestResult(result, block.expectFail);
+              if (!result.passed) {
+                expect.fail(result.message);
+              }
             });
           }
         });

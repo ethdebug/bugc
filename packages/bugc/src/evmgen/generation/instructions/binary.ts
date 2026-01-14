@@ -6,7 +6,7 @@ import { type Transition, operations, pipe, rebrand } from "#evmgen/operations";
 
 import { loadValue, storeValueIfNeeded } from "../values/index.js";
 
-const { ADD, SUB, MUL, DIV, MOD, EQ, LT, GT, AND, OR, NOT, SHL, SHR } =
+const { ADD, SUB, MUL, DIV, MOD, EQ, LT, GT, AND, OR, ISZERO, SHL, SHR } =
   operations;
 
 /**
@@ -38,17 +38,19 @@ export function generateBinary<S extends Stack>(
     eq: EQ({ debug }),
     ne: pipe<readonly ["a", "b", ...S]>()
       .then(EQ({ debug }), { as: "a" })
-      .then(NOT({ debug }))
+      .then(ISZERO({ debug }))
       .done(),
-    lt: LT({ debug }),
+    // Note: operands are loaded as [left=b, right=a] so EVM comparisons are reversed
+    // EVM LT returns a < b (right < left), so use GT for IR lt (left < right)
+    lt: GT({ debug }),
     le: pipe<readonly ["a", "b", ...S]>()
-      .then(GT({ debug }), { as: "a" })
-      .then(NOT({ debug }))
-      .done(),
-    gt: GT({ debug }),
-    ge: pipe<readonly ["a", "b", ...S]>()
       .then(LT({ debug }), { as: "a" })
-      .then(NOT({ debug }))
+      .then(ISZERO({ debug }))
+      .done(),
+    gt: LT({ debug }),
+    ge: pipe<readonly ["a", "b", ...S]>()
+      .then(GT({ debug }), { as: "a" })
+      .then(ISZERO({ debug }))
       .done(),
     and: AND({ debug }),
     or: OR({ debug }),

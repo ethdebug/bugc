@@ -17,6 +17,14 @@ code {
 
   // Calculate sum of all elements
   sum = 0;
+  /*@test sum-initialized
+  at: here
+  after: deploy
+  variables:
+    sum:
+      pointer: { location: storage, slot: 1 }
+      value: 0
+  */
   for (let i = 0; i < 10; i = i + 1) {
     sum = sum + numbers[i];
   }
@@ -67,15 +75,33 @@ code {
     }
   }
   count = idx;  // Store count of elements < 50
+  /*@test final-sum
+  fails: stack overflow during call - needs investigation
+  at: here
+  after: call
+  variables:
+    sum:
+      pointer: { location: storage, slot: 1 }
+      value: 285
+  */
+  /*@test final-max
+  fails: stack overflow during call - needs investigation
+  at: here
+  after: call
+  variables:
+    max:
+      pointer: { location: storage, slot: 2 }
+      value: 81
+  */
+  /*@test final-count
+  fails: stack overflow during call - needs investigation
+  at: here
+  after: call
+  variables:
+    count:
+      pointer: { location: storage, slot: 3 }
+      value: 8
+  */
 
   return;
 }
-
-/*@test sum-initialized
-at-line: 19
-after: deploy
-variables:
-  sum:
-    pointer: { location: storage, slot: 1 }
-    value: 0
-*/

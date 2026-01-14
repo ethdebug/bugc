@@ -32,14 +32,13 @@ code {
 
   // Store result
   result = total;
+  /*@test function-call-result
+  fails: stack underflow in internal function calls
+  at: here
+  after: call
+  variables:
+    result:
+      pointer: { location: storage, slot: 0 }
+      value: 60
+  */
 }
-
-/*@test function-call-result
-fails: stack underflow in internal function calls
-at-line: 34
-after: call
-variables:
-  result:
-    pointer: { location: storage, slot: 0 }
-    value: 60
-*/

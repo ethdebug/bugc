@@ -10,14 +10,13 @@ create {
 
 code {
   if (msg.sender == owner) {
+    /*@test owner-pointer
+    at: here
+    after: deploy
+    variables:
+      owner:
+        pointer: { location: storage, slot: 0, length: 20 }
+    */
     owner = 0x0000000000000000000000000000000000000000;
   }
 }
-
-/*@test owner-pointer
-at-line: 12
-after: deploy
-variables:
-  owner:
-    pointer: { location: storage, slot: 0, length: 20 }
-*/

@@ -30,16 +30,23 @@ code {
   
   // Increment counter
   count = count + 1;
+  /*@test count-after-deploy
+  at: here
+  after: deploy
+  variables:
+    count:
+      pointer: { location: storage, slot: 0 }
+      value: 0
+    maxCount:
+      pointer: { location: storage, slot: 2 }
+      value: 1000000
+  */
+  /*@test count-after-call
+  at: here
+  after: call
+  variables:
+    count:
+      pointer: { location: storage, slot: 0 }
+      value: 1
+  */
 }
-
-/*@test count-after-deploy
-at-line: 32
-after: deploy
-variables:
-  count:
-    pointer: { location: storage, slot: 0 }
-    value: 0
-  maxCount:
-    pointer: { location: storage, slot: 2 }
-    value: 1000000
-*/
