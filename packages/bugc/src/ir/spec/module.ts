@@ -1,4 +1,5 @@
 import type * as Ast from "#ast";
+import type * as Format from "@ethdebug/format";
 
 import type { Function as IrFunction } from "./function.js";
 
@@ -16,4 +17,6 @@ export interface Module {
   main: IrFunction;
   /** Source location of the program */
   loc?: Ast.SourceLocation;
+  /** Program-level debug context (storage variables, etc.) */
+  debugContext?: Format.Program.Context;
 }

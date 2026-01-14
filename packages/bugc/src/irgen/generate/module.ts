@@ -6,6 +6,10 @@ import { Severity } from "#result";
 
 import { Error as IrgenError } from "#irgen/errors";
 import { fromBugType } from "#irgen/type";
+import {
+  collectVariablesWithLocations,
+  toVariableContextEntry,
+} from "#irgen/debug/variables";
 
 import { State } from "./state.js";
 import { buildFunction } from "./function.js";
@@ -82,11 +86,20 @@ export function* buildModule(
   // Get module state to build final IR module
   const module_ = yield* Process.Modules.current();
 
+  // Build program-level debug context with storage variables
+  const state: State = yield { type: "peek" };
+  const sourceId = "0"; // TODO: Get actual source ID
+  const variables = collectVariablesWithLocations(state, sourceId);
+  const debugContext = variables.length > 0
+    ? { variables: variables.map(toVariableContextEntry) }
+    : undefined;
+
   // Return the module, ensuring main exists
   const result: Ir.Module = {
     name: module_.name,
     functions: module_.functions,
     main: module_.main || createEmptyFunction("main"),
+    debugContext,
   };
 
   if (module_.create) {

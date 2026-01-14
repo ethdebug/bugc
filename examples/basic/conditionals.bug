@@ -53,26 +53,19 @@ create {
 
   // Store last sender
   lastSender = msg.sender;
-
-  return;
-}
-
-code {
-  // Read values for testing
-  let c = count;
   /*@test count-after-deploy
-  after: deploy
   variables:
     count:
       pointer: { location: storage, slot: 0 }
       value: 1
   */
-
-  let p = permission;
   /*@test permission-pointer
-  after: deploy
   variables:
     permission:
       pointer: { location: storage, slot: 5, length: 1 }
   */
+  return;
+}
+
+code {
 }

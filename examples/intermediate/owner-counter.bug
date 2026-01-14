@@ -9,29 +9,13 @@ storage {
 create {
   // Set the deployer as owner
   owner = msg.sender;
-  
+
   // Initialize counter to 0
   count = 0;
-  
+
   // Set max count limit
   maxCount = 1000000;
-}
-
-code {
-  // Only owner can increment
-  if (msg.sender != owner) {
-    return;
-  }
-  
-  // Check if we've hit the limit
-  if (count >= maxCount) {
-    return;
-  }
-  
-  // Increment counter
-  count = count + 1;
   /*@test count-after-deploy
-  after: deploy
   variables:
     count:
       pointer: { location: storage, slot: 0 }
@@ -40,8 +24,22 @@ code {
       pointer: { location: storage, slot: 2 }
       value: 1000000
   */
+}
+
+code {
+  // Only owner can increment
+  if (msg.sender != owner) {
+    return;
+  }
+
+  // Check if we've hit the limit
+  if (count >= maxCount) {
+    return;
+  }
+
+  // Increment counter
+  count = count + 1;
   /*@test count-after-call
-  after: call
   variables:
     count:
       pointer: { location: storage, slot: 0 }

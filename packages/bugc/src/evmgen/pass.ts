@@ -1,3 +1,4 @@
+import * as Format from "@ethdebug/format";
 import { Result } from "#result";
 import type { Pass } from "#compiler";
 import type * as Ir from "#ir";
@@ -5,6 +6,7 @@ import type * as Evm from "#evm";
 
 import { Module } from "#evmgen/generation";
 import { Error as EvmgenError, ErrorCode } from "#evmgen/errors";
+import { buildProgram } from "#evmgen/program-builder";
 
 import { Layout, Liveness, Memory } from "#evmgen/analysis";
 
@@ -20,6 +22,10 @@ export interface EvmGenerationOutput {
   runtimeInstructions: Evm.Instruction[];
   /** Constructor instructions (optional) */
   createInstructions?: Evm.Instruction[];
+  /** Runtime program with debug info (ethdebug/format) */
+  runtimeProgram: Format.Program;
+  /** Create program with debug info (ethdebug/format, optional) */
+  createProgram?: Format.Program;
 }
 
 /**
@@ -70,6 +76,16 @@ const pass: Pass<{
       const runtime = new Uint8Array(result.runtime);
       const create = result.create ? new Uint8Array(result.create) : undefined;
 
+      // Build Format.Program objects
+      const runtimeProgram = buildProgram(
+        result.runtimeInstructions,
+        "call",
+        ir
+      );
+      const createProgram = result.createInstructions
+        ? buildProgram(result.createInstructions, "create", ir)
+        : undefined;
+
       return Result.okWith(
         {
           bytecode: {
@@ -77,6 +93,8 @@ const pass: Pass<{
             create,
             runtimeInstructions: result.runtimeInstructions,
             createInstructions: result.createInstructions,
+            runtimeProgram,
+            createProgram,
           },
         },
         result.warnings,

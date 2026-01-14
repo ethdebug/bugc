@@ -76,7 +76,6 @@ code {
   count = idx;  // Store count of elements < 50
   /*@test final-sum
   fails: stack overflow during call - needs investigation
-  after: call
   variables:
     sum:
       pointer: { location: storage, slot: 1 }
@@ -84,7 +83,6 @@ code {
   */
   /*@test final-max
   fails: stack overflow during call - needs investigation
-  after: call
   variables:
     max:
       pointer: { location: storage, slot: 2 }
@@ -92,7 +90,6 @@ code {
   */
   /*@test final-count
   fails: stack overflow during call - needs investigation
-  after: call
   variables:
     count:
       pointer: { location: storage, slot: 3 }

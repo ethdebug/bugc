@@ -6,16 +6,15 @@ storage {
 
 create {
   owner = msg.sender;
+  /*@test owner-pointer
+  variables:
+    owner:
+      pointer: { location: storage, slot: 0, length: 20 }
+  */
 }
 
 code {
   if (msg.sender == owner) {
-    /*@test owner-pointer
-    after: deploy
-    variables:
-      owner:
-        pointer: { location: storage, slot: 0, length: 20 }
-    */
     owner = 0x0000000000000000000000000000000000000000;
   }
 }

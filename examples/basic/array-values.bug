@@ -9,24 +9,21 @@ create {
   // Use array literal assignment instead of index writes
   nums = [100, 200, 300];
   first = nums[0];
-  return;
-}
-
-code {
-  let f = first;
   /*@test first-element-check
-  after: deploy
   variables:
     first:
       pointer: { location: storage, slot: 1 }
       value: 100
   */
   /*@test array-values-check
-  after: deploy
   variables:
     nums:
       values:
         array-length: 3
         element: [100, 200, 300]
   */
+  return;
+}
+
+code {
 }

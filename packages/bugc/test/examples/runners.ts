@@ -34,20 +34,23 @@ export async function runVariablesTest(
   bytecode: { runtime: Uint8Array; create?: Uint8Array },
   instructions: Evm.Instruction[],
   sourceMapping: SourceMapping,
-  test: VariablesTest
+  test: VariablesTest,
+  programContext?: Format.Program.Context
 ): Promise<TestResult> {
-  // Find instructions at the source line
-  const instrIndices = findInstructionsAtLine(sourceMapping, test.atLine);
+  // Collect variables from program-level context first (storage variables)
+  const variables = new Map<string, Format.Pointer>();
 
-  if (instrIndices.length === 0) {
-    return {
-      passed: false,
-      message: `No instructions found at line ${test.atLine}`,
-    };
+  if (programContext) {
+    const vars = extractVariables(programContext);
+    for (const v of vars) {
+      if (v.identifier && v.pointer) {
+        variables.set(v.identifier, v.pointer);
+      }
+    }
   }
 
-  // Collect variables from debug info at this line
-  const variables = new Map<string, Format.Pointer>();
+  // Find instructions at the source line and augment with local variables
+  const instrIndices = findInstructionsAtLine(sourceMapping, test.atLine);
 
   for (const idx of instrIndices) {
     const instr = instructions[idx];

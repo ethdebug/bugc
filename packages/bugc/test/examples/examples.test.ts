@@ -18,6 +18,7 @@ import { describe, it, expect } from "vitest";
 import { promises as fs } from "fs";
 import path from "path";
 import { glob } from "glob";
+import type * as Format from "@ethdebug/format";
 
 import { bytecodeSequence, buildSequence } from "#compiler";
 import { Result } from "#result";
@@ -43,6 +44,8 @@ interface CompiledBytecode {
   create?: Uint8Array;
   runtimeInstructions: Instruction[];
   createInstructions?: Instruction[];
+  runtimeProgram: Format.Program;
+  createProgram?: Format.Program;
 }
 
 interface ExampleInfo {
@@ -221,7 +224,8 @@ describe("Example Files", async () => {
                 compiled.bytecode,
                 compiled.bytecode.runtimeInstructions,
                 mapping,
-                test
+                test,
+                compiled.bytecode.runtimeProgram.context
               );
 
               if (!result.passed) {

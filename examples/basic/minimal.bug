@@ -6,17 +6,13 @@ storage {
 
 create {
   value = 1;
-}
-
-code {
-  // Read value to make it available for testing
-  let v = value;
-
   /**@test value-initialized
-   * after: deploy
    * variables:
    *   value:
    *     pointer: { location: storage, slot: 0 }
    *     value: 1
    */
+}
+
+code {
 }
