@@ -4,8 +4,9 @@
  * Converts runtime variable locations to ethdebug/format pointer
  * expressions
  */
-
 import * as Format from "@ethdebug/format";
+
+import type { ComputeSlotChain } from "./storage-analysis.js";
 
 /**
  * Variable location information
@@ -102,7 +103,7 @@ export function generatePointer(
  * @returns A pointer expression (simple number or complex expression)
  */
 export function translateComputeSlotChain(
-  chain: import("./storage-analysis.js").ComputeSlotChain,
+  chain: ComputeSlotChain,
 ): Format.Pointer.Expression {
   // Start with base slot
   if (chain.baseSlot === null) {

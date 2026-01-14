@@ -19,9 +19,7 @@ import { translateComputeSlotChain } from "./pointers.js";
 /**
  * Helper to create a minimal IR block with compute_slot instructions
  */
-function createBlockWithInstructions(
-  instructions: Ir.Instruction[],
-): Ir.Block {
+function createBlockWithInstructions(instructions: Ir.Instruction[]): Ir.Block {
   return {
     id: "test_block",
     phis: [],

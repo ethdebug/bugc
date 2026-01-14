@@ -17,8 +17,14 @@ function InstructionsView({
   instructions: Evm.Instruction[];
   onOpcodeHover?: (ranges: SourceRange[]) => void;
 }) {
-  const { tooltip, setTooltip, showTooltip, pinTooltip, hideTooltip, closeTooltip } =
-    useEthdebugTooltip();
+  const {
+    tooltip,
+    setTooltip,
+    showTooltip,
+    pinTooltip,
+    hideTooltip,
+    closeTooltip,
+  } = useEthdebugTooltip();
 
   let pc = 0;
 

@@ -89,17 +89,123 @@ function generateStoragePointer(
     return { group };
   }
 
-  // For arrays, we can't represent them fully without indices
-  // Just return the base slot pointer with offset/length
+  // For arrays, generate a list pointer
   if (Type.isArray(bugType)) {
-    const pointer: Format.Pointer = {
-      location: "storage",
-      slot: baseSlot,
-    };
-    if (byteOffset > 0) {
-      pointer.offset = byteOffset;
+    const elementType = bugType.element;
+    const elementSize = getTypeSize(elementType);
+
+    // Check if this is a fixed-size or dynamic array
+    if (bugType.size !== undefined) {
+      // Fixed-size array: elements stored sequentially from base slot
+      // For fixed arrays, elements are at baseSlot + floor((i * elementSize) / 32)
+      // with offset (i * elementSize) % 32
+      const elementSlotExpression: Format.Pointer.Expression =
+        elementSize >= 32
+          ? // Full slots: baseSlot + i * (elementSize / 32)
+            {
+              $sum: [baseSlot, { $product: ["i", elementSize / 32] }],
+            }
+          : // Packed elements: baseSlot + floor((i * elementSize) / 32)
+            {
+              $sum: [
+                baseSlot,
+                {
+                  $quotient: [{ $product: ["i", elementSize] }, 32],
+                },
+              ],
+            };
+
+      const elementPointer: Format.Pointer = {
+        location: "storage",
+        slot: elementSlotExpression,
+      };
+
+      // Add offset for packed elements
+      if (elementSize < 32) {
+        elementPointer.offset = {
+          $remainder: [{ $product: ["i", elementSize] }, 32],
+        };
+        elementPointer.length = elementSize;
+      }
+
+      // Recursively handle complex element types
+      const refinedPointer =
+        Type.isStruct(elementType) || Type.isArray(elementType)
+          ? generateStoragePointer(0, elementType, 0)
+          : elementPointer;
+
+      return {
+        list: {
+          count: bugType.size,
+          each: "i",
+          is: refinedPointer || elementPointer,
+        },
+      };
+    } else {
+      // Dynamic array: length at base slot, elements at keccak256(slot) + index
+      // Elements start at keccak256(baseSlot)
+      const elementSlotExpression: Format.Pointer.Expression =
+        elementSize >= 32
+          ? // Full slots: keccak256(baseSlot) + i * (elementSize / 32)
+            {
+              $sum: [
+                { $keccak256: [baseSlot] },
+                { $product: ["i", elementSize / 32] },
+              ],
+            }
+          : // Packed elements: keccak256(baseSlot) + floor((i * elementSize) / 32)
+            {
+              $sum: [
+                { $keccak256: [baseSlot] },
+                {
+                  $quotient: [{ $product: ["i", elementSize] }, 32],
+                },
+              ],
+            };
+
+      const elementPointer: Format.Pointer = {
+        location: "storage",
+        slot: elementSlotExpression,
+      };
+
+      // Add offset for packed elements
+      if (elementSize < 32) {
+        elementPointer.offset = {
+          $remainder: [{ $product: ["i", elementSize] }, 32],
+        };
+        elementPointer.length = elementSize;
+      }
+
+      // Recursively handle complex element types
+      const refinedPointer =
+        Type.isStruct(elementType) || Type.isArray(elementType)
+          ? generateStoragePointer(0, elementType, 0)
+          : elementPointer;
+
+      // For dynamic arrays, we use a group to declare both the length region
+      // and the list of elements
+      const lengthRegion: Format.Pointer = {
+        name: "array-length",
+        location: "storage",
+        slot: baseSlot,
+      };
+      if (byteOffset > 0) {
+        lengthRegion.offset = byteOffset;
+      }
+
+      return {
+        group: [
+          lengthRegion,
+          {
+            list: {
+              count: { $read: "array-length" },
+              each: "i",
+              is: refinedPointer || elementPointer,
+            },
+          },
+        ],
+      };
     }
-    return pointer;
   }
 
   // For mappings, we can't represent them without keys

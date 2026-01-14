@@ -737,8 +737,14 @@ function FunctionRenderer({
 }
 
 export function IrView({ ir, onOpcodeHover }: IrViewProps) {
-  const { tooltip, setTooltip, showTooltip, pinTooltip, hideTooltip, closeTooltip } =
-    useEthdebugTooltip();
+  const {
+    tooltip,
+    setTooltip,
+    showTooltip,
+    pinTooltip,
+    hideTooltip,
+    closeTooltip,
+  } = useEthdebugTooltip();
 
   const handleHover = (ranges: SourceRange[]) => {
     onOpcodeHover?.(ranges);

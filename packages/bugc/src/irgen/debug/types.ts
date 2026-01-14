@@ -47,7 +47,6 @@ export function convertBugType(bugType: BugType): Format.Type | undefined {
     }
 
     return {
-      class: "complex",
       kind: "array",
       contains: {
         type: elementType,
@@ -66,7 +65,6 @@ export function convertBugType(bugType: BugType): Format.Type | undefined {
     }
 
     return {
-      class: "complex",
       kind: "mapping",
       contains: {
         key: { type: keyType },
@@ -83,14 +81,13 @@ export function convertBugType(bugType: BugType): Format.Type | undefined {
       const convertedField = convertBugType(fieldType);
       if (convertedField) {
         contains.push({
-          type: convertedField,
           name: fieldName,
+          type: convertedField,
         });
       }
     }
 
     return {
-      class: "complex",
       kind: "struct",
       contains,
     };
@@ -117,28 +114,24 @@ function convertElementaryType(
   switch (kind) {
     case "uint":
       return {
-        class: "elementary",
         kind: "uint",
         bits: elementary.bits,
       };
 
     case "int":
       return {
-        class: "elementary",
         kind: "int",
         bits: elementary.bits,
       };
 
     case "address":
       return {
-        class: "elementary",
         kind: "address",
         // payable is optional, omit if unknown
       };
 
     case "bool":
       return {
-        class: "elementary",
         kind: "bool",
       };
 
@@ -146,14 +139,12 @@ function convertElementaryType(
       if (elementary.size !== undefined) {
         // Fixed-size bytes (bytes1 - bytes32)
         return {
-          class: "elementary",
           kind: "bytes",
           size: elementary.size,
         };
       } else {
         // Dynamic bytes
         return {
-          class: "elementary",
           kind: "bytes",
         };
       }
@@ -161,7 +152,6 @@ function convertElementaryType(
 
     case "string":
       return {
-        class: "elementary",
         kind: "string",
       };
 
@@ -184,22 +174,22 @@ function convertSyntheticType(irType: Ir.Type): Format.Type | undefined {
     // Common patterns for synthetic scalars
     if (irType.size === 32) {
       // Most 32-byte scalars are uint256
-      return { class: "elementary", kind: "uint", bits: 256 };
+      return { kind: "uint", bits: 256 };
     }
 
     if (irType.size === 20) {
       // 20-byte scalars are addresses
-      return { class: "elementary", kind: "address" };
+      return { kind: "address" };
     }
 
     if (irType.size === 1) {
       // 1-byte scalars could be bool or uint8
       // Default to uint8 for safety
-      return { class: "elementary", kind: "uint", bits: 8 };
+      return { kind: "uint", bits: 8 };
     }
 
     // For other sizes, use uint with appropriate bit size
-    return { class: "elementary", kind: "uint", bits };
+    return { kind: "uint", bits };
   }
 
   if (Ir.Type.isRef(irType)) {
