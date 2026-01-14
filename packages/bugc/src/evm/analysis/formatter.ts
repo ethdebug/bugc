@@ -2,6 +2,8 @@
  * EVM instruction formatting utilities
  */
 
+import * as Format from "@ethdebug/format";
+
 import type { Instruction, InstructionDebug } from "#evm/spec";
 import { Analysis as AstAnalysis } from "#ast";
 
@@ -80,7 +82,7 @@ export class EvmFormatter {
    * Format a single context as source comment
    */
   private static formatContextSourceComment(
-    context: any,
+    context: Format.Program.Context | undefined,
     source: string,
   ): string {
     if (!context) {
@@ -90,12 +92,12 @@ export class EvmFormatter {
     const parts: string[] = [];
 
     // Check for remark (ethdebug format)
-    if (typeof context.remark === "string") {
+    if (Format.Program.Context.isRemark(context)) {
       parts.push(`; ${context.remark}`);
     }
 
     // Check for code.range (ethdebug format)
-    if (context.code?.range) {
+    if (Format.Program.Context.isCode(context) && context.code.range) {
       const range = context.code.range;
       if (
         typeof range.offset === "number" &&
@@ -120,7 +122,7 @@ export class EvmFormatter {
    * Extract just the location part from a context (for pick contexts)
    */
   private static extractSourceLocation(
-    context: any,
+    context: Format.Program.Context | undefined,
     source: string,
   ): string | null {
     if (!context) {
@@ -128,7 +130,7 @@ export class EvmFormatter {
     }
 
     // Check for code.range (ethdebug format)
-    if (context.code?.range) {
+    if (Format.Program.Context.isCode(context) && context.code.range) {
       const range = context.code.range;
       if (
         typeof range.offset === "number" &&

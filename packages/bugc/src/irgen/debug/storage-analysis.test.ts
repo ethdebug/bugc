@@ -207,7 +207,8 @@ describe("storage-analysis", () => {
           op: "add",
           left: constValue(1),
           right: constValue(2),
-        } as any,
+          operationDebug: {},
+        },
       ];
 
       const block = createBlockWithInstructions(instructions);

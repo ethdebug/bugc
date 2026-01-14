@@ -147,7 +147,7 @@ export function extractPhiDebug(phi: Ir.Block.Phi): MultiLevelDebugInfo {
   }[] = [];
 
   if (phi.sourcesDebug) {
-    for (const [pred, _value] of phi.sources) {
+    for (const pred of phi.sources.keys()) {
       const debug = phi.sourcesDebug.get(pred);
       operands.push({ label: `from ${pred}`, debug });
     }

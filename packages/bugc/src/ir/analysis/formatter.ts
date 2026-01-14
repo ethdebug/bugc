@@ -2,6 +2,8 @@
  * IR formatter for human-readable text output
  */
 
+import * as Format from "@ethdebug/format";
+
 import * as Ir from "#ir/spec";
 import { Analysis as AstAnalysis } from "#ast";
 
@@ -550,13 +552,15 @@ export class Formatter {
     return this.formatContextSourceComment(context);
   }
 
-  private formatContextSourceComment(context: any): string {
+  private formatContextSourceComment(
+    context: Format.Program.Context | undefined,
+  ): string {
     if (!context || !this.source) {
       return "";
     }
 
     // Check for code.range (correct path according to ethdebug format)
-    if (context.code?.range) {
+    if (Format.Program.Context.isCode(context) && context.code.range) {
       const range = context.code.range;
       if (
         typeof range.offset === "number" &&
@@ -574,13 +578,15 @@ export class Formatter {
     return "";
   }
 
-  private extractSourceLocation(context: any): string | null {
+  private extractSourceLocation(
+    context: Format.Program.Context | undefined,
+  ): string | null {
     if (!context || !this.source) {
       return null;
     }
 
     // Check for code.range (correct path according to ethdebug format)
-    if (context.code?.range) {
+    if (Format.Program.Context.isCode(context) && context.code.range) {
       const range = context.code.range;
       if (
         typeof range.offset === "number" &&

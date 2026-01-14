@@ -6,6 +6,8 @@
  */
 import * as Format from "@ethdebug/format";
 
+import type * as Ir from "#ir/spec";
+
 import type { ComputeSlotChain } from "./storage-analysis.js";
 
 /**
@@ -157,23 +159,22 @@ export function translateComputeSlotChain(
  * SAFETY: Returns null if we can't convert the value
  * For now, only handles constants. Future: handle temp references.
  */
-function valueToExpression(value: unknown): Format.Pointer.Expression | null {
-  // Safety check
-  if (!value || typeof value !== "object") {
+function valueToExpression(
+  value: Ir.Value | undefined,
+): Format.Pointer.Expression | null {
+  if (!value) {
     return null;
   }
 
-  const val = value as any;
-
   // Handle constant values
-  if (val.kind === "const" && typeof val.value === "bigint") {
-    return Number(val.value);
+  if (value.kind === "const" && typeof value.value === "bigint") {
+    return Number(value.value);
   }
 
   // Handle temp references
   // For now, we can't represent these in pointer expressions
   // Future: could use region references or symbolic names
-  if (val.kind === "temp") {
+  if (value.kind === "temp") {
     // Can't represent temp in pointer expression yet
     return null;
   }

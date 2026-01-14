@@ -1,3 +1,5 @@
+import * as Format from "@ethdebug/format";
+
 import type * as Ast from "#ast";
 import * as Ir from "#ir";
 
@@ -1048,17 +1050,18 @@ export namespace Process {
 
       // Combine code and variables in a single context object
       // No need for gather since the keys don't conflict
-      const context: any = {
+      const context: Format.Program.Context = {
         code: {
           source: { id },
           range: { offset, length },
         },
+        // Add variables if available
+        ...(
+          Format.Program.Context.isVariables(variablesContext.context)
+            ? { variables: variablesContext.context.variables }
+            : {}
+        )
       };
-
-      // Add variables if available
-      if (variablesContext.context && "variables" in variablesContext.context) {
-        context.variables = (variablesContext.context as any).variables;
-      }
 
       return { context };
     }
