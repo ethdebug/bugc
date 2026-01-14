@@ -21,7 +21,10 @@ code {
 
 /*@test constant-folding-result
 fails: constant comparison folding not implemented
+at-line: 15
 after: call
-storage:
-  0: 120
+variables:
+  result:
+    pointer: { location: storage, slot: 0 }
+    value: 120
 */

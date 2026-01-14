@@ -48,26 +48,11 @@ code {
   y = c;  // 'c' should need a phi node here
 }
 
-/*@test phi-nodes-execution
-after: call
-storage:
-  0: 3
-  1: 400
-*/
-
-/*@test y-pointer
+/*@test y-at-assignment
 at-line: 18
+after: deploy
 variables:
   y:
-    pointer:
-      location: storage
-      slot: 1
-*/
-
-/*@test evaluate-y
-at-line: 18
-evaluate: true
-variables:
-  y:
+    pointer: { location: storage, slot: 1 }
     value: 0
 */

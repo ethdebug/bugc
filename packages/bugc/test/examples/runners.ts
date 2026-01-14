@@ -1,24 +1,20 @@
 /**
- * Test Runners
+ * Test Runner
  *
- * Execute storage, variables, and evaluate tests against compiled bytecode.
+ * Execute variable tests against compiled bytecode.
+ * Checks pointer structure and/or dereferenced values at source lines.
  */
 
 import type * as Evm from "#evm";
 import * as Format from "@ethdebug/format";
-import { dereference, evaluate } from "@ethdebug/pointers";
+import { dereference } from "@ethdebug/pointers";
 import { bytesToHex } from "ethereum-cryptography/utils";
 
 import { EvmExecutor } from "../evm/index.js";
-import type {
-  StorageTest,
-  VariablesTest,
-  EvaluateTest,
-  SlotExpression,
-} from "./annotations.js";
+import type { VariablesTest } from "./annotations.js";
 import type { SourceMapping } from "./source-map.js";
 import { findInstructionsAtLine } from "./source-map.js";
-import { createMachineState, createNullMachineState } from "./machine-adapter.js";
+import { createMachineState } from "./machine-adapter.js";
 
 export interface TestResult {
   passed: boolean;
@@ -27,173 +23,20 @@ export interface TestResult {
   actual?: unknown;
 }
 
-/**
- * Convert Uint8Array to hex string (without 0x prefix).
- */
 function toHex(bytes: Uint8Array): string {
   return bytesToHex(bytes);
 }
 
 /**
- * Evaluate a slot expression to get the actual slot number.
- * Uses @ethdebug/pointers evaluate for pointer expressions ($keccak256, $sum).
+ * Run a variables test: check pointer structure and/or dereferenced values.
  */
-async function evaluateSlot(slot: SlotExpression): Promise<bigint> {
-  // Literal number
-  if (typeof slot === "number") {
-    return BigInt(slot);
-  }
-
-  // Literal string (hex or decimal)
-  if (typeof slot === "string") {
-    return BigInt(slot);
-  }
-
-  // Pointer expression - use @ethdebug/pointers evaluate
-  const nullState = createNullMachineState();
-  const data = await evaluate(slot as Format.Pointer.Expression, {
-    state: nullState,
-    regions: {},
-    variables: {},
-  });
-  return data.asUint();
-}
-
-/**
- * Run a storage test: deploy bytecode and check storage slot values.
- */
-export async function runStorageTest(
+export async function runVariablesTest(
   bytecode: { runtime: Uint8Array; create?: Uint8Array },
-  test: StorageTest
-): Promise<TestResult> {
-  const executor = new EvmExecutor();
-
-  try {
-    if (test.after === "deploy") {
-      // Use create bytecode if available, otherwise runtime
-      const hasCreate = bytecode.create && bytecode.create.length > 0;
-      const createCode = hasCreate
-        ? toHex(bytecode.create!)
-        : toHex(bytecode.runtime);
-      await executor.deploy(createCode);
-    }
-
-    if (test.after === "call") {
-      // Deploy first, then call
-      const createCode = bytecode.create
-        ? toHex(bytecode.create)
-        : toHex(bytecode.runtime);
-      await executor.deploy(createCode);
-      const execResult = await executor.execute({ data: test.callData || "" });
-      if (!execResult.success) {
-        return {
-          passed: false,
-          message: `Execution failed: ${JSON.stringify(execResult.error)}`,
-        };
-      }
-    }
-
-    // Check each expected storage slot
-    for (const expectation of test.storage) {
-      const slotNum = await evaluateSlot(expectation.slot);
-      const actual = await executor.getStorage(slotNum);
-      const expectedNum = BigInt(expectation.value);
-
-      if (actual !== expectedNum) {
-        const slotDisplay = typeof expectation.slot === "object"
-          ? JSON.stringify(expectation.slot)
-          : expectation.slot;
-        return {
-          passed: false,
-          message: `Storage slot ${slotDisplay}: expected ${expectedNum}, got ${actual}`,
-          expected: expectedNum,
-          actual,
-        };
-      }
-    }
-
-    return { passed: true };
-  } catch (error) {
-    return {
-      passed: false,
-      message: `Execution error: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
-}
-
-/**
- * Run a variables test: check debug info pointer structure at a source line.
- */
-export function runVariablesTest(
   instructions: Evm.Instruction[],
   sourceMapping: SourceMapping,
   test: VariablesTest
-): TestResult {
-  const instrIndices = findInstructionsAtLine(sourceMapping, test.atLine);
-
-  if (instrIndices.length === 0) {
-    return {
-      passed: false,
-      message: `No instructions found at line ${test.atLine}`,
-    };
-  }
-
-  // Collect variables from all instructions at this line
-  const variables = new Map<string, Format.Pointer>();
-
-  for (const idx of instrIndices) {
-    const instr = instructions[idx];
-    const context = instr.debug?.context;
-
-    if (!context) {
-      continue;
-    }
-
-    // Extract variables from context
-    const vars = extractVariables(context);
-    for (const v of vars) {
-      if (v.identifier && v.pointer) {
-        variables.set(v.identifier, v.pointer);
-      }
-    }
-  }
-
-  // Compare against expected
-  for (const [name, expected] of Object.entries(test.variables)) {
-    const actual = variables.get(name);
-
-    if (!actual) {
-      return {
-        passed: false,
-        message: `Variable "${name}" not found at line ${test.atLine}`,
-      };
-    }
-
-    if (expected.pointer) {
-      const match = deepEqual(actual, expected.pointer);
-      if (!match) {
-        return {
-          passed: false,
-          message: `Variable "${name}" pointer mismatch`,
-          expected: expected.pointer,
-          actual,
-        };
-      }
-    }
-  }
-
-  return { passed: true };
-}
-
-/**
- * Run an evaluate test: dereference pointers and compare actual values.
- */
-export async function runEvaluateTest(
-  instructions: Evm.Instruction[],
-  sourceMapping: SourceMapping,
-  executor: EvmExecutor,
-  test: EvaluateTest
 ): Promise<TestResult> {
+  // Find instructions at the source line
   const instrIndices = findInstructionsAtLine(sourceMapping, test.atLine);
 
   if (instrIndices.length === 0) {
@@ -203,10 +46,7 @@ export async function runEvaluateTest(
     };
   }
 
-  // Get machine state from executor
-  const state = createMachineState(executor);
-
-  // Collect variables and their pointers
+  // Collect variables from debug info at this line
   const variables = new Map<string, Format.Pointer>();
 
   for (const idx of instrIndices) {
@@ -225,8 +65,8 @@ export async function runEvaluateTest(
     }
   }
 
-  // Evaluate each variable's pointer and compare value
-  for (const [name, expectedSpec] of Object.entries(test.variables)) {
+  // Check each expected variable
+  for (const [name, expected] of Object.entries(test.variables)) {
     const pointer = variables.get(name);
 
     if (!pointer) {
@@ -236,40 +76,102 @@ export async function runEvaluateTest(
       };
     }
 
-    try {
-      // Dereference the pointer
-      const cursor = await dereference(pointer, { state });
-      const view = await cursor.view(state);
-
-      // Read the value from the first region
-      if (view.regions.length === 0) {
+    // Check pointer structure if specified
+    if (expected.pointer !== undefined) {
+      const match = deepEqual(pointer, expected.pointer);
+      if (!match) {
         return {
           passed: false,
-          message: `No regions for pointer of variable "${name}"`,
+          message: `Variable "${name}" pointer mismatch`,
+          expected: expected.pointer,
+          actual: pointer,
         };
       }
+    }
 
-      const data = await view.read(view.regions[0]);
-      const actual = data.asUint();
-      const expected = BigInt(expectedSpec.value);
-
-      if (actual !== expected) {
-        return {
-          passed: false,
-          message: `Variable "${name}": expected ${expected}, got ${actual}`,
-          expected,
-          actual,
-        };
+    // Check dereferenced value if specified
+    if (expected.value !== undefined) {
+      const result = await checkValue(
+        bytecode,
+        pointer,
+        name,
+        expected.value,
+        test.after,
+        test.callData
+      );
+      if (!result.passed) {
+        return result;
       }
-    } catch (error) {
-      return {
-        passed: false,
-        message: `Failed to evaluate pointer for "${name}": ${error instanceof Error ? error.message : String(error)}`,
-      };
     }
   }
 
   return { passed: true };
+}
+
+/**
+ * Deploy contract and check dereferenced value.
+ */
+async function checkValue(
+  bytecode: { runtime: Uint8Array; create?: Uint8Array },
+  pointer: Format.Pointer,
+  name: string,
+  expectedValue: string | number | bigint,
+  after: "deploy" | "call" = "deploy",
+  callData?: string
+): Promise<TestResult> {
+  const executor = new EvmExecutor();
+
+  try {
+    // Deploy
+    const hasCreate = bytecode.create && bytecode.create.length > 0;
+    const createCode = hasCreate
+      ? toHex(bytecode.create!)
+      : toHex(bytecode.runtime);
+    await executor.deploy(createCode);
+
+    // Call if needed
+    if (after === "call") {
+      const execResult = await executor.execute({ data: callData || "" });
+      if (!execResult.success) {
+        return {
+          passed: false,
+          message: `Execution failed: ${JSON.stringify(execResult.error)}`,
+        };
+      }
+    }
+
+    // Dereference the pointer
+    const state = createMachineState(executor);
+    const cursor = await dereference(pointer, { state });
+    const view = await cursor.view(state);
+
+    if (view.regions.length === 0) {
+      return {
+        passed: false,
+        message: `No regions for pointer of variable "${name}"`,
+      };
+    }
+
+    const data = await view.read(view.regions[0]);
+    const actual = data.asUint();
+    const expected = BigInt(expectedValue);
+
+    if (actual !== expected) {
+      return {
+        passed: false,
+        message: `Variable "${name}": expected ${expected}, got ${actual}`,
+        expected,
+        actual,
+      };
+    }
+
+    return { passed: true };
+  } catch (error) {
+    return {
+      passed: false,
+      message: `Failed to evaluate "${name}": ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 }
 
 /**
@@ -280,19 +182,16 @@ function extractVariables(
 ): Format.Program.Context.Variables.Variable[] {
   const result: Format.Program.Context.Variables.Variable[] = [];
 
-  // Direct variables context
   if (Format.Program.Context.isVariables(context)) {
     result.push(...context.variables);
   }
 
-  // Gather context - collect from children
   if (Format.Program.Context.isGather(context)) {
     for (const child of context.gather) {
       result.push(...extractVariables(child));
     }
   }
 
-  // Pick context - collect from all options
   if (Format.Program.Context.isPick(context)) {
     for (const option of context.pick) {
       result.push(...extractVariables(option));

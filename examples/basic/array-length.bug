@@ -29,11 +29,17 @@ create {
   return;
 }
 
+code {
+  // Read arraySize for testing
+  let size = arraySize;
+}
+
 /*@test array-length-after-deploy
 fails: fixedArray.length returns 0 instead of 10
+at-line: 33
 after: deploy
-storage:
-  1: 10
-  2: 0
-  3: 0
+variables:
+  arraySize:
+    pointer: { location: storage, slot: 1 }
+    value: 10
 */

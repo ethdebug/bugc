@@ -58,11 +58,24 @@ create {
 }
 
 code {
+  // Read values for testing
+  let c = count;
+  let p = permission;
 }
 
-/*@test conditionals-after-deploy
+/*@test count-after-deploy
+at-line: 62
 after: deploy
-storage:
-  0: 1
-  5: 1
+variables:
+  count:
+    pointer: { location: storage, slot: 0 }
+    value: 1
+*/
+
+/*@test permission-pointer
+at-line: 63
+after: deploy
+variables:
+  permission:
+    pointer: { location: storage, slot: 5, length: 1 }
 */

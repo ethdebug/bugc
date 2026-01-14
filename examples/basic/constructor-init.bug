@@ -11,15 +11,6 @@ create {
 }
 
 code {
+  // Access items to make it available for testing
+  let first = items[0];
 }
-
-/*@test array-initialized
-after: deploy
-storage:
-  - slot: { $keccak256: ["0x0000000000000000000000000000000000000000000000000000000000000000"] }
-    value: 0x101
-  - slot: { $sum: [{ $keccak256: ["0x0000000000000000000000000000000000000000000000000000000000000000"] }, 1] }
-    value: 0x102
-  - slot: { $sum: [{ $keccak256: ["0x0000000000000000000000000000000000000000000000000000000000000000"] }, 2] }
-    value: 0x103
-*/

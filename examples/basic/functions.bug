@@ -36,7 +36,10 @@ code {
 
 /*@test function-call-result
 fails: stack underflow in internal function calls
+at-line: 34
 after: call
-storage:
-  0: 60
+variables:
+  result:
+    pointer: { location: storage, slot: 0 }
+    value: 60
 */

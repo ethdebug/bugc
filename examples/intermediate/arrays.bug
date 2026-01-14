@@ -71,19 +71,11 @@ code {
   return;
 }
 
-/*@test sum-pointer
+/*@test sum-initialized
 at-line: 19
+after: deploy
 variables:
   sum:
-    pointer:
-      location: storage
-      slot: 1
-*/
-
-/*@test evaluate-sum
-at-line: 19
-evaluate: true
-variables:
-  sum:
+    pointer: { location: storage, slot: 1 }
     value: 0
 */

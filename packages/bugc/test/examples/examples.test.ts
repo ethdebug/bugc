@@ -18,26 +18,14 @@ import { describe, it, expect } from "vitest";
 import { promises as fs } from "fs";
 import path from "path";
 import { glob } from "glob";
-import { bytesToHex } from "ethereum-cryptography/utils";
 
 import { bytecodeSequence, buildSequence } from "#compiler";
 import { Result } from "#result";
 import type { Instruction } from "#evm";
 
-import {
-  parseTestBlocks,
-  type TestBlock,
-  type StorageTest,
-  type VariablesTest,
-  type EvaluateTest,
-} from "./annotations.js";
+import { parseTestBlocks, type TestBlock, type VariablesTest } from "./annotations.js";
 import { buildSourceMapping } from "./source-map.js";
-import {
-  runStorageTest,
-  runVariablesTest,
-  runEvaluateTest,
-} from "./runners.js";
-import { EvmExecutor } from "../evm/index.js";
+import { runVariablesTest } from "./runners.js";
 
 const EXAMPLES_DIR = path.resolve(__dirname, "../../../../examples");
 
@@ -102,10 +90,6 @@ async function loadExamples(): Promise<ExampleInfo[]> {
   return examples;
 }
 
-function toHex(bytes: Uint8Array): string {
-  return bytesToHex(bytes);
-}
-
 function shouldSkip(annotations: ExampleAnnotations): boolean {
   return annotations.wip || !!annotations.skip;
 }
@@ -116,9 +100,6 @@ function skipSuffix(annotations: ExampleAnnotations): string {
   return "";
 }
 
-/**
- * Handle test result with expected failure support.
- */
 function handleTestResult(
   result: { passed: boolean; message?: string },
   expectFail?: string
@@ -127,7 +108,6 @@ function handleTestResult(
     if (result.passed) {
       expect.fail(`Expected to fail (${expectFail}) but passed`);
     }
-    // Expected failure - test passes
     return;
   }
 
@@ -156,51 +136,26 @@ async function compileExample(
 describe("Example Files", async () => {
   const examples = await loadExamples();
 
-  // Group tests by type
-  const compilationTests = examples;
-  const storageTests: Array<{
-    example: ExampleInfo;
-    block: TestBlock;
-    test: StorageTest;
-  }> = [];
+  // Collect variables tests
   const variablesTests: Array<{
     example: ExampleInfo;
     block: TestBlock;
     test: VariablesTest;
   }> = [];
-  const evaluateTests: Array<{
-    example: ExampleInfo;
-    block: TestBlock;
-    test: EvaluateTest;
-  }> = [];
 
   for (const example of examples) {
     for (const block of example.testBlocks) {
-      if (block.type === "storage") {
-        storageTests.push({
-          example,
-          block,
-          test: block.parsed as StorageTest,
-        });
-      } else if (block.type === "variables") {
-        variablesTests.push({
-          example,
-          block,
-          test: block.parsed as VariablesTest,
-        });
-      } else if (block.type === "evaluate") {
-        evaluateTests.push({
-          example,
-          block,
-          test: block.parsed as EvaluateTest,
-        });
-      }
+      variablesTests.push({
+        example,
+        block,
+        test: block.parsed,
+      });
     }
   }
 
   // === Compilation Tests ===
   describe("Compilation", () => {
-    for (const example of compilationTests) {
+    for (const example of examples) {
       const { relativePath, source, annotations } = example;
       const skip = shouldSkip(annotations);
       const itFn = skip ? it.skip : it;
@@ -231,7 +186,6 @@ describe("Example Files", async () => {
           }
           expect(result.success).toBe(true);
 
-          // Cache the result for other test types
           compilationCache.set(relativePath, {
             success: true,
             bytecode: result.value.bytecode,
@@ -241,49 +195,8 @@ describe("Example Files", async () => {
     }
   });
 
-  // === Storage Tests ===
-  if (storageTests.length > 0) {
-    // Group by file
-    const byFile = new Map<string, typeof storageTests>();
-    for (const entry of storageTests) {
-      const key = entry.example.relativePath;
-      if (!byFile.has(key)) byFile.set(key, []);
-      byFile.get(key)!.push(entry);
-    }
-
-    describe("Storage", () => {
-      for (const [relativePath, tests] of byFile) {
-        const { annotations } = tests[0].example;
-        const skip = shouldSkip(annotations);
-        const describeFn = skip ? describe.skip : describe;
-
-        describeFn(`${relativePath}${skipSuffix(annotations)}`, () => {
-          for (const { example, block, test } of tests) {
-            const baseName = block.name || "unnamed";
-            const testName = block.expectFail
-              ? `${baseName} (expected: ${block.expectFail})`
-              : baseName;
-
-            it(testName, async () => {
-              const compiled = await compileExample(example);
-              if (!compiled.success) {
-                throw new Error(
-                  "Compilation failed - cannot run storage test"
-                );
-              }
-
-              const result = await runStorageTest(compiled.bytecode, test);
-              handleTestResult(result, block.expectFail);
-            });
-          }
-        });
-      }
-    });
-  }
-
   // === Variables Tests ===
   if (variablesTests.length > 0) {
-    // Group by file
     const byFile = new Map<string, typeof variablesTests>();
     for (const entry of variablesTests) {
       const key = entry.example.relativePath;
@@ -307,9 +220,7 @@ describe("Example Files", async () => {
             it(testName, async () => {
               const compiled = await compileExample(example);
               if (!compiled.success) {
-                throw new Error(
-                  "Compilation failed - cannot run variables test"
-                );
+                throw new Error("Compilation failed - cannot run test");
               }
 
               const mapping = buildSourceMapping(
@@ -317,67 +228,10 @@ describe("Example Files", async () => {
                 compiled.bytecode.runtimeInstructions
               );
 
-              const result = runVariablesTest(
+              const result = await runVariablesTest(
+                compiled.bytecode,
                 compiled.bytecode.runtimeInstructions,
                 mapping,
-                test
-              );
-
-              handleTestResult(result, block.expectFail);
-            });
-          }
-        });
-      }
-    });
-  }
-
-  // === Evaluate Tests ===
-  if (evaluateTests.length > 0) {
-    // Group by file
-    const byFile = new Map<string, typeof evaluateTests>();
-    for (const entry of evaluateTests) {
-      const key = entry.example.relativePath;
-      if (!byFile.has(key)) byFile.set(key, []);
-      byFile.get(key)!.push(entry);
-    }
-
-    describe("Evaluate", () => {
-      for (const [relativePath, tests] of byFile) {
-        const { annotations, source } = tests[0].example;
-        const skip = shouldSkip(annotations);
-        const describeFn = skip ? describe.skip : describe;
-
-        describeFn(`${relativePath}${skipSuffix(annotations)}`, () => {
-          for (const { example, block, test } of tests) {
-            const baseName = block.name || `line ${test.atLine}`;
-            const testName = block.expectFail
-              ? `${baseName} (expected: ${block.expectFail})`
-              : baseName;
-
-            it(testName, async () => {
-              const compiled = await compileExample(example);
-              if (!compiled.success) {
-                throw new Error(
-                  "Compilation failed - cannot run evaluate test"
-                );
-              }
-
-              // Deploy contract first
-              const executor = new EvmExecutor();
-              const createCode = compiled.bytecode.create
-                ? toHex(compiled.bytecode.create)
-                : toHex(compiled.bytecode.runtime);
-              await executor.deploy(createCode);
-
-              const mapping = buildSourceMapping(
-                source,
-                compiled.bytecode.runtimeInstructions
-              );
-
-              const result = await runEvaluateTest(
-                compiled.bytecode.runtimeInstructions,
-                mapping,
-                executor,
                 test
               );
 

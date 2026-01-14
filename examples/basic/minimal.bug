@@ -8,8 +8,16 @@ create {
   value = 1;
 }
 
-/*@test storage-initialized
+code {
+  // Read value to make it available for testing
+  let v = value;
+}
+
+/*@test value-initialized
+at-line: 13
 after: deploy
-storage:
-  0: 1
+variables:
+  value:
+    pointer: { location: storage, slot: 0 }
+    value: 1
 */

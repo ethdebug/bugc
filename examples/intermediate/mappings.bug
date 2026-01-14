@@ -35,9 +35,8 @@ code {
 
 /*@test balances-pointer
 at-line: 20
+after: deploy
 variables:
   balances:
-    pointer:
-      location: storage
-      slot: 0
+    pointer: { location: storage, slot: 0 }
 */

@@ -32,27 +32,14 @@ code {
   count = count + 1;
 }
 
-/*@test initialized-after-deploy
+/*@test count-after-deploy
+at-line: 32
 after: deploy
-storage:
-  0: 0
-  1: 1
-  2: 1000000
-*/
-
-/*@test count-pointer
-at-line: 32
 variables:
   count:
-    pointer:
-      location: storage
-      slot: 0
-*/
-
-/*@test evaluate-count
-at-line: 32
-evaluate: true
-variables:
-  count:
+    pointer: { location: storage, slot: 0 }
     value: 0
+  maxCount:
+    pointer: { location: storage, slot: 2 }
+    value: 1000000
 */

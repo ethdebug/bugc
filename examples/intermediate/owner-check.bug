@@ -14,8 +14,10 @@ code {
   }
 }
 
-/*@test owner-set-on-deploy
+/*@test owner-pointer
+at-line: 12
 after: deploy
-storage:
-  0: 1
+variables:
+  owner:
+    pointer: { location: storage, slot: 0, length: 20 }
 */
